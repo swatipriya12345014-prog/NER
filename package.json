@@ -1,30 +1,16 @@
 {
-  "name": "sih",
+  "name": "ner-lifeline",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "AI-Powered Smart Logistics & Accessibility Platform for the North Eastern Region of India",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "preview": "npm --prefix frontend run preview",
+    "backend": "uvicorn backend.main:app --reload --port 8000"
   },
-  "dependencies": {
-    "firebase": "^12.19.0",
-    "lucide-react": "^1.43.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "autoprefixer": "^10.5.5",
-    "oxlint": "^1.79.0",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.2.2"
-  }
+  "workspaces": [
+    "frontend"
+  ]
 }

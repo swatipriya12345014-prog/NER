@@ -25,3 +25,7 @@ dist-ssr
 *.sln
 *.sw?
 scratch/
+__pycache__/
+*.pyc
+.venv/
+venv/
