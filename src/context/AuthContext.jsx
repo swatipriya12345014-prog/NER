@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }) => {
 
     if (isFirebaseConfigured && auth && googleProvider) {
       try {
+        console.log('Starting Firebase Google signInWithPopup...');
         const result = await signInWithPopup(auth, googleProvider);
         const signedUser = {
           uid: result.user.uid,
@@ -81,11 +82,23 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem(MOCK_USER_STORAGE_KEY);
         return { success: true, user: signedUser, live: true };
       } catch (err) {
-        if (err.code === 'auth/popup-closed-by-user') {
-          throw new Error('Sign-in popup was closed before completing.');
+        console.error('Firebase Auth Error details:', err.code, err.message);
+        let friendlyMessage = err.message;
+
+        if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
+          friendlyMessage = 'Google provider is not enabled in Firebase Console. Go to Build > Authentication > Sign-in method > Google and click Enable.';
+        } else if (err.code === 'auth/unauthorized-domain') {
+          friendlyMessage = 'Domain not authorized in Firebase Console. Go to Authentication > Settings > Authorized domains and ensure localhost is listed.';
+        } else if (err.code === 'auth/popup-blocked') {
+          friendlyMessage = 'Browser blocked the popup window. Please allow popups or use the Account Selector.';
+        } else if (err.code === 'auth/popup-closed-by-user') {
+          friendlyMessage = 'Google Sign-in popup was closed before finishing.';
         }
-        setAuthError(err.message || 'Failed to authenticate with Google');
-        throw err;
+
+        const customErr = new Error(friendlyMessage);
+        customErr.code = err.code;
+        setAuthError(friendlyMessage);
+        throw customErr;
       }
     } else {
       return { success: false, needAccountSelection: true };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Truck, Building, Activity, Users, AlertCircle, CheckCircle2, Settings, Key } from 'lucide-react';
+import { Shield, Truck, Building, Activity, Users, AlertCircle, CheckCircle2, Settings, Key, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import GoogleAccountChooserModal from '../components/auth/GoogleAccountChooserModal';
 
@@ -41,12 +41,12 @@ const Login = () => {
     try {
       const res = await loginWithGoogle(role);
       if (res?.needAccountSelection) {
-        // Show Google Account Chooser modal
         setShowAccountChooser(true);
       } else if (res?.success) {
         navigate(getDashboardRoute(role));
       }
     } catch (err) {
+      console.error('Google Sign-in Exception:', err);
       setErrorMsg(err.message || 'Google sign-in encountered an issue.');
     } finally {
       setIsSubmitting(false);
@@ -117,7 +117,7 @@ const Login = () => {
               </button>
             </div>
             <p className="text-xs text-slate-300 mt-3 mb-4 leading-relaxed">
-              Paste your Firebase Web credentials here or in your <code className="bg-slate-900 px-1 py-0.5 rounded text-amber-300">.env</code> file.
+              Firebase keys from <code className="bg-slate-900 px-1 py-0.5 rounded text-amber-300">.env</code> are active. You can also customize them here:
             </p>
             <form onSubmit={handleSaveConfig} className="space-y-3">
               <div>
@@ -136,7 +136,7 @@ const Login = () => {
                 <input
                   type="text"
                   required
-                  placeholder="ner-lifeline-xyz"
+                  placeholder="ner-l-b0ef4"
                   value={cfgProjectId}
                   onChange={(e) => setCfgProjectId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
@@ -146,7 +146,7 @@ const Login = () => {
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Auth Domain (optional)</label>
                 <input
                   type="text"
-                  placeholder="ner-lifeline-xyz.firebaseapp.com"
+                  placeholder="ner-l-b0ef4.firebaseapp.com"
                   value={cfgAuthDomain}
                   onChange={(e) => setCfgAuthDomain(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
@@ -156,13 +156,13 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="flex-1 py-2 text-xs text-slate-400 hover:bg-slate-700 rounded-lg"
+                  className="flex-1 py-2 text-xs text-slate-400 hover:bg-slate-700 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 font-bold rounded-lg text-xs text-white"
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 font-bold rounded-lg text-xs text-white cursor-pointer"
                 >
                   Save & Reload
                 </button>
@@ -201,7 +201,7 @@ const Login = () => {
               {isFirebaseConfigured ? (
                 <span className="flex items-center space-x-1 text-emerald-400 font-medium">
                   <CheckCircle2 size={13} />
-                  <span>Firebase Live</span>
+                  <span>Firebase Live (ner-l-b0ef4)</span>
                 </span>
               ) : (
                 <span className="flex items-center space-x-1 text-blue-400 font-medium">
@@ -218,10 +218,21 @@ const Login = () => {
             </div>
           </div>
 
+          {/* Error Message with Quick Action */}
           {(errorMsg || authError) && (
-            <div className="mb-5 flex items-start space-x-2 p-3 bg-red-950/60 border border-red-800 text-red-300 rounded-lg text-xs">
-              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-              <span>{errorMsg || authError}</span>
+            <div className="mb-5 p-3.5 bg-red-950/70 border border-red-800 text-red-200 rounded-xl text-xs space-y-2">
+              <div className="flex items-start space-x-2">
+                <AlertCircle size={16} className="flex-shrink-0 text-red-400 mt-0.5" />
+                <span className="leading-relaxed">{errorMsg || authError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAccountChooser(true)}
+                className="w-full flex items-center justify-center space-x-2 py-1.5 px-3 bg-red-900/70 hover:bg-red-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <UserCheck size={13} />
+                <span>Open Google Account Selector Directly</span>
+              </button>
             </div>
           )}
 
@@ -250,14 +261,13 @@ const Login = () => {
           </div>
 
           {/* Google Sign In Button */}
-          <div className="mb-5">
+          <div className="mb-5 space-y-2">
             <button
               type="button"
               onClick={handleGoogleSignInClick}
               disabled={isSubmitting}
               className="w-full flex items-center justify-center space-x-3 py-3 px-4 border border-slate-300 rounded-xl bg-white hover:bg-gray-50 text-gray-800 font-semibold text-sm shadow-md transition-all active:scale-[0.99] disabled:opacity-60 cursor-pointer"
             >
-              {/* Google SVG Icon */}
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -276,11 +286,17 @@ const Login = () => {
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.32 0 3.25 2.63 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                 />
               </svg>
-              <span>{isSubmitting ? 'Opening Accounts...' : 'Sign in with Google'}</span>
+              <span>{isSubmitting ? 'Opening Google...' : 'Sign in with Google'}</span>
             </button>
-            <p className="text-[11px] text-center text-slate-400 mt-2">
-              Click to choose from your authorized Google Accounts
-            </p>
+
+            {/* Direct Account Chooser Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowAccountChooser(true)}
+              className="w-full text-center text-xs text-blue-400 hover:text-blue-300 py-1 transition-colors cursor-pointer underline decoration-dotted"
+            >
+              Choose from Authorized Google Accounts
+            </button>
           </div>
 
           <div className="relative mb-5">
