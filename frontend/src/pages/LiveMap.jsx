@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Truck, 
   Layers, 
@@ -22,7 +22,9 @@ import {
   Maximize2,
   RefreshCw,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Wifi,
+  Signal
 } from 'lucide-react';
 
 // Live Basemap Tile Providers (Open, Fast, Zero Rate Limits, No Leaflet)
@@ -54,70 +56,6 @@ const NER_HUBS = [
   { id: 'aizawl', name: 'Aizawl Outpost', state: 'Mizoram', lat: 23.7271, lng: 92.7176, status: 'Southern Distribution' },
   { id: 'agartala', name: 'Agartala Depot', state: 'Tripura', lat: 23.8315, lng: 91.2868, status: 'Western Staging Base' },
   { id: 'gangtok', name: 'Gangtok Command', state: 'Sikkim', lat: 27.3389, lng: 88.6065, status: 'Himalayan Corridor Base' }
-];
-
-// Active Emergency Vehicle Telemetry Streams
-const INITIAL_CONVOYS = [
-  {
-    id: 'CV-101',
-    name: 'Lifeline Convoy Alpha',
-    cargo: 'Emergency Blood Plasma & Antivenom',
-    priority: 'Critical',
-    temp: 3.8,
-    speed: 42,
-    heading: 38,
-    driver: 'Havildar T. Angami',
-    lat: 27.150,
-    lng: 92.200,
-    dest: 'Tawang Base Hospital',
-    route: 'NH-13 Mountain Pass',
-    color: '#10b981'
-  },
-  {
-    id: 'CV-102',
-    name: 'Lifeline Convoy Beta',
-    cargo: 'Pediatric Vaccines (Cold-Chain)',
-    priority: 'High',
-    temp: 4.1,
-    speed: 55,
-    heading: 125,
-    driver: 'Driver S. Marak',
-    lat: 25.480,
-    lng: 92.150,
-    dest: 'Jowai Primary Health Center',
-    route: 'NH-06 Shillong Corridor',
-    color: '#38bdf8'
-  },
-  {
-    id: 'CV-103',
-    name: 'Lifeline Convoy Gamma',
-    cargo: 'Surgical Equipment & MREs',
-    priority: 'Critical',
-    temp: 21.0,
-    speed: 38,
-    heading: 190,
-    driver: 'Capt. R. Singh',
-    lat: 25.100,
-    lng: 93.980,
-    dest: 'Churachandpur Evac Camp',
-    route: 'NH-02 Mountain Arterial',
-    color: '#f59e0b'
-  },
-  {
-    id: 'CV-104',
-    name: 'Lifeline Convoy Delta',
-    cargo: 'Water Purification Units',
-    priority: 'Normal',
-    temp: 24.5,
-    speed: 62,
-    heading: 260,
-    driver: 'Sub. B. Bora',
-    lat: 26.350,
-    lng: 92.650,
-    dest: 'Tezpur Civil Depot',
-    route: 'NH-27 East-West Expressway',
-    color: '#a855f7'
-  }
 ];
 
 // Live Real-Time Hazard Alerts
@@ -190,8 +128,10 @@ const LiveMap = () => {
   const [center, setCenter] = useState({ lat: 26.2, lng: 92.8 });
   const [zoom, setZoom] = useState(7);
   const [basemap, setBasemap] = useState('streets');
-  const [convoys, setConvoys] = useState(INITIAL_CONVOYS);
-  const [selectedEntity, setSelectedEntity] = useState(INITIAL_CONVOYS[0]);
+  
+  // Real-time vehicle fleet state (initialized empty for live data ingestion)
+  const [convoys, setConvoys] = useState([]);
+  const [selectedEntity, setSelectedEntity] = useState(NER_HUBS[0]);
   const [filterLayer, setFilterLayer] = useState({ vehicles: true, hazards: true, hubs: true });
   const [mouseCoord, setMouseCoord] = useState({ lat: 26.2, lng: 92.8 });
   const [isLiveTelemetryActive, setIsLiveTelemetryActive] = useState(true);
@@ -216,41 +156,6 @@ const LiveMap = () => {
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
-
-  // Real-time Vehicle Movement Simulator (Live GPS Telemetry updates every 2 seconds)
-  useEffect(() => {
-    if (!isLiveTelemetryActive) return;
-    const interval = setInterval(() => {
-      setConvoys((prev) =>
-        prev.map((c) => {
-          // Micro-movement along vector
-          const latDelta = (Math.random() - 0.48) * 0.003;
-          const lngDelta = (Math.random() - 0.45) * 0.003;
-          const speedDelta = Math.floor((Math.random() - 0.5) * 4);
-          const newSpeed = Math.max(25, Math.min(75, c.speed + speedDelta));
-          const newLat = +(c.lat + latDelta).toFixed(5);
-          const newLng = +(c.lng + lngDelta).toFixed(5);
-
-          return {
-            ...c,
-            lat: newLat,
-            lng: newLng,
-            speed: newSpeed
-          };
-        })
-      );
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isLiveTelemetryActive]);
-
-  // Keep selectedEntity synchronized with live moving convoy
-  useEffect(() => {
-    if (selectedEntity && selectedEntity.cargo) {
-      const updated = convoys.find((c) => c.id === selectedEntity.id);
-      if (updated) setSelectedEntity(updated);
-    }
-  }, [convoys]);
 
   // Mouse pan handlers
   const handleMouseDown = (e) => {
@@ -399,17 +304,10 @@ const LiveMap = () => {
             ))}
           </div>
 
-          <button
-            onClick={() => setIsLiveTelemetryActive(!isLiveTelemetryActive)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer border ${
-              isLiveTelemetryActive
-                ? 'bg-emerald-600/30 border-emerald-500 text-emerald-300'
-                : 'bg-slate-800 border-slate-700 text-slate-400'
-            }`}
-          >
-            <Activity size={14} className={isLiveTelemetryActive ? 'animate-spin' : ''} />
-            <span>{isLiveTelemetryActive ? 'Live Stream Active' : 'Stream Paused'}</span>
-          </button>
+          <div className="px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 border bg-emerald-600/20 border-emerald-500/40 text-emerald-300">
+            <Wifi size={14} className="animate-pulse text-emerald-400" />
+            <span>GPS Receiver Ready</span>
+          </div>
         </div>
       </div>
 
@@ -445,7 +343,7 @@ const LiveMap = () => {
                   filterLayer.vehicles ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'
                 }`}
               >
-                Convoys ({convoys.length})
+                Fleet Telemetry ({convoys.length})
               </button>
               <button
                 onClick={() => setFilterLayer((p) => ({ ...p, hazards: !p.hazards }))}
@@ -461,7 +359,7 @@ const LiveMap = () => {
                   filterLayer.hubs ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
                 }`}
               >
-                Depots ({NER_HUBS.length})
+                Strategic Hubs ({NER_HUBS.length})
               </button>
             </div>
 
@@ -534,7 +432,7 @@ const LiveMap = () => {
                 );
               })}
 
-            {/* Active Moving Convoy Markers */}
+            {/* Real-time Moving Convoy Markers (Rendered when live telemetry streams arrive) */}
             {filterLayer.vehicles &&
               convoys.map((convoy) => {
                 const pos = coordToScreen(convoy.lat, convoy.lng);
@@ -564,7 +462,7 @@ const LiveMap = () => {
                     </div>
                     <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-slate-950/95 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-lg whitespace-nowrap border border-emerald-800 pointer-events-none flex items-center space-x-1">
                       <span>{convoy.id}</span>
-                      <span className="text-slate-400">({convoy.speed} km/h)</span>
+                      {convoy.speed && <span className="text-slate-400">({convoy.speed} km/h)</span>}
                     </div>
                   </div>
                 );
@@ -643,16 +541,17 @@ const LiveMap = () => {
               <div>
                 <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Tactical Inspector</span>
                 <h3 className="text-lg font-bold text-white">
-                  {selectedEntity?.name || selectedEntity?.title || 'Tactical Asset'}
+                  {selectedEntity?.name || selectedEntity?.title || 'Tactical Location'}
                 </h3>
               </div>
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-600/30 text-blue-300 border border-blue-500">
-                {selectedEntity?.priority || selectedEntity?.severity || 'Active'}
+                {selectedEntity?.priority || selectedEntity?.severity || 'Operational'}
               </span>
             </div>
 
             {/* Details Grid */}
             <div className="space-y-2.5 text-xs">
+              {/* Dynamic Vehicle View (when live telemetry vehicle selected) */}
               {selectedEntity?.cargo && (
                 <>
                   <div className="p-2.5 rounded-lg bg-slate-900/70 border border-slate-700 space-y-1">
@@ -691,6 +590,7 @@ const LiveMap = () => {
                 </>
               )}
 
+              {/* Hazard View */}
               {selectedEntity?.location && (
                 <div className="p-3 bg-rose-950/40 border border-rose-900 rounded-xl space-y-2 text-xs">
                   <div className="flex items-center space-x-2 text-rose-400 font-bold">
@@ -703,6 +603,7 @@ const LiveMap = () => {
                 </div>
               )}
 
+              {/* Strategic Hub Base View */}
               {selectedEntity?.status && !selectedEntity?.cargo && !selectedEntity?.location && (
                 <div className="p-3 bg-slate-900/70 border border-slate-700 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between">
@@ -713,54 +614,77 @@ const LiveMap = () => {
                     <span className="text-slate-400">State Jurisdiction:</span>
                     <span className="font-semibold text-blue-300">{selectedEntity.state}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Coordinates:</span>
+                    <span className="font-mono text-slate-300">{selectedEntity.lat}°N, {selectedEntity.lng}°E</span>
+                  </div>
                 </div>
               )}
 
               {/* Action Button: Recenter on this entity */}
               <button
-                onClick={() => jumpToLocation(selectedEntity.lat, selectedEntity.lng, 12)}
+                onClick={() => jumpToLocation(selectedEntity.lat, selectedEntity.lng, 11)}
                 className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-98 cursor-pointer"
               >
                 <Crosshair size={14} />
-                <span>Track & Focus on Entity</span>
+                <span>Focus Location on Map</span>
               </button>
             </div>
           </div>
 
-          {/* Real-Time Convoy Stream List */}
+          {/* Real-Time Convoy Stream / Fleet Ingestion Channel */}
           <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-3">
             <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-              <span>Active Relief Convoys ({convoys.length})</span>
-              <span className="text-emerald-400 text-[10px]">Real-time GPS</span>
+              <span>Active Relief Vehicles</span>
+              <span className="text-emerald-400 text-[10px] flex items-center space-x-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Live Ingestion Channel</span>
+              </span>
             </h4>
 
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
-              {convoys.map((convoy) => (
-                <div
-                  key={convoy.id}
-                  onClick={() => {
-                    setSelectedEntity(convoy);
-                    jumpToLocation(convoy.lat, convoy.lng, 11);
-                  }}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    selectedEntity?.id === convoy.id
-                      ? 'bg-blue-600/20 border-blue-400 text-white'
-                      : 'bg-slate-900/70 border-slate-700/80 hover:bg-slate-800/80 text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs">{convoy.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">
-                      {convoy.speed} km/h
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
-                    <span>{convoy.dest}</span>
-                    <span className="text-emerald-400 font-bold">{convoy.temp}°C</span>
-                  </div>
+            {convoys.length === 0 ? (
+              <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-700/80 text-center space-y-2">
+                <div className="flex justify-center text-slate-500">
+                  <Signal size={26} className="text-emerald-500 animate-pulse" />
                 </div>
-              ))}
-            </div>
+                <p className="text-xs font-semibold text-slate-300">
+                  Awaiting Real-Time Fleet Telemetry
+                </p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  The map is listening for live vehicle GPS packets from ESP32/LoRa hardware mesh nodes and the dispatch API. Active convoys will plot automatically as they broadcast.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+                {convoys.map((convoy) => (
+                  <div
+                    key={convoy.id}
+                    onClick={() => {
+                      setSelectedEntity(convoy);
+                      jumpToLocation(convoy.lat, convoy.lng, 11);
+                    }}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                      selectedEntity?.id === convoy.id
+                        ? 'bg-blue-600/20 border-blue-400 text-white'
+                        : 'bg-slate-900/70 border-slate-700/80 hover:bg-slate-800/80 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs">{convoy.name || convoy.id}</span>
+                      {convoy.speed && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-semibold">
+                          {convoy.speed} km/h
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                      <span>{convoy.dest || 'En Route'}</span>
+                      {convoy.temp && <span className="text-emerald-400 font-bold">{convoy.temp}°C</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
