@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
         if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
           friendlyMessage = 'Google provider is not enabled in Firebase Console. Go to Build > Authentication > Sign-in method > Google and click Enable.';
         } else if (err.code === 'auth/unauthorized-domain') {
-          friendlyMessage = 'Domain not authorized in Firebase Console. Go to Authentication > Settings > Authorized domains and ensure localhost is listed.';
+          friendlyMessage = 'Domain not authorized in Firebase Console. Go to Authentication → Settings → Authorized domains and add your Vercel deployment domain (e.g. your-app.vercel.app).';
         } else if (err.code === 'auth/popup-blocked') {
           friendlyMessage = 'Browser blocked the popup window. Please allow popups or use the Account Selector.';
         } else if (err.code === 'auth/popup-closed-by-user') {

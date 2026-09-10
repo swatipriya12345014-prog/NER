@@ -12,13 +12,25 @@ const getStoredConfig = () => {
 
 const storedConfig = getStoredConfig();
 
+// Hardcoded fallback config ensures the app works on any deployment
+// (Vercel, Firebase Hosting, etc.) without requiring env vars in the dashboard.
+// .env values and localStorage overrides take priority when available.
+const FALLBACK_CONFIG = {
+  apiKey: 'AIzaSyCiAUD17sbRWqs_yDmGFmBNQ37Z2oaznxU',
+  authDomain: 'ner-l-b0ef4.firebaseapp.com',
+  projectId: 'ner-l-b0ef4',
+  storageBucket: 'ner-l-b0ef4.firebasestorage.app',
+  messagingSenderId: '904831725553',
+  appId: '1:904831725553:web:ecd72d33ac7d319df55e50',
+};
+
 export const firebaseConfig = {
-  apiKey: storedConfig?.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: storedConfig?.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: storedConfig?.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: storedConfig?.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: storedConfig?.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: storedConfig?.appId || import.meta.env.VITE_FIREBASE_APP_ID || '',
+  apiKey: storedConfig?.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || FALLBACK_CONFIG.apiKey,
+  authDomain: storedConfig?.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || FALLBACK_CONFIG.authDomain,
+  projectId: storedConfig?.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID || FALLBACK_CONFIG.projectId,
+  storageBucket: storedConfig?.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || FALLBACK_CONFIG.storageBucket,
+  messagingSenderId: storedConfig?.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || FALLBACK_CONFIG.messagingSenderId,
+  appId: storedConfig?.appId || import.meta.env.VITE_FIREBASE_APP_ID || FALLBACK_CONFIG.appId,
 };
 
 export const isFirebaseConfigured = Boolean(
