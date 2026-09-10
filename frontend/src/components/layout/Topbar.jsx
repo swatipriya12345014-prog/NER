@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Search, User, Menu, Wifi, Shield, LogOut, ChevronDown, 
   HelpCircle, X, Sparkles, Navigation, Fuel, Route, AlertTriangle, 
-  Radio, Compass, CheckCircle2, ArrowRight, ExternalLink, BookOpen
+  Radio, Compass, CheckCircle2, ArrowRight, ExternalLink, BookOpen,
+  Globe, Volume2, VolumeX
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { REGIONAL_HUBS } from '../../services/fuelRouteService';
 import { OPERATIONAL_ALERTS, OPERATIONAL_BLOCKED_ROADS } from '../../services/googleDirectionsService';
 
@@ -44,16 +46,30 @@ const SEARCHABLE_ENTITIES = [
 
 export default function Topbar({ onMenuToggle }) {
   const { user, role, logout } = useAuth();
+  const { language, setLanguage, t, languagesList, soundAlertsEnabled, setSoundAlertsEnabled, playAlertChime } = useLanguage();
   const navigate = useNavigate();
   
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showOperatorGuide, setShowOperatorGuide] = useState(false);
 
   const searchContainerRef = useRef(null);
+  const langDropdownRef = useRef(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
+        setLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Live Autocomplete Filter
   useEffect(() => {
@@ -82,6 +98,7 @@ export default function Topbar({ onMenuToggle }) {
         setIsSearchFocused(false);
         setDropdownOpen(false);
         setAlertsOpen(false);
+        setLangDropdownOpen(false);
         setShowOperatorGuide(false);
       }
     };
@@ -152,8 +169,8 @@ export default function Topbar({ onMenuToggle }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
-              placeholder="Search vehicles, relief hubs, shipments..."
-              className="pl-10 pr-16 py-1.5 border border-slate-700 rounded-full bg-slate-950 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 sm:w-80 lg:w-96 transition-all"
+              placeholder={t('search_placeholder', 'Search vehicles, hubs, relief shipments... (Ctrl+K)')}
+              className="pl-10 pr-16 py-1.5 border border-slate-700 rounded-full bg-slate-950 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-56 sm:w-72 lg:w-96 transition-all"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
               {searchQuery && (
@@ -214,20 +231,84 @@ export default function Topbar({ onMenuToggle }) {
         </div>
       </div>
 
-      {/* Right: Quick Guide, Live Status, Alerts, User Profile */}
-      <div className="flex items-center space-x-2.5 sm:space-x-3">
+      {/* Right: Language Selector, Sound Chime, Quick Guide, Live Status, Alerts, User Profile */}
+      <div className="flex items-center space-x-2 sm:space-x-2.5">
+        {/* Regional Language Selector */}
+        <div className="relative" ref={langDropdownRef}>
+          <button
+            onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer"
+            title="Switch Regional Language (North East India)"
+          >
+            <Globe size={14} className="text-blue-400" />
+            <span className="text-xs">{languagesList.find(l => l.id === language)?.flag || '🌐'}</span>
+            <span className="hidden sm:inline font-medium">
+              {languagesList.find(l => l.id === language)?.native || 'Language'}
+            </span>
+            <ChevronDown size={12} className="text-slate-400" />
+          </button>
+
+          {langDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs divide-y divide-slate-800">
+              <div className="px-3 py-1.5 flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <span>Regional Language</span>
+                <span className="text-blue-400 font-mono">NE India</span>
+              </div>
+              <div className="py-1 max-h-72 overflow-y-auto">
+                {languagesList.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => {
+                      setLanguage(l.id);
+                      playAlertChime('success');
+                      setLangDropdownOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-slate-800/80 transition-colors cursor-pointer ${
+                      language === l.id ? 'bg-blue-600/15 text-blue-400 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className="text-base">{l.flag}</span>
+                      <div>
+                        <div className="leading-tight font-semibold">{l.native}</div>
+                        <div className="text-[10px] text-slate-400">{l.name} • {l.region}</div>
+                      </div>
+                    </div>
+                    {language === l.id && <CheckCircle2 size={14} className="text-blue-400" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Tactical Sound Alert Toggle */}
+        <button
+          onClick={() => {
+            const nextState = !soundAlertsEnabled;
+            setSoundAlertsEnabled(nextState);
+            if (nextState) playAlertChime('alert');
+          }}
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+            soundAlertsEnabled ? 'text-amber-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-800'
+          }`}
+          title={soundAlertsEnabled ? 'Tactical Audio Alerts: ON (Click to Mute)' : 'Tactical Audio Alerts: MUTED (Click to Enable)'}
+        >
+          {soundAlertsEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
+        </button>
+
         {/* Operator Quick Guide Button */}
         <button
           onClick={() => setShowOperatorGuide(true)}
-          className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+          className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
           title="Open Operator Guide & Quick Tour"
         >
           <BookOpen size={14} className="text-cyan-400" />
-          <span className="hidden sm:inline">Operator Guide</span>
+          <span>{t('operator_guide', 'Field Manual')}</span>
         </button>
 
         {/* System Online Badge */}
-        <div className="hidden lg:flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-full">
+        <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-full">
           <Wifi size={13} className="text-emerald-400 animate-pulse" />
           <span className="text-xs font-semibold text-emerald-300">Systems Online</span>
         </div>

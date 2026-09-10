@@ -16,11 +16,16 @@ import {
   ChevronRight,
   ArrowUpRight,
   Volume2,
-  X
+  X,
+  Share2,
+  Copy
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
+  const { t, speakText, playAlertChime, isSpeaking } = useLanguage();
+
   const [speed, setSpeed] = useState(54);
   const [altitude, setAltitude] = useState(2680);
   const [heading, setHeading] = useState(42);
@@ -28,6 +33,7 @@ export default function DriverDashboard() {
   const [cargoTemp, setCargoTemp] = useState(-4.2);
   const [sosActive, setSosActive] = useState(false);
   const [sosCountdown, setSosCountdown] = useState(5);
+  const [copyToast, setCopyToast] = useState(false);
 
   // Subtle live speed & telemetry fluctuation
   useEffect(() => {
@@ -39,19 +45,56 @@ export default function DriverDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // SOS countdown
+  // SOS countdown & alert sound
   useEffect(() => {
     let interval = null;
     if (sosActive && sosCountdown > 0) {
+      playAlertChime('sos');
       interval = setInterval(() => {
         setSosCountdown((c) => c - 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [sosActive, sosCountdown]);
+  }, [sosActive, sosCountdown, playAlertChime]);
+
+  const handleTriggerSos = () => {
+    setSosActive(true);
+    setSosCountdown(5);
+    playAlertChime('sos');
+  };
+
+  const handleVoiceReadout = () => {
+    const text = `Next maneuver: Bear Right at Bhalukpong Forest Checkpost onto National Highway 13. Distance: 4.2 kilometers. Steep 14 degree climb ahead. Switch to 4WD low gear. Caution: Sela Pass Km 142 Convoy Escort Active. Current speed: ${speed} kilometers per hour. Fuel level: ${fuelPct} percent. Cold chain cargo temperature: ${cargoTemp} degrees Celsius.`;
+    speakText(text);
+  };
+
+  const handleCopyManifest = () => {
+    const manifest = `NER-LIFELINE DRIVER DISPATCH MANIFEST
+Vehicle: AS-01-EV-4421 (Highland 4x4 Ambulance)
+Assigned Pilot: Tenzing Norbu
+Corridor: Guwahati Central ➔ Tawang Border Hospital via NH-13
+Payload: Cold-Chain Blood Plasma & Oxygen (-4.2°C)
+Current Telemetry: Altitude ${altitude}m ASL, Fuel ${fuelPct}%, Heading ${heading}° NE
+Nearest Refuge: BRO Camp 142 Bhalukpong (6.2 km)
+Emergency Comm: LoRa Mesh Ch 1 / VHF 146.2 MHz`;
+
+    navigator.clipboard.writeText(manifest).then(() => {
+      setCopyToast(true);
+      playAlertChime('success');
+      setTimeout(() => setCopyToast(false), 3000);
+    });
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+      {/* Toast Notification */}
+      {copyToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2 border border-emerald-400 animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 size={16} />
+          <span className="text-xs font-bold">{t('manifest_copied', 'Route Manifest copied to clipboard!')}</span>
+        </div>
+      )}
+
       {/* SOS Alert Modal */}
       {sosActive && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
@@ -59,12 +102,12 @@ export default function DriverDashboard() {
             <div className="w-16 h-16 bg-rose-600 rounded-full flex items-center justify-center mx-auto text-white shadow-[0_0_30px_#f43f5e]">
               <AlertTriangle size={32} />
             </div>
-            <h2 className="text-2xl font-black text-white">EMERGENCY SOS BEACON</h2>
+            <h2 className="text-2xl font-black text-white">{t('driver_emergency_sos', 'EMERGENCY SOS BEACON')}</h2>
             <p className="text-xs text-rose-200">
               Broadcasting high-priority distress coordinates over LoRa DTN Mesh and Satellite Uplink to SDRF and BRO Project Vartak.
             </p>
             <div className="text-4xl font-black font-mono text-white">
-              {sosCountdown > 0 ? `00:0${sosCountdown}` : 'BEACON TRANSMITTED'}
+              {sosCountdown > 0 ? `00:0${sosCountdown}` : t('driver_sos_sent', 'BEACON TRANSMITTED')}
             </div>
             <div className="pt-2">
               <button
@@ -87,10 +130,10 @@ export default function DriverDashboard() {
           <div className="flex items-center space-x-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>COCKPIT HUD • ACTIVE DRIVER CONSOLE</span>
+              <span>{t('driver_cockpit_title', 'COCKPIT HUD • ACTIVE DRIVER CONSOLE')}</span>
             </span>
             <span className="text-[10px] font-mono text-cyan-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-              VEHICLE: AS-01-EV-4421 (Highland 4x4)
+              VEHICLE: AS-01-EV-4421
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight">
@@ -101,20 +144,45 @@ export default function DriverDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Voice Readout Button */}
+          <button
+            onClick={handleVoiceReadout}
+            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors ${
+              isSpeaking
+                ? 'bg-blue-600 text-white border-blue-400 animate-pulse'
+                : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
+            }`}
+            title="Read out navigational maneuver & telemetry aloud via offline Web Speech"
+          >
+            <Volume2 size={15} />
+            <span>{isSpeaking ? t('voice_speaking', 'Speaking...') : t('voice_assistance', 'Voice Readout')}</span>
+          </button>
+
+          {/* Copy Manifest */}
+          <button
+            onClick={handleCopyManifest}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+            title="Copy digital dispatch manifest to clipboard"
+          >
+            <Copy size={14} />
+            <span className="hidden sm:inline">{t('export_manifest', 'Copy Manifest')}</span>
+          </button>
+
           <button
             onClick={() => navigate('/live-map')}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl flex items-center space-x-2 cursor-pointer transition-all hover:scale-105"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl flex items-center space-x-1.5 cursor-pointer transition-all hover:scale-105"
           >
-            <Navigation size={15} />
-            <span>Open Tactical Map</span>
+            <Navigation size={14} />
+            <span>{t('nav_live_map', 'Tactical Map')}</span>
           </button>
+
           <button
-            onClick={() => setSosActive(true)}
-            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-900/40 flex items-center space-x-1.5 cursor-pointer transition-all hover:scale-105"
+            onClick={handleTriggerSos}
+            className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-900/40 flex items-center space-x-1.5 cursor-pointer transition-all hover:scale-105"
           >
-            <AlertTriangle size={15} />
-            <span>SOS BEACON</span>
+            <AlertTriangle size={14} />
+            <span>{t('driver_emergency_sos', 'SOS BEACON')}</span>
           </button>
         </div>
       </div>

@@ -5,23 +5,26 @@ import {
   ShieldAlert, Network, Bell, BarChart3, Settings, LogOut,
   ChevronLeft, ChevronRight, Activity, Gauge, Shield
 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 const navItems = [
-  { name: 'Dashboard', path: '/admin-dashboard', icon: LayoutDashboard },
-  { name: 'Live Map', path: '/live-map', icon: Map },
-  { name: 'Vehicles', path: '/vehicles', icon: Truck },
-  { name: 'Shipments', path: '/shipments', icon: Package },
-  { name: 'Incidents', path: '/incidents', icon: AlertTriangle },
-  { name: 'Risk Analysis', path: '/risk-analysis', icon: ShieldAlert },
-  { name: 'LIFELINE MESH', path: '/mesh', icon: Network },
-  { name: 'Driver Cockpit', path: '/driver-dashboard', icon: Gauge },
-  { name: 'Field Officer', path: '/field-officer', icon: Shield },
-  { name: 'Alerts', path: '/alerts', icon: Bell },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
-  { name: 'Settings', path: '/settings', icon: Settings },
+  { key: 'nav_dashboard', name: 'Dashboard', path: '/admin-dashboard', icon: LayoutDashboard },
+  { key: 'nav_live_map', name: 'Live Map', path: '/live-map', icon: Map },
+  { key: 'nav_vehicles', name: 'Vehicles', path: '/vehicles', icon: Truck },
+  { key: 'nav_shipments', name: 'Shipments', path: '/shipments', icon: Package },
+  { key: 'nav_incidents', name: 'Incidents', path: '/incidents', icon: AlertTriangle },
+  { key: 'nav_risk_analysis', name: 'Risk Analysis', path: '/risk-analysis', icon: ShieldAlert },
+  { key: 'nav_mesh', name: 'LIFELINE MESH', path: '/mesh', icon: Network },
+  { key: 'nav_driver', name: 'Driver Cockpit', path: '/driver-dashboard', icon: Gauge },
+  { key: 'nav_field_officer', name: 'Field Officer', path: '/field-officer', icon: Shield },
+  { key: 'nav_alerts', name: 'Alerts', path: '/alerts', icon: Bell },
+  { key: 'nav_analytics', name: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { key: 'nav_settings', name: 'Settings', path: '/settings', icon: Settings },
 ];
 
 const Sidebar = ({ collapsed, onToggle }) => {
+  const { t } = useLanguage();
+
   return (
     <aside
       className={`hidden md:flex flex-col h-full bg-slate-900 border-r border-slate-800 transition-all duration-300 ${
@@ -47,11 +50,12 @@ const Sidebar = ({ collapsed, onToggle }) => {
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const localizedName = t(item.key, item.name);
           return (
             <NavLink
               key={item.path}
               to={item.path}
-              title={item.name}
+              title={localizedName}
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                   isActive
@@ -61,7 +65,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
               }
             >
               <Icon size={20} className="flex-shrink-0" />
-              {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
+              {!collapsed && <span className="text-sm font-medium truncate">{localizedName}</span>}
             </NavLink>
           );
         })}

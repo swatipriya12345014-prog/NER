@@ -16,10 +16,15 @@ import {
   Fuel,
   Cpu,
   Lock,
-  Globe
+  Globe,
+  Languages,
+  Mic
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Settings() {
+  const { language, setLanguage, t, languagesList, speakText, playAlertChime } = useLanguage();
+
   const [mapEngine, setMapEngine] = useState('google');
   const [defaultBasemap, setDefaultBasemap] = useState('dark');
   const [enableHeadingUp, setEnableHeadingUp] = useState(true);
@@ -33,8 +38,13 @@ export default function Settings() {
   const [saveToast, setSaveToast] = useState(false);
 
   const handleSave = () => {
+    playAlertChime('success');
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 3500);
+  };
+
+  const testVoiceSample = () => {
+    speakText(`NER-LIFELINE Emergency Logistics System initialized. Selected language: ${languagesList.find(l => l.id === language)?.name || 'English'}. Real-time monitoring active across North East India.`);
   };
 
   return (
@@ -72,6 +82,51 @@ export default function Settings() {
 
       {/* Settings Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Section 0: Regional Language & Local Dialect */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 md:col-span-2">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center space-x-2">
+              <Languages size={16} className="text-blue-400" />
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Regional Language & Accessibility (North East India)</h2>
+            </div>
+            <button
+              onClick={testVoiceSample}
+              className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+              title="Test offline Web Speech Voice Announcement in selected language"
+            >
+              <Mic size={13} />
+              <span>Test Voice Readout</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {languagesList.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => {
+                  setLanguage(l.id);
+                  playAlertChime('success');
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  language === l.id
+                    ? 'bg-blue-950/80 border-blue-500 text-white shadow-lg ring-1 ring-blue-400'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xl">{l.flag}</span>
+                  {language === l.id && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500 text-white">ACTIVE</span>
+                  )}
+                </div>
+                <div className="font-bold text-sm text-white">{l.native}</div>
+                <div className="text-xs text-blue-400 font-medium">{l.name}</div>
+                <div className="text-[10px] text-slate-400 mt-1 truncate">{l.region}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Section 1: Geospatial & Navigation Engine */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
           <div className="flex items-center space-x-2 pb-3 border-b border-slate-800">

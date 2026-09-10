@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { 
   Layers, Shield, Navigation, AlertTriangle, Fuel, MapPin, Radio, 
   Compass, Eye, Check, RefreshCw, AlertOctagon, CircleDot, Bell, 
-  X, Info, Sliders, CloudRain, Truck, Route as RouteIcon
+  X, Info, Sliders, CloudRain, Truck, Route as RouteIcon,
+  Volume2, Copy
 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   calculateRealHighwayRoute, 
   fetchGoogleBackendRoute,
@@ -132,6 +134,9 @@ export default function GoogleMapView({
   const infoWindowRef = useRef(null);
   const compassTrackerRef = useRef(null);
 
+  const { t, speakText, isSpeaking, playAlertChime } = useLanguage();
+  const [copyToast, setCopyToast] = useState(false);
+
   const [mapType, setMapType] = useState('dark'); // 'dark' | 'roadmap' | 'satellite' | 'terrain' | 'hybrid'
   const [showTraffic, setShowTraffic] = useState(false);
   const [is3D, setIs3D] = useState(false);
@@ -145,6 +150,30 @@ export default function GoogleMapView({
   const [isSensorActive, setIsSensorActive] = useState(false);
   const [manualSimulationAngle, setManualSimulationAngle] = useState(null);
   const [showCompassTools, setShowCompassTools] = useState(false);
+
+  const handleVoiceReadout = () => {
+    if (!routeResult) return;
+    const destName = routeResult.destination?.name || 'Destination';
+    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`;
+    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours} hours`;
+    const nextStep = routeResult.safest_route?.navigation_steps?.[0]?.instruction || 'Proceed along highway corridor';
+    const riskVerdict = routeResult.ai_recommendation?.safety_verdict || 'Clear passage';
+    speakText(`Active Route to ${destName}. Distance: ${dist}. Estimated drive time: ${dur}. Next instruction: ${nextStep}. Hazard status: ${riskVerdict}.`);
+  };
+
+  const handleCopyRoute = () => {
+    if (!routeResult) return;
+    const origin = routeResult.origin?.name || 'Origin';
+    const destination = routeResult.destination?.name || 'Destination';
+    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`;
+    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours}h`;
+    const manifest = `NER-LIFELINE ROUTE MANIFEST\nFrom: ${origin} ➔ To: ${destination}\nCorridor: ${routeResult.safest_route?.corridor_name || 'National Highway Network'}\nDistance: ${dist} • Travel Time: ${dur}\nRisk Rating: ${routeResult.safest_route?.risk_level} (${routeResult.safest_route?.risk_score}/100)\nProvider: ${routeResult.provider || 'Google Routes Platform'}`;
+    navigator.clipboard.writeText(manifest).then(() => {
+      setCopyToast(true);
+      playAlertChime('success');
+      setTimeout(() => setCopyToast(false), 2500);
+    });
+  };
 
   // Compute effective heading (Priority: Manual Sim > Moving GPS > Device Orientation Sensor > Prop)
   const effectiveHeading = manualSimulationAngle !== null
@@ -1477,6 +1506,24 @@ export default function GoogleMapView({
             </div>
             <div className="flex items-center space-x-1">
               <button
+                onClick={handleVoiceReadout}
+                className={`p-1 rounded text-[9px] font-bold cursor-pointer transition-colors flex items-center space-x-1 ${
+                  isSpeaking ? 'bg-blue-600 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 hover:text-white'
+                }`}
+                title="Read out route instructions and risk advisory aloud (Speech Synthesis)"
+              >
+                <Volume2 size={10} />
+                <span>{isSpeaking ? 'Speaking...' : 'Voice'}</span>
+              </button>
+              <button
+                onClick={handleCopyRoute}
+                className="p-1 rounded bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white cursor-pointer text-[9px] font-bold flex items-center space-x-1"
+                title="Copy Route Manifest to Clipboard"
+              >
+                <Copy size={10} />
+                <span>Copy</span>
+              </button>
+              <button
                 onClick={() => setShowRiskDetail(!showRiskDetail)}
                 className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer text-[9px] font-bold"
                 title="Toggle Risk Intelligence Decomposition"
@@ -1494,6 +1541,13 @@ export default function GoogleMapView({
               </button>
             </div>
           </div>
+
+          {/* Copy Toast feedback */}
+          {copyToast && (
+            <div className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded text-center shadow animate-in fade-in">
+              ✓ Route Manifest Copied!
+            </div>
+          )}
 
           {/* Route distance & time summary */}
           <div className="text-white font-bold flex items-center justify-between text-xs border-b border-slate-800 pb-1.5">
