@@ -18,7 +18,10 @@ import {
   Globe2,
   ShieldCheck,
   Building2,
-  Cpu
+  Cpu,
+  Lock,
+  ArrowRight,
+  Database
 } from 'lucide-react';
 
 const BHARAT_MAPS_URL = "https://mapservice.gov.in/gismapserviceMVC";
@@ -159,18 +162,15 @@ const HAZARDS = [
 ];
 
 const LiveMap = () => {
-  // Map engine mode: 'bharatmaps' (NIC Gov Live) or 'vector' (Offline Resilient)
-  const [mapEngine, setMapEngine] = useState('bharatmaps');
+  // Defaults to the interactive Vector Radar so the user never sees a broken iframe error
+  const [mapEngine, setMapEngine] = useState('vector');
   const [selectedState, setSelectedState] = useState(NER_STATES[0]);
   const [showCorridors, setShowCorridors] = useState(true);
   const [showConvoys, setShowConvoys] = useState(true);
   const [showHazards, setShowHazards] = useState(true);
-  const [iframeKey, setIframeKey] = useState(Date.now());
-  const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  const handleRefreshIframe = () => {
-    setIframeLoaded(false);
-    setIframeKey(Date.now());
+  const openBharatMaps = () => {
+    window.open(BHARAT_MAPS_URL, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -181,34 +181,23 @@ const LiveMap = () => {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               <ShieldCheck size={12} />
-              <span>Gov of India • Bharat Maps (NIC)</span>
+              <span>National Informatics Centre (NIC) • Bharat Maps</span>
             </span>
             <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
               <Radio size={12} />
-              <span>Zero Leaflet / Free Sovereign GIS</span>
+              <span>Zero Leaflet / 100% Offline Resilient</span>
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white mt-2 tracking-tight">
             NER Tactical Live Geospatial Command
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Real-time geospatial intelligence via the National Informatics Centre (NIC) Map Service and offline mesh radar.
+            Official Government of India GIS Integration and disaster-resilient mountain corridor radar for the 8 North Eastern states.
           </p>
         </div>
 
         {/* Engine Switcher Tabs */}
         <div className="flex items-center bg-slate-900/90 p-1.5 rounded-xl border border-slate-700 self-start md:self-auto">
-          <button
-            onClick={() => setMapEngine('bharatmaps')}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
-              mapEngine === 'bharatmaps'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Globe2 size={14} />
-            <span>Bharat Maps (Live NIC)</span>
-          </button>
           <button
             onClick={() => setMapEngine('vector')}
             className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
@@ -218,119 +207,30 @@ const LiveMap = () => {
             }`}
           >
             <Cpu size={14} />
-            <span>Offline Tactical Radar</span>
+            <span>Tactical Vector Radar</span>
+          </button>
+          <button
+            onClick={() => setMapEngine('bharatmaps')}
+            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+              mapEngine === 'bharatmaps'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Globe2 size={14} />
+            <span>Bharat Maps (NIC Gov)</span>
           </button>
         </div>
       </div>
 
-      {/* MODE 1: Bharat Maps (NIC Government Live GIS Portal) */}
-      {mapEngine === 'bharatmaps' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
-            {/* Top Toolbar for Bharat Maps */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                  Live Stream: mapservice.gov.in/gismapserviceMVC
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800 font-medium">
-                  Survey of India 1:50k Reference
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleRefreshIframe}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-colors cursor-pointer border border-slate-700"
-                  title="Reload Portal Stream"
-                >
-                  <RefreshCw size={13} />
-                  <span>Reload</span>
-                </button>
-                <a
-                  href={BHARAT_MAPS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
-                >
-                  <ExternalLink size={13} />
-                  <span>Launch Official Portal</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Embedded Live Map Viewport */}
-            <div className="relative w-full h-[620px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden shadow-inner">
-              {!iframeLoaded && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-10 space-y-3">
-                  <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs font-medium text-slate-300">
-                    Connecting to National Portal of Map Services (Bharat Maps)...
-                  </p>
-                  <span className="text-[11px] text-slate-500">
-                    National Informatics Centre (NIC) • MeitY, Government of India
-                  </span>
-                </div>
-              )}
-
-              <iframe
-                key={iframeKey}
-                src={BHARAT_MAPS_URL}
-                title="Bharat Maps Government GIS Service"
-                className="w-full h-full border-0"
-                onLoad={() => setIframeLoaded(true)}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                loading="lazy"
-              />
-
-              {/* Overlay Fallback Card for Strict Browser Sandboxing */}
-              <div className="absolute bottom-3 left-3 right-3 sm:right-auto bg-slate-900/95 border border-slate-700/80 p-3 rounded-xl backdrop-blur-md shadow-xl max-w-md text-xs space-y-1.5">
-                <div className="flex items-center space-x-2 text-emerald-400 font-bold">
-                  <CheckCircle2 size={14} />
-                  <span>National GIS Mission Integration</span>
-                </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Consuming Bharat Maps base layers (Roads, Railways, Waterways & Admin Boundaries). If your browser enforces strict intranet framing, click <span className="text-blue-400 font-semibold">Launch Official Portal</span> or toggle <span className="text-blue-400 font-semibold">Offline Tactical Radar</span>.
-                </p>
-              </div>
-            </div>
-
-            {/* Bharat Maps Service Info Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2 text-xs">
-              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Sovereign Authority</span>
-                <p className="text-white font-semibold">National Informatics Centre</p>
-                <span className="text-[11px] text-slate-400">MeitY, Gov of India</span>
-              </div>
-              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Base Data Sources</span>
-                <p className="text-white font-semibold">Survey of India & ISRO</p>
-                <span className="text-[11px] text-slate-400">1:50,000 Reference Scale</span>
-              </div>
-              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">GIS Service Type</span>
-                <p className="text-white font-semibold">NICMAPS Base Services</p>
-                <span className="text-[11px] text-slate-400">WMS, WMTS & REST Tiles</span>
-              </div>
-              <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 space-y-1">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Resilience Mode</span>
-                <p className="text-emerald-400 font-semibold">Zero Paid Limits</p>
-                <span className="text-[11px] text-slate-400">SIH Certified Sovereign Stack</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODE 2: Offline-Resilient Tactical Vector Radar */}
+      {/* MODE 1: Interactive Offline-Resilient Tactical Vector Radar */}
       {mapEngine === 'vector' && (
         <div className="space-y-6">
           {/* Layer Controls Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800/90 p-3 rounded-2xl border border-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-800/90 p-3.5 rounded-2xl border border-slate-700">
             <div className="flex items-center space-x-2 text-xs font-semibold text-slate-300">
               <Layers size={15} className="text-blue-400" />
-              <span>OFFLINE EMERGENCY VECTOR RADAR (8 NER STATES)</span>
+              <span>8 NORTH EASTERN STATES VECTOR RADAR</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -369,6 +269,9 @@ const LiveMap = () => {
             {/* Vector SVG Map Viewport */}
             <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden">
               <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Select a state to inspect relief operations
+                </span>
                 <div className="text-[11px] text-slate-400 flex items-center space-x-3">
                   <span className="flex items-center space-x-1">
                     <span className="w-2 h-2 rounded-full bg-rose-500"></span>
@@ -462,7 +365,7 @@ const LiveMap = () => {
               </div>
 
               <div className="mt-3 text-[11px] text-slate-500 text-center">
-                Click on any of the 8 states to inspect road conditions, cold-chain assets, and telemetry.
+                Click any of the 8 states above to inspect regional road risks, cold-chain assets, and telemetry.
               </div>
             </div>
 
@@ -523,7 +426,7 @@ const LiveMap = () => {
                 </div>
               </div>
 
-              {/* Real-time Convoy Monitor */}
+              {/* Real-time Convoy Monitor in Selected State */}
               <div className="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-xl">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3 flex items-center space-x-2">
                   <Truck size={14} className="text-emerald-400" />
@@ -555,6 +458,122 @@ const LiveMap = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODE 2: Bharat Maps Sovereign Gateway (Official NIC / MeitY Portal) */}
+      {mapEngine === 'bharatmaps' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            {/* Header with Security Notice */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                    Official Sovereign GIS Gateway (NIC / MeitY)
+                  </span>
+                </div>
+                <h2 className="text-2xl font-bold text-white">
+                  Bharat Maps (National Portal of Map Services)
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Direct government service gateway: <code className="text-blue-300">https://mapservice.gov.in/gismapserviceMVC</code>
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={openBharatMaps}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center space-x-2 transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer"
+                >
+                  <span>Launch Official Portal</span>
+                  <ExternalLink size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Why iframe refuses to connect explanation box */}
+            <div className="bg-amber-950/30 border border-amber-800/60 rounded-xl p-4 text-xs space-y-2">
+              <div className="flex items-center space-x-2 text-amber-400 font-bold">
+                <Lock size={15} />
+                <span>Why Mapservice.gov.in Cannot Be Embedded in an Iframe:</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed">
+                The official Government of India server (<code className="text-amber-200">mapservice.gov.in</code>) enforces a strict security policy called <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300 font-mono">X-Frame-Options: SAMEORIGIN</code>. All modern web browsers are mandated to block embedding government pages inside foreign website iframes to prevent clickjacking.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  onClick={openBharatMaps}
+                  className="px-4 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-lg text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-colors"
+                >
+                  <span>Open Live Portal in Dedicated Window</span>
+                  <ExternalLink size={12} />
+                </button>
+                <button
+                  onClick={() => setMapEngine('vector')}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-colors"
+                >
+                  <span>Use Built-in Tactical Vector Radar</span>
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Government Service Architecture Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs">
+                  <Database size={16} />
+                  <span>Sovereign Data Sources</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  NICMAPS base services integrate 1:50,000 scale geospatial ground truth from the <strong>Survey of India (SOI)</strong>, <strong>ISRO Bhuvan satellite imagery</strong>, and Forest Survey of India.
+                </p>
+              </div>
+
+              <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs">
+                  <Building2 size={16} />
+                  <span>Participating Ministries</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Powers mission-mode projects for the Ministry of Electronics & IT (MeitY), Ministry of Rural Development (MoRD), and Ministry of Agriculture & Farmers Welfare.
+                </p>
+              </div>
+
+              <div className="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-purple-400 font-bold text-xs">
+                  <Radio size={16} />
+                  <span>SIH Smart Logistics Fit</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Zero paid third-party API limits, complying with strict sovereign data governance requirements for emergency and disaster relief routing in the North Eastern Region.
+                </p>
+              </div>
+            </div>
+
+            {/* Direct State GIS Quick Links */}
+            <div className="bg-slate-800/50 border border-slate-700/60 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                North Eastern Region Sector Direct Links:
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {NER_STATES.map((st) => (
+                  <a
+                    key={st.id}
+                    href={`${BHARAT_MAPS_URL}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-between text-xs text-slate-300 hover:text-white transition-colors"
+                  >
+                    <span>{st.name}</span>
+                    <ExternalLink size={11} className="text-slate-400" />
+                  </a>
+                ))}
               </div>
             </div>
           </div>
