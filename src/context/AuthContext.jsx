@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -6,8 +6,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured, saveFirebaseConfig } from '../services/firebase';
-
-export const AuthContext = createContext(null);
+import { AuthContext } from './AuthContextInstance';
 
 const ROLE_STORAGE_KEY = 'ner_lifeline_user_role';
 const MOCK_USER_STORAGE_KEY = 'ner_lifeline_mock_user';
@@ -89,7 +88,6 @@ export const AuthProvider = ({ children }) => {
         throw err;
       }
     } else {
-      // Prompt modal with accounts to choose
       return { success: false, needAccountSelection: true };
     }
   };
@@ -175,3 +173,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export { useAuth } from './useAuth';
+export { AuthContext } from './AuthContextInstance';
