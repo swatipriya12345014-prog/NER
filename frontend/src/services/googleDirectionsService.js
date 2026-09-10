@@ -1,5 +1,5 @@
-// Google Maps Real-Time Road Directions & Risk Optimization Engine
-// Fetches genuine road-following polylines from Google DirectionsService
+// Google Maps Real-Time Road Routes & Risk Optimization Engine
+// Fetches genuine road-following polylines from Google Routes API (via FastAPI Backend)
 // Combines real highway routes with Disaster Risk Index & Fuel Telemetry
 
 import { REGIONAL_HUBS, FALLBACK_FLEET_VEHICLES, buildCorridorLocalities } from './fuelRouteService';
@@ -292,8 +292,8 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Strip HTML tags from Google Maps navigation instructions
-function stripHtml(html) {
+// Strip HTML tags from helper texts
+export function stripHtml(html) {
   if (!html) return '';
   return html.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
 }
@@ -324,87 +324,6 @@ function evaluateRouteHazardRisk(pathCoords, hazards = REAL_TIME_HAZARDS) {
   return {
     riskScore: Math.min(95, Math.round(riskScore)),
     encountered
-  };
-}
-
-/**
- * Parses a Google Maps DirectionsRoute object into our Lifeline RouteAlternative schema
- */
-function parseGoogleDirectionsRoute(googleRoute, routeType, vehicle, currentFuel, baseEconomy, hazards, origin, dest) {
-  const leg = googleRoute.legs[0];
-  const distKm = +(leg.distance.value / 1000).toFixed(1);
-  const etaHours = +(leg.duration.value / 3600).toFixed(1);
-
-  // Extract dense real road path coordinates
-  const coordinates = googleRoute.overview_path.map((pt) => [
-    +pt.lat().toFixed(5),
-    +pt.lng().toFixed(5)
-  ]);
-
-  // Extract turn-by-turn navigation steps
-  const navigationSteps = (leg.steps || []).map((step, idx) => ({
-    step_number: idx + 1,
-    instruction: stripHtml(step.instructions),
-    distance_km: +(step.distance.value / 1000).toFixed(1),
-    duration_text: step.duration.text,
-    maneuver: step.maneuver || 'straight',
-    lat: step.start_location.lat(),
-    lng: step.start_location.lng()
-  }));
-
-  // Assess terrain fuel burn
-  const terrainMultiplier = routeType === 'safest' ? vehicle.terrain_multiplier * 0.95 : vehicle.terrain_multiplier * 1.15;
-  const effectiveEconomy = +(baseEconomy / terrainMultiplier).toFixed(2);
-  const fuelRequired = +(distKm / effectiveEconomy).toFixed(1);
-  const fuelMargin = +(currentFuel - fuelRequired).toFixed(1);
-  const remFuel = Math.max(0, fuelMargin);
-  const fuelSufficient = currentFuel >= fuelRequired * 1.05;
-
-  // Hazard evaluation along real highway coordinates
-  const { riskScore, encountered } = evaluateRouteHazardRisk(coordinates, hazards);
-  const riskLevel = riskScore > 65 ? 'High' : riskScore > 35 ? 'Moderate' : 'Low';
-
-  // Build authentic localities mapped along real highway coordinates
-  const localities = buildCorridorLocalities(origin, dest, routeType, coordinates, distKm, etaHours);
-
-  const highwaySummary = googleRoute.summary || (routeType === 'safest' ? 'Fortified All-Weather Corridor' : 'Primary National Highway');
-
-  return {
-    route_type: routeType,
-    title: routeType === 'safest' ? `Safest Real Highway: ${highwaySummary}` : `Direct Route: ${highwaySummary}`,
-    corridor_name: `${origin.name} ➔ via ${highwaySummary} ➔ ${dest.name}`,
-    distance_km: distKm,
-    eta_hours: etaHours,
-    duration_text: leg.duration.text,
-    fuel_required_litres: fuelRequired,
-    fuel_sufficient: fuelSufficient,
-    fuel_margin_litres: fuelMargin,
-    remaining_fuel_after_trip_litres: remFuel,
-    risk_score: riskScore,
-    risk_level: riskLevel,
-    landslide_probability_pct: Math.min(90, Math.round(riskScore * 0.85)),
-    monsoon_waterlogging: riskScore > 50,
-    elevation_gain_m: routeType === 'safest' ? 1420 : 2890,
-    hazards_encountered: encountered.length > 0 ? encountered : ['All-Weather Retaining Walls Active', 'No Critical Active Blockages'],
-    fuel_stops: [
-      {
-        name: 'NHAI / IOCL 24x7 Highway Fuel Depot',
-        location: `Km ${Math.round(distKm * 0.4)} along ${highwaySummary}`,
-        lat: coordinates[Math.min(coordinates.length - 1, Math.round(coordinates.length * 0.4))][0],
-        lng: coordinates[Math.min(coordinates.length - 1, Math.round(coordinates.length * 0.4))][1],
-        fuel_type_available: vehicle.fuel_type,
-        distance_from_origin_km: +(distKm * 0.4).toFixed(1),
-        is_emergency_cache: false
-      }
-    ],
-    waypoints: [
-      { name: `Origin: ${origin.name}`, lat: origin.lat, lng: origin.lng, elevation_m: origin.elevation_m || 100, landmark_type: 'depot' },
-      { name: `Corridor Axis: ${highwaySummary}`, lat: coordinates[Math.round(coordinates.length / 2)][0], lng: coordinates[Math.round(coordinates.length / 2)][1], elevation_m: 850, landmark_type: 'highway' },
-      { name: `Destination: ${dest.name}`, lat: dest.lat, lng: dest.lng, elevation_m: dest.elevation_m || 100, landmark_type: 'depot' }
-    ],
-    navigation_steps: navigationSteps,
-    localities,
-    coordinates
   };
 }
 
@@ -501,9 +420,10 @@ export function getAuthenticHighwayFallbackRoute(origin, dest, routeType, vehicl
 }
 
 /**
- * Main function to calculate Real-Time Google Directions Routes
- * Uses native window.google.maps.DirectionsService when available,
- * and falls back to authentic surveyed highway coordinates.
+ * Main function to calculate Real-Time Google Routes
+ * Uses modern Google Routes API (via FastAPI Backend POST /api/v1/routes/google)
+ * as the primary high-precision highway router, keeping API credentials confidential.
+ * Seamlessly falls back to authentic surveyed sovereign corridors if offline.
  */
 export async function calculateRealHighwayRoute({
   origin,
@@ -517,112 +437,7 @@ export async function calculateRealHighwayRoute({
   const currentFuel = simulatedFuel !== null && simulatedFuel !== undefined ? Number(simulatedFuel) : veh.current_fuel_litres;
   const baseEconomy = simulatedConsumption !== null && simulatedConsumption !== undefined ? Number(simulatedConsumption) : veh.fuel_consumption_km_per_l;
 
-  // 1. Try Google Maps DirectionsService if loaded in browser
-  if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.DirectionsService) {
-    try {
-      const directionsService = new window.google.maps.DirectionsService();
-
-      const originLatLng = new window.google.maps.LatLng(origin.lat, origin.lng);
-      const destLatLng = new window.google.maps.LatLng(destination.lat, destination.lng);
-
-      const request = {
-        origin: originLatLng,
-        destination: destLatLng,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true
-      };
-
-      const result = await new Promise((resolve, reject) => {
-        directionsService.route(request, (response, status) => {
-          if (status === window.google.maps.DirectionsStatus.OK) {
-            resolve(response);
-          } else {
-            reject(new Error(`Google Directions failed with status: ${status}`));
-          }
-        });
-      });
-
-      if (result && result.routes && result.routes.length > 0) {
-        // Parse Google Maps real routes
-        const parsedRoutes = result.routes.map((r, idx) => {
-          return parseGoogleDirectionsRoute(
-            r,
-            idx === 0 ? 'shortest' : 'safest',
-            veh,
-            currentFuel,
-            baseEconomy,
-            hazards,
-            origin,
-            destination
-          );
-        });
-
-        // Determine which route is Safest vs Shortest
-        let shortestRoute = parsedRoutes[0];
-        let safestRoute = parsedRoutes.length > 1 ? parsedRoutes[1] : null;
-
-        if (parsedRoutes.length > 1) {
-          // Compare risk scores
-          if (parsedRoutes[0].risk_score <= parsedRoutes[1].risk_score) {
-            safestRoute = { ...parsedRoutes[0], route_type: 'safest', title: `Safest: ${parsedRoutes[0].title.replace(/^[^:]+:\s*/, '')}` };
-            shortestRoute = { ...parsedRoutes[1], route_type: 'shortest', title: `Alternative: ${parsedRoutes[1].title.replace(/^[^:]+:\s*/, '')}` };
-          } else {
-            safestRoute = { ...parsedRoutes[1], route_type: 'safest', title: `Safest: ${parsedRoutes[1].title.replace(/^[^:]+:\s*/, '')}` };
-            shortestRoute = { ...parsedRoutes[0], route_type: 'shortest', title: `Direct Route: ${parsedRoutes[0].title.replace(/^[^:]+:\s*/, '')}` };
-          }
-        } else {
-          // If Google returned 1 route, construct an all-weather fortified bypass alternative
-          safestRoute = {
-            ...shortestRoute,
-            route_type: 'safest',
-            title: `Safest Fortified Route: ${shortestRoute.title.replace(/^[^:]+:\s*/, '')}`,
-            risk_score: Math.max(12, Math.round(shortestRoute.risk_score * 0.45)),
-            landslide_probability_pct: Math.max(10, Math.round(shortestRoute.landslide_probability_pct * 0.4)),
-            hazards_encountered: ['Route follows official double-lane national highway', 'Active sensor monitoring online']
-          };
-        }
-
-        const fuelBuffer = +(currentFuel - safestRoute.fuel_required_litres).toFixed(1);
-        const headline = fuelBuffer >= 0
-          ? 'REAL-TIME GOOGLE MAPS ROUTING ACTIVE (FEASIBLE)'
-          : 'FUEL ADVISORY: REFUELING STOP MANDATORY ON ROUTE';
-
-        const rationale = `Calculated via Google Maps Directions API over real highway roads (${safestRoute.corridor_name}). Real road distance: ${safestRoute.distance_km} km. Estimated drive time: ${safestRoute.duration_text || `${safestRoute.eta_hours}h`}. Safety rating: ${safestRoute.risk_level} (${safestRoute.risk_score}/100 hazard index).`;
-
-        return {
-          origin,
-          destination,
-          vehicle_telemetry: {
-            id: veh.id,
-            name: veh.name,
-            license_plate: veh.license_plate,
-            fuel_capacity_litres: veh.fuel_capacity_litres,
-            current_fuel_litres: currentFuel,
-            fuel_percentage: +((currentFuel / veh.fuel_capacity_litres) * 100).toFixed(1),
-            fuel_consumption_km_per_l: baseEconomy,
-            remaining_range_km: +(currentFuel * (baseEconomy / veh.terrain_multiplier)).toFixed(1),
-            fuel_status: currentFuel < 20 ? 'Critical' : currentFuel < 35 ? 'Low' : 'Optimal'
-          },
-          shortest_route: shortestRoute,
-          safest_route: safestRoute,
-          is_real_google_route: true,
-          provider: 'Google Maps Directions Platform (Real-World Highway)',
-          ai_recommendation: {
-            recommended_route_type: 'safest',
-            headline,
-            rationale,
-            fuel_feasibility_verdict: fuelBuffer >= 0 ? `Fuel Feasible (+${fuelBuffer}L buffer)` : `Deficit of ${Math.abs(fuelBuffer)}L - Refuel Required`,
-            safety_verdict: `${safestRoute.risk_level} Risk (${safestRoute.risk_score}/100) along authentic road corridor`,
-            refuel_advisory: fuelBuffer < 0 ? 'Dispatch emergency fuel escort or stop at designated highway depot' : null
-          }
-        };
-      }
-    } catch (googleErr) {
-      console.warn('Google Directions API call skipped or failed, trying backend Google Routes API:', googleErr.message);
-    }
-  }
-
-  // 1.5 Try FastAPI Backend Google Routes API (POST /api/v1/routes/google)
+  // 1. Primary: Query Google Routes API via FastAPI Backend (POST /api/v1/routes/google)
   try {
     const backendData = await fetchGoogleBackendRoute({
       origin,
@@ -647,39 +462,79 @@ export async function calculateRealHighwayRoute({
         recommendation: 'Deploy convoy escort with satellite communication. Consider fortified bypass.'
       };
 
+      const terrainMultiplierSafest = veh.terrain_multiplier * 0.95;
+      const effectiveEconomySafest = +(baseEconomy / terrainMultiplierSafest).toFixed(2);
+      const fuelRequiredSafest = +(distKm / effectiveEconomySafest).toFixed(1);
+      const fuelMarginSafest = +(currentFuel - fuelRequiredSafest).toFixed(1);
+      const fuelSufficientSafest = currentFuel >= fuelRequiredSafest * 1.05;
+
+      const localitiesSafest = buildCorridorLocalities(origin, destination, 'safest', coords, distKm, durationHours);
+
       const safest = {
         route_type: 'safest',
-        title: `Google Route: ${backendData.route.summary || 'All-Weather Highway Corridor'}`,
-        corridor_name: backendData.route.summary || 'National Highway Corridor',
+        title: `Google Routes: ${backendData.route.summary || 'All-Weather Highway Corridor'}`,
+        corridor_name: `${origin.name} ➔ via ${backendData.route.summary || 'National Highway'} ➔ ${destination.name}`,
         distance_km: distKm,
         duration_text: durationText,
         eta_hours: durationHours,
         coordinates: coords,
         risk_score: risk.total_risk_score,
-        risk_level: risk.risk_level,
+        risk_level: risk.risk_level === 'LOW' ? 'Low' : risk.risk_level === 'MEDIUM' ? 'Moderate' : 'High',
         risk_breakdown: risk,
         landslide_probability_pct: Math.min(85, Math.round(risk.total_risk_score * 0.8)),
-        fuel_required_litres: +(distKm / (baseEconomy / veh.terrain_multiplier)).toFixed(1),
-        hazards_encountered: [`NER-LIFELINE Risk Score: ${risk.total_risk_score}/100`, risk.verdict],
+        monsoon_waterlogging: risk.total_risk_score > 50,
+        elevation_gain_m: 1350,
+        fuel_required_litres: fuelRequiredSafest,
+        fuel_sufficient: fuelSufficientSafest,
+        fuel_margin_litres: fuelMarginSafest,
+        remaining_fuel_after_trip_litres: Math.max(0, fuelMarginSafest),
+        hazards_encountered: [`Google Routes Trajectory: ${backendData.route.summary || 'National Highway'}`, risk.verdict],
+        fuel_stops: [
+          {
+            name: 'NHAI / IOCL 24x7 Highway Fuel Depot',
+            location: `Km ${Math.round(distKm * 0.45)} along ${backendData.route.summary || 'National Highway'}`,
+            lat: coords[Math.min(coords.length - 1, Math.round(coords.length * 0.45))][0],
+            lng: coords[Math.min(coords.length - 1, Math.round(coords.length * 0.45))][1],
+            fuel_type_available: veh.fuel_type,
+            distance_from_origin_km: +(distKm * 0.45).toFixed(1),
+            is_emergency_cache: false
+          }
+        ],
+        waypoints: [
+          { name: `Origin: ${origin.name}`, lat: origin.lat, lng: origin.lng, elevation_m: origin.elevation_m || 100, landmark_type: 'depot' },
+          { name: `Corridor Axis: ${backendData.route.summary || 'Highway Transit'}`, lat: coords[Math.round(coords.length / 2)][0], lng: coords[Math.round(coords.length / 2)][1], elevation_m: 920, landmark_type: 'highway' },
+          { name: `Destination: ${destination.name}`, lat: destination.lat, lng: destination.lng, elevation_m: destination.elevation_m || 100, landmark_type: 'depot' }
+        ],
         navigation_steps: [
-          { instruction: `Proceed onto ${backendData.route.summary || 'National Highway'}`, distance_km: +(distKm * 0.4).toFixed(1), eta_mins: Math.round(durationHours * 25) },
-          { instruction: 'Monitor high-altitude weather checkpoint', distance_km: +(distKm * 0.6).toFixed(1), eta_mins: Math.round(durationHours * 35) }
-        ]
+          { step_number: 1, instruction: `Proceed onto ${backendData.route.summary || 'National Highway'}`, distance_km: +(distKm * 0.3).toFixed(1), duration_text: `${Math.round(durationHours * 20)}m`, maneuver: 'straight' },
+          { step_number: 2, instruction: 'Monitor high-altitude weather checkpoint & sensor beacons', distance_km: +(distKm * 0.5).toFixed(1), duration_text: `${Math.round(durationHours * 35)}m`, maneuver: 'straight' },
+          { step_number: 3, instruction: `Arrive safely at ${destination.name} Emergency Relief Base`, distance_km: +(distKm * 0.2).toFixed(1), duration_text: `${Math.round(durationHours * 15)}m`, maneuver: 'straight' }
+        ],
+        localities: localitiesSafest
       };
+
+      const terrainMultiplierShortest = veh.terrain_multiplier * 1.15;
+      const effectiveEconomyShortest = +(baseEconomy / terrainMultiplierShortest).toFixed(2);
+      const fuelRequiredShortest = +(distKm * 0.96 / effectiveEconomyShortest).toFixed(1);
+      const fuelMarginShortest = +(currentFuel - fuelRequiredShortest).toFixed(1);
 
       const shortest = {
         ...safest,
         route_type: 'shortest',
         title: `Direct Highway: ${backendData.route.summary || 'Direct Corridor'}`,
-        distance_km: +(distKm * 0.95).toFixed(1),
-        duration_text: `${Math.round(durationHours * 0.95)}h`,
+        distance_km: +(distKm * 0.96).toFixed(1),
+        duration_text: `${Math.floor(durationHours * 0.95)}h ${Math.round(((durationHours * 0.95) % 1) * 60)}m`,
         eta_hours: +(durationHours * 0.95).toFixed(1),
-        fuel_required_litres: +(distKm * 0.95 / (baseEconomy / veh.terrain_multiplier)).toFixed(1),
+        fuel_required_litres: fuelRequiredShortest,
+        fuel_sufficient: currentFuel >= fuelRequiredShortest * 1.05,
+        fuel_margin_litres: fuelMarginShortest,
+        remaining_fuel_after_trip_litres: Math.max(0, fuelMarginShortest),
         risk_score: Math.min(95, risk.total_risk_score + 14),
-        risk_level: 'HIGH'
+        risk_level: risk.total_risk_score + 14 > 65 ? 'High' : 'Moderate',
+        landslide_probability_pct: Math.min(90, Math.round((risk.total_risk_score + 14) * 0.85))
       };
 
-      const fuelBuffer = +(currentFuel - safest.fuel_required_litres).toFixed(1);
+      const fuelBuffer = fuelMarginSafest;
 
       return {
         origin,
@@ -712,7 +567,7 @@ export async function calculateRealHighwayRoute({
       };
     }
   } catch (backendErr) {
-    console.warn('Backend Google Routes API call skipped or failed:', backendErr.message);
+    console.warn('Backend Google Routes API call skipped or failed, falling back to sovereign corridors:', backendErr.message);
   }
 
   // 2. Fallback to Authentic Surveyed Highway Corridors (Zero imaginary curves)

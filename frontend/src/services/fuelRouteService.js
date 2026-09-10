@@ -584,23 +584,21 @@ export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, 
   const origin = REGIONAL_HUBS.find((h) => h.id === originHubId) || REGIONAL_HUBS[0];
   const dest = REGIONAL_HUBS.find((h) => h.id === destinationHubId) || REGIONAL_HUBS[2];
 
-  // 1. Try Google Maps Directions API if loaded in browser
-  if (typeof window !== 'undefined' && window.google?.maps?.DirectionsService) {
-    try {
-      const { calculateRealHighwayRoute } = await import('./googleDirectionsService');
-      const googleResult = await calculateRealHighwayRoute({
-        origin,
-        destination: dest,
-        vehicleId,
-        simulatedFuel,
-        simulatedConsumption
-      });
-      if (googleResult && googleResult.is_real_google_route) {
-        return googleResult;
-      }
-    } catch (gErr) {
-      console.warn('Google Directions live query skipped/failed, trying backend API:', gErr.message);
+  // 1. Try Google Routes API calculation via googleDirectionsService
+  try {
+    const { calculateRealHighwayRoute } = await import('./googleDirectionsService');
+    const googleResult = await calculateRealHighwayRoute({
+      origin,
+      destination: dest,
+      vehicleId,
+      simulatedFuel,
+      simulatedConsumption
+    });
+    if (googleResult && googleResult.is_real_google_route) {
+      return googleResult;
     }
+  } catch (gErr) {
+    console.warn('Google Routes calculation skipped/failed, trying backend route optimizer:', gErr.message);
   }
 
   // 2. Try FastAPI Backend with authentic surveyed highway corridors

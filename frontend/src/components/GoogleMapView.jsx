@@ -277,10 +277,10 @@ export default function GoogleMapView({
   }, [isApiLoaded]);
 
   // ─────────────────────────────────────────────────────────────
-  // 2.5 Real Google Directions Highway Computation
+  // 2.5 Real Google Routes Highway Computation
   // ─────────────────────────────────────────────────────────────
   const computeRealGoogleRoute = useCallback(async () => {
-    if (!isApiLoaded || !window.google?.maps?.DirectionsService || !routeResult?.origin || !routeResult?.destination) return;
+    if (!routeResult?.origin || !routeResult?.destination) return;
     setIsCalculatingDirections(true);
     try {
       const realRoute = await calculateRealHighwayRoute({
@@ -293,17 +293,17 @@ export default function GoogleMapView({
         onRealRouteComputed(realRoute);
       }
     } catch (err) {
-      console.warn('Real Google Directions failed:', err.message);
+      console.warn('Real Google Routes calculation failed:', err.message);
     } finally {
       setIsCalculatingDirections(false);
     }
-  }, [isApiLoaded, routeResult?.origin, routeResult?.destination, selectedVehicleId, hazards, onRealRouteComputed]);
+  }, [routeResult?.origin, routeResult?.destination, selectedVehicleId, hazards, onRealRouteComputed]);
 
   useEffect(() => {
-    if (isApiLoaded && routeResult && !routeResult.is_real_google_route) {
+    if (routeResult && !routeResult.is_real_google_route) {
       computeRealGoogleRoute();
     }
-  }, [isApiLoaded, routeResult?.origin?.id, routeResult?.destination?.id, computeRealGoogleRoute]);
+  }, [routeResult?.origin?.id, routeResult?.destination?.id, computeRealGoogleRoute]);
 
   // ─────────────────────────────────────────────────────────────
   // 3. Update Map Style / Type & 3D Tilt
@@ -1486,7 +1486,7 @@ export default function GoogleMapView({
               <button
                 onClick={computeRealGoogleRoute}
                 disabled={isCalculatingDirections}
-                title="Recalculate Real Google Directions with Live Traffic"
+                title="Recalculate Real Google Route with Live Traffic (Google Routes API)"
                 className="p-1 rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 hover:text-white border border-emerald-600/40 cursor-pointer disabled:opacity-50 flex items-center space-x-1 text-[9px] font-bold"
               >
                 <RefreshCw size={10} className={isCalculatingDirections ? 'animate-spin' : ''} />
