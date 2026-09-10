@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase';
+import { auth, googleProvider, isFirebaseConfigured, saveFirebaseConfig } from '../services/firebase';
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 const ROLE_STORAGE_KEY = 'ner_lifeline_user_role';
 const MOCK_USER_STORAGE_KEY = 'ner_lifeline_mock_user';
@@ -32,7 +32,6 @@ export const AuthProvider = ({ children }) => {
             photoURL: firebaseUser.photoURL,
           });
         } else {
-          // Check for mock user if not signed into Firebase
           const savedMock = localStorage.getItem(MOCK_USER_STORAGE_KEY);
           if (savedMock) {
             try {
@@ -49,7 +48,6 @@ export const AuthProvider = ({ children }) => {
 
       return () => unsubscribe();
     } else {
-      // Fallback mode when Firebase env credentials are not yet populated
       const savedMock = localStorage.getItem(MOCK_USER_STORAGE_KEY);
       if (savedMock) {
         try {
@@ -82,24 +80,32 @@ export const AuthProvider = ({ children }) => {
         };
         setUser(signedUser);
         localStorage.removeItem(MOCK_USER_STORAGE_KEY);
-        return signedUser;
+        return { success: true, user: signedUser, live: true };
       } catch (err) {
+        if (err.code === 'auth/popup-closed-by-user') {
+          throw new Error('Sign-in popup was closed before completing.');
+        }
         setAuthError(err.message || 'Failed to authenticate with Google');
         throw err;
       }
     } else {
-      // Graceful fallback for local development before live Firebase keys are entered
-      const mockGoogleUser = {
-        uid: 'oauth-google-' + Date.now(),
-        displayName: 'Google Officer (' + (selectedRole || role).toUpperCase() + ')',
-        email: 'officer@ner-lifeline.gov.in',
-        photoURL: null,
-        isDemoOAuth: true,
-      };
-      setUser(mockGoogleUser);
-      localStorage.setItem(MOCK_USER_STORAGE_KEY, JSON.stringify(mockGoogleUser));
-      return mockGoogleUser;
+      // Prompt modal with accounts to choose
+      return { success: false, needAccountSelection: true };
     }
+  };
+
+  const selectGoogleAccount = (accountData, selectedRole) => {
+    if (selectedRole) changeRole(selectedRole);
+    const chosenUser = {
+      uid: accountData.uid || 'google-user-' + Date.now(),
+      displayName: accountData.displayName,
+      email: accountData.email,
+      photoURL: accountData.photoURL || null,
+      provider: 'google.com',
+    };
+    setUser(chosenUser);
+    localStorage.setItem(MOCK_USER_STORAGE_KEY, JSON.stringify(chosenUser));
+    return chosenUser;
   };
 
   const loginWithEmail = async (email, password, selectedRole) => {
@@ -123,7 +129,6 @@ export const AuthProvider = ({ children }) => {
         throw err;
       }
     } else {
-      // Fallback demo user
       const demoUser = {
         uid: 'user-' + Date.now(),
         displayName: email ? email.split('@')[0] : 'Demo User',
@@ -158,8 +163,10 @@ export const AuthProvider = ({ children }) => {
         isFirebaseConfigured,
         changeRole,
         loginWithGoogle,
+        selectGoogleAccount,
         loginWithEmail,
         logout,
+        saveFirebaseConfig,
       }}
     >
       {children}
@@ -167,10 +174,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export { useAuth } from './useAuth';
