@@ -240,25 +240,62 @@ export default function GoogleMapView({
       return;
     }
 
-    if (window.google && window.google.maps) {
-      setIsApiLoaded(true);
-      return;
-    }
+    const verifyReady = () => {
+      if (typeof window.google?.maps?.Map === 'function') {
+        setIsApiLoaded(true);
+        return true;
+      }
+      return false;
+    };
 
+    if (verifyReady()) return;
+
+    // Check if script already injected
     const existingScript = document.getElementById('google-maps-script');
     if (existingScript) {
-      existingScript.addEventListener('load', () => setIsApiLoaded(true));
-      return;
+      const pollTimer = setInterval(() => {
+        if (verifyReady()) {
+          clearInterval(pollTimer);
+        }
+      }, 50);
+
+      const timeout = setTimeout(() => {
+        clearInterval(pollTimer);
+        if (!verifyReady()) {
+          console.warn('Google Maps script exists but Map constructor took too long');
+        }
+      }, 8000);
+
+      return () => {
+        clearInterval(pollTimer);
+        clearTimeout(timeout);
+      };
     }
+
+    // Set up global callback for the async script loader
+    window.__initGoogleMapsLoaded = () => {
+      const pollTimer = setInterval(() => {
+        if (verifyReady()) {
+          clearInterval(pollTimer);
+        }
+      }, 30);
+      setTimeout(() => clearInterval(pollTimer), 5000);
+    };
 
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__initGoogleMapsLoaded&loading=async`;
     script.async = true;
     script.defer = true;
 
     script.onload = () => {
-      setIsApiLoaded(true);
+      // Also poll immediately on script onload in case callback was delayed
+      const pollTimer = setInterval(() => {
+        if (verifyReady()) {
+          clearInterval(pollTimer);
+        }
+      }, 30);
+      setTimeout(() => clearInterval(pollTimer), 5000);
     };
 
     script.onerror = (err) => {
@@ -274,7 +311,15 @@ export default function GoogleMapView({
   // 2. Initialize Google Map Instance
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isApiLoaded || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!isApiLoaded || !mapContainerRef.current) return;
+    if (typeof window.google?.maps?.Map !== 'function') return;
+
+    if (mapInstanceRef.current) {
+      try {
+        window.google.maps.event.trigger(mapInstanceRef.current, 'resize');
+      } catch (e) {}
+      return;
+    }
 
     try {
       const map = new window.google.maps.Map(mapContainerRef.current, {
@@ -301,8 +346,16 @@ export default function GoogleMapView({
     } catch (err) {
       console.error('Failed to instantiate Google Map:', err);
       setLoadError(err.message);
-      if (onMapError) onMapError(err.message);
     }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        try {
+          window.google?.maps?.event?.clearInstanceListeners?.(mapInstanceRef.current);
+        } catch (e) {}
+        mapInstanceRef.current = null;
+      }
+    };
   }, [isApiLoaded]);
 
   // ─────────────────────────────────────────────────────────────
@@ -1027,15 +1080,10 @@ export default function GoogleMapView({
 
   return (
     <div className={`relative w-full ${heightClass} bg-slate-950 overflow-hidden rounded-xl transition-all duration-300`}>
-      {/* Google Maps Container with Smooth Compass Heading-Up Rotation */}
+      {/* Google Maps Container */}
       <div 
         ref={mapContainerRef} 
         className="w-full h-full"
-        style={{
-          transform: isHeadingUp ? `rotate(${-effectiveHeading}deg) scale(1.42)` : 'none',
-          transformOrigin: '50% 50%',
-          transition: 'transform 0.22s cubic-bezier(0.2, 0.9, 0.4, 1.0)'
-        }}
       />
 
       {/* Loading Overlay */}

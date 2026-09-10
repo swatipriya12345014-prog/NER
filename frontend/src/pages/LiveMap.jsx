@@ -807,9 +807,13 @@ const LiveMap = () => {
               }}
               onLocalityClick={(loc) => setSelectedLocality(loc)}
               onRealRouteComputed={(newRoute) => setRouteResult(newRoute)}
-              onMapError={() => {
-                console.warn('Switching to offline emergency vector map');
-                setMapEngine('offline');
+              onMapError={(reason) => {
+                if (reason === 'fallback' || reason === 'Missing API Key') {
+                  console.warn('Switching to offline emergency vector map:', reason);
+                  setMapEngine('offline');
+                } else {
+                  console.warn('Google Map notice:', reason);
+                }
               }}
             />
           ) : (
