@@ -56,3 +56,193 @@ class MeshTelemetryPacket(BaseModel):
     lng: Optional[float] = None
     payload_message: Optional[str] = None
     timestamp: Optional[str] = None
+
+class Vehicle(BaseModel):
+    id: str
+    name: str
+    license_plate: str
+    vehicle_type: str = Field(..., description="E.g., 4x4 Highland Ambulance, Heavy Relief Truck (6x6), Rapid Response SUV, Evacuation Bus")
+    fuel_type: str = Field(default="Diesel", description="Diesel, Petrol, Electric EV")
+    fuel_capacity_litres: float
+    current_fuel_litres: float
+    fuel_percentage: float
+    fuel_consumption_km_per_l: float = Field(..., description="Base fuel economy (km per litre)")
+    terrain_multiplier: float = Field(default=1.35, description="Mountain grade resistance multiplier (1.2 to 1.7x in NER)")
+    effective_km_per_l: float = Field(..., description="Terrain-adjusted fuel economy in mountain roads")
+    remaining_range_km: float
+    fuel_status: str = Field(..., description="Optimal, Adequate, Low Reserve, Critical Refuel Required")
+    assigned_driver: str
+    current_location: str
+    lat: float
+    lng: float
+    status: str = Field(default="Active", description="Active, En Route, Refueling, Maintenance")
+
+class RouteWaypoint(BaseModel):
+    name: str
+    lat: float
+    lng: float
+    elevation_m: int
+    landmark_type: str = Field(..., description="depot, mountain_pass, checkpost, fuel_depot, bridge")
+
+class FuelStop(BaseModel):
+    name: str
+    location: str
+    lat: float
+    lng: float
+    fuel_type_available: str
+    distance_from_origin_km: float
+    is_emergency_cache: bool = False
+
+class RouteLocality(BaseModel):
+    name: str
+    district: Optional[str] = None
+    state: Optional[str] = None
+    lat: float
+    lng: float
+    elevation_m: int
+    distance_from_origin_km: float
+    eta_mins: int
+    road_type: str = Field(default="National Highway", description="4-Lane NH, Mountain Pass, Valley Bypass, Ghat Section")
+    amenities: List[str] = Field(default_factory=list, description="Available emergency and transit amenities")
+
+class NavigationStep(BaseModel):
+    step_number: int
+    instruction: str
+    distance_km: float
+    duration_text: Optional[str] = None
+    maneuver: Optional[str] = "straight"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+class RouteAlternative(BaseModel):
+    route_type: str = Field(..., description="'shortest' or 'safest'")
+    title: str
+    corridor_name: str
+    distance_km: float
+    eta_hours: float
+    duration_text: Optional[str] = None
+    fuel_required_litres: float
+    fuel_sufficient: bool
+    fuel_margin_litres: float = Field(..., description="Positive if surplus, negative if fuel deficit")
+    remaining_fuel_after_trip_litres: float
+    risk_score: int = Field(..., description="0 (Safest) to 100 (Most Dangerous)")
+    risk_level: str = Field(..., description="Low, Medium, High, Extreme")
+    landslide_probability_pct: int
+    monsoon_waterlogging: bool
+    elevation_gain_m: int
+    hazards_encountered: List[str]
+    fuel_stops: List[FuelStop]
+    waypoints: List[RouteWaypoint]
+    localities: List[RouteLocality] = Field(default_factory=list, description="Towns, localities, and areas along the route")
+    navigation_steps: List[NavigationStep] = Field(default_factory=list, description="Turn-by-turn road instructions")
+    coordinates: List[List[float]] = Field(..., description="List of [lat, lng] for rendering polyline")
+
+class RouteOptimizationRequest(BaseModel):
+    origin_hub_id: str
+    destination_hub_id: str
+    vehicle_id: Optional[str] = None
+    simulated_fuel_litres: Optional[float] = None
+    simulated_consumption_rate: Optional[float] = None
+
+class AIRecommendation(BaseModel):
+    recommended_route_type: str
+    headline: str
+    rationale: str
+    fuel_feasibility_verdict: str
+    safety_verdict: str
+    refuel_advisory: Optional[str] = None
+
+class RouteOptimizationResponse(BaseModel):
+    origin: dict
+    destination: dict
+    vehicle_telemetry: dict
+    shortest_route: RouteAlternative
+    safest_route: RouteAlternative
+    ai_recommendation: AIRecommendation
+    is_real_google_route: Optional[bool] = False
+    provider: Optional[str] = "Lifeline Highway Routing Engine"
+
+
+# ─────────────────────────────────────────────────────────────
+# REAL-TIME GPS NAVIGATOR SCHEMAS
+# ─────────────────────────────────────────────────────────────
+
+class GPSLocationUpdate(BaseModel):
+    """Incoming GPS location packet from a field device or browser."""
+    device_id: str = Field(..., description="Vehicle ID or unique device identifier")
+    lat: float = Field(..., description="Latitude in decimal degrees")
+    lng: float = Field(..., description="Longitude in decimal degrees")
+    altitude_m: Optional[float] = Field(None, description="Altitude in meters above sea level")
+    speed_kmh: Optional[float] = Field(None, description="Ground speed in km/h")
+    heading_deg: Optional[float] = Field(None, description="Compass heading 0-360 degrees")
+    accuracy_m: Optional[float] = Field(None, description="GPS accuracy radius in meters")
+    timestamp: Optional[str] = Field(None, description="ISO8601 timestamp when reading was taken")
+
+class GPSLocationResponse(BaseModel):
+    """Server response after accepting a GPS update."""
+    id: str
+    device_id: str
+    lat: float
+    lng: float
+    altitude_m: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    heading_deg: Optional[float] = None
+    accuracy_m: Optional[float] = None
+    timestamp: str
+    received_at: str
+
+class GPSTrackPoint(BaseModel):
+    """A single point in a device's GPS track history."""
+    lat: float
+    lng: float
+    altitude_m: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    heading_deg: Optional[float] = None
+    accuracy_m: Optional[float] = None
+    timestamp: str
+
+class GPSDeviceLatest(BaseModel):
+    """Latest known position for a tracked device."""
+    device_id: str
+    lat: float
+    lng: float
+    altitude_m: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    heading_deg: Optional[float] = None
+    accuracy_m: Optional[float] = None
+    timestamp: str
+    received_at: str
+    track_points_count: int = 0
+
+
+# ─────────────────────────────────────────────────────────────
+# GOOGLE ROUTES API & ROUTE RISK SCHEMAS (PHASE 2 & PHASE 4)
+# ─────────────────────────────────────────────────────────────
+
+class LatLngPoint(BaseModel):
+    latitude: float
+    longitude: float
+
+class GoogleRouteRequest(BaseModel):
+    origin: LatLngPoint
+    destination: LatLngPoint
+    vehicle_id: Optional[str] = None
+    weather_condition: Optional[str] = None
+    road_condition: Optional[str] = None
+
+class RiskBreakdown(BaseModel):
+    rainfall_score: int = Field(..., description="0-40 based on precipitation/monsoon")
+    road_condition_score: int = Field(..., description="0-25 based on road surface & ghat steepness")
+    incident_score: int = Field(..., description="0-20 based on active landslides and road blockage proximity")
+    historical_vulnerability_score: int = Field(..., description="0-15 based on historical terrain risk")
+    total_risk_score: int = Field(..., description="0-100 aggregated risk index")
+    risk_level: str = Field(..., description="LOW (0-30), MEDIUM (31-60), HIGH (61-100)")
+    verdict: str
+    recommendation: str
+
+class GoogleRouteResponse(BaseModel):
+    distance: dict = Field(..., description="Meters, km, and formatted text")
+    duration: dict = Field(..., description="Seconds, hours, and formatted text")
+    route: dict = Field(..., description="Coordinates array [[lat, lng], ...], polyline string, and summary")
+    source: str = Field(default="Google Routes API")
+    risk_assessment: Optional[RiskBreakdown] = None

@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Truck, Package, AlertTriangle,
   ShieldAlert, Network, Bell, BarChart3, Settings, LogOut,
-  ChevronLeft, ChevronRight, Activity
+  ChevronLeft, ChevronRight, Activity, Gauge, Shield
 } from 'lucide-react';
 
 const navItems = [
@@ -14,6 +14,8 @@ const navItems = [
   { name: 'Incidents', path: '/incidents', icon: AlertTriangle },
   { name: 'Risk Analysis', path: '/risk-analysis', icon: ShieldAlert },
   { name: 'LIFELINE MESH', path: '/mesh', icon: Network },
+  { name: 'Driver Cockpit', path: '/driver-dashboard', icon: Gauge },
+  { name: 'Field Officer', path: '/field-officer', icon: Shield },
   { name: 'Alerts', path: '/alerts', icon: Bell },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   { name: 'Settings', path: '/settings', icon: Settings },
