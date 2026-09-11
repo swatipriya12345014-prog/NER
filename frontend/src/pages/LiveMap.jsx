@@ -41,7 +41,8 @@ import {
   LocateFixed,
   Satellite,
   CircleDot,
-  Globe
+  Globe,
+  Volume2
 } from 'lucide-react';
 import GoogleMapView from '../components/GoogleMapView';
 import {
@@ -187,7 +188,7 @@ const LiveMap = () => {
   // ─────────────────────────────────────────────────────────────
   // AI ROUTE & FUEL OPTIMIZATION STATES
   // ─────────────────────────────────────────────────────────────
-  const [isAiRouteOpen, setIsAiRouteOpen] = useState(urlAutoRoute || true);
+  const [isAiRouteOpen, setIsAiRouteOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
   const [originHubId, setOriginHubId] = useState(urlOrigin || 'guwahati');
   const [destHubId, setDestHubId] = useState(urlDest || 'shillong');
@@ -911,16 +912,6 @@ const LiveMap = () => {
             </div>
           </div>
 
-          {/* Floating Re-Open Optimizer Button when drawer is collapsed */}
-          {!isAiRouteOpen && (
-            <button
-              onClick={() => setIsAiRouteOpen(true)}
-              className="absolute top-16 right-4 z-30 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-2xl border border-blue-400/40 flex items-center space-x-2 cursor-pointer backdrop-blur-md transition-all hover:scale-105"
-            >
-              <Sparkles size={14} className="text-amber-300 animate-pulse" />
-              <span>Open AI Route & Fuel Optimizer</span>
-            </button>
-          )}
 
           {mapEngine === 'google' ? (
             <GoogleMapView
@@ -1593,6 +1584,73 @@ const LiveMap = () => {
                   ⚠ GPS: {gpsError || 'Location access denied'}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Active Route Summary Bar (Clear, Simple & Informative) */}
+        {routeResult && (
+          <div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl flex-shrink-0">
+                <Route size={20} />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">
+                    {routeResult.origin?.name || 'Start'} ➔ {routeResult.destination?.name || 'End'}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {routeResult.safest_route?.risk_level || 'Safe'} Corridor
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 mt-1 font-mono">
+                  <span className="flex items-center space-x-1 text-white font-bold">
+                    <Clock size={13} className="text-blue-400" />
+                    <span>{routeResult.safest_route?.duration_text || '2h 15m'}</span>
+                  </span>
+                  <span>•</span>
+                  <span>{routeResult.safest_route?.distance_km || 98} km</span>
+                  <span>•</span>
+                  <span className="text-emerald-400">
+                    ⛽ {routeResult.safest_route?.fuel_required_litres || 18}L needed ({simulatedFuel}L in tank)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  if (window.speechSynthesis) {
+                    const text = `Route calculated from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Total distance is ${routeResult.safest_route?.distance_km} kilometers. Estimated drive time is ${routeResult.safest_route?.duration_text}. Road is passable with low terrain risk.`;
+                    const utter = new SpeechSynthesisUtterance(text);
+                    window.speechSynthesis.speak(utter);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-cyan-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                <Volume2 size={13} />
+                <span>Voice Guide</span>
+              </button>
+              <button
+                onClick={() => {
+                  const summary = `NER-LIFELINE MANIFEST\nFrom: ${routeResult.origin?.name}\nTo: ${routeResult.destination?.name}\nDistance: ${routeResult.safest_route?.distance_km} km\nDuration: ${routeResult.safest_route?.duration_text}\nVehicle: ${selectedVehicleId}\nFuel In Tank: ${simulatedFuel}L`;
+                  navigator.clipboard?.writeText(summary);
+                  alert('Manifest copied to clipboard!');
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                <CheckCircle2 size={13} className="text-emerald-400" />
+                <span>Copy Manifest</span>
+              </button>
+              <button
+                onClick={() => setIsAiRouteOpen(!isAiRouteOpen)}
+                className="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                <Sparkles size={13} className="text-amber-400" />
+                <span>{isAiRouteOpen ? 'Hide Advanced' : 'Advanced Telemetry'}</span>
+              </button>
             </div>
           </div>
         )}

@@ -6,7 +6,7 @@ import {
   Route, Sparkles, Navigation, Bell,
   ChevronRight, Thermometer, Wind, CloudRain,
   Clock, CheckCircle2, Radio, ExternalLink,
-  ShieldCheck, RefreshCw, Layers
+  ShieldCheck, RefreshCw, Layers, ArrowRight
 } from 'lucide-react';
 import { 
   OPERATIONAL_BLOCKED_ROADS, 
@@ -161,7 +161,61 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. Key Metrics Overview (4 Clean Cards) */}
+      {/* 2. Simple 3-Step Operations Guide ("How NER-LIFELINE Works") */}
+      <div className="bg-gradient-to-r from-blue-950/50 via-slate-900 to-indigo-950/50 border border-blue-800/40 rounded-2xl p-5 shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs uppercase tracking-wider">
+              <Sparkles size={15} className="text-amber-400 animate-pulse" />
+              <span>Simple 3-Step Operations Guide</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-extrabold text-white">
+              How NER-LIFELINE works in disaster and emergency logistics
+            </h2>
+          </div>
+          <button
+            onClick={() => navigate('/live-map')}
+            className="self-start md:self-auto text-xs font-bold text-blue-300 hover:text-white bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-md"
+          >
+            <span>Open Interactive Map</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 space-y-2 transition-all">
+            <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs font-black">1</span>
+              <span className="text-sm">Pick an Emergency Route</span>
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Click any of the 4 Corridor cards below (e.g. Guwahati ➔ Shillong) or tap any two cities directly on the interactive Live Map.
+            </p>
+          </div>
+
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 rounded-xl p-4 space-y-2 transition-all">
+            <div className="flex items-center space-x-2 text-amber-400 font-bold text-xs">
+              <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-black">2</span>
+              <span className="text-sm">Check Safety & Fuel</span>
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Our AI evaluates mountain altitude climbs, monsoon rainfall, and road blockages so vehicles never run out of fuel or get stuck in mud.
+            </p>
+          </div>
+
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-purple-500/40 rounded-xl p-4 space-y-2 transition-all">
+            <div className="flex items-center space-x-2 text-purple-400 font-bold text-xs">
+              <span className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-black">3</span>
+              <span className="text-sm">Track Convoy Live</span>
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              Follow GPS coordinates in real-time. If mountain cell networks collapse, our offline LoRa radio mesh automatically routes distress packets.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Key Metrics Overview (4 Clean Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((k) => {
           const Icon = k.icon;

@@ -374,6 +374,16 @@ export default function Topbar({ onMenuToggle }) {
           )}
         </div>
 
+        {/* Quick User Guide / How It Works Button */}
+        <button
+          onClick={() => setShowOperatorGuide(true)}
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-bold transition-all cursor-pointer shadow-sm"
+          title="Open Simple 3-Step Guide"
+        >
+          <HelpCircle size={15} className="text-cyan-400" />
+          <span className="hidden sm:inline">How It Works</span>
+        </button>
+
         {/* Security Badge */}
         <div 
           className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition-colors hidden sm:block"
