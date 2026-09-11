@@ -38,11 +38,13 @@ import {
   BookOpen,
   Truck,
   Layers,
-  RefreshCw
+  RefreshCw,
+  GitFork
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { initiateSosCall, sendCallHeartbeat, endSosCall, EMERGENCY_CONTROLLER_PHONE, EMERGENCY_CONTROLLER_RAW } from '../services/sosService';
 import { getRoadHistories, getRealtimeVehicles, syncDatabase } from '../services/roadVehicleService';
+import AIBlockageRerouteModal from '../components/AIBlockageRerouteModal';
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
@@ -58,6 +60,7 @@ export default function DriverDashboard() {
   // State
   const [sosActive, setSosActive] = useState(false);
   const [sosCountdown, setSosCountdown] = useState(5);
+  const [alternateDetourModalOpen, setAlternateDetourModalOpen] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedProblemType, setSelectedProblemType] = useState(null);
@@ -1046,6 +1049,16 @@ SDRF Dispatch Status: Connected`;
               <span className="truncate">{isSpeaking ? 'Stop Voice' : 'Audio Advisory'}</span>
             </button>
 
+            {/* AI Alternate Detour Button */}
+            <button
+              onClick={() => setAlternateDetourModalOpen(true)}
+              className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white border border-cyan-400/60 text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer shadow-lg shadow-cyan-950/40 min-h-[40px]"
+              title="Road is blocked? Calculate AI Alternate Detour Corridor"
+            >
+              <GitFork size={15} />
+              <span className="truncate">AI Alternate Detour</span>
+            </button>
+
             {/* Sync All Databases & Telemetry */}
             <button
               onClick={handleSyncAllDatabases}
@@ -1181,6 +1194,13 @@ SDRF Dispatch Status: Connected`;
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+              <button
+                onClick={() => setAlternateDetourModalOpen(true)}
+                className="w-full sm:flex-1 py-2 px-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer transition-all"
+              >
+                <GitFork size={14} />
+                <span>Calculate AI Alternate Detour</span>
+              </button>
               <button
                 onClick={() => navigate('/live-map')}
                 className="w-full sm:flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer transition-all"
@@ -1429,6 +1449,20 @@ SDRF Dispatch Status: Connected`;
           </button>
         </div>
       </aside>
+
+      {/* AI Alternate Detour Modal */}
+      <AIBlockageRerouteModal
+        isOpen={alternateDetourModalOpen}
+        onClose={() => setAlternateDetourModalOpen(false)}
+        currentOrigin={{ id: 'guwahati', name: 'Guwahati Central Depot' }}
+        currentDestination={{ id: 'tawang', name: 'Tawang District Hospital' }}
+        selectedBlockageId="blk-1"
+        onApplyAlternateRoute={() => {
+          setDivertConfirmed(true);
+          navigate('/live-map');
+        }}
+        activeVehicle={{ id: 'AS-01-EV-4421', name: 'Highland 4x4 Ambulance' }}
+      />
     </div>
   );
 }

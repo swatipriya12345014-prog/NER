@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class ShipmentBase(BaseModel):
@@ -365,3 +365,35 @@ class ChatResponse(BaseModel):
     source: str  # "ai_knowledge", "math_engine", "code_engine", "ner_logistics", "conversational", "universal_reasoning"
     suggestions: Optional[List[str]] = []
     timestamp: str
+
+class BlockageInfo(BaseModel):
+    blockage_id: str
+    road_name: str
+    highway: str
+    location_name: str
+    lat: float
+    lng: float
+    reason: str
+    status: str = "CLOSED"
+    clearing_eta: str
+    diversion_corridor: str
+    reported_at: Optional[str] = None
+
+class AlternateRouteRequest(BaseModel):
+    origin_hub_id: str = "guwahati"
+    destination_hub_id: str = "tawang"
+    blocked_road_id: Optional[str] = None
+    blockage_lat: Optional[float] = None
+    blockage_lng: Optional[float] = None
+    vehicle_id: Optional[str] = None
+    weather_condition: Optional[str] = "Monsoon Rain"
+
+class AlternateRouteResponse(BaseModel):
+    blocked: bool
+    blockage_details: Optional[Dict[str, Any]] = None
+    primary_route_status: str  # "BLOCKED / IMPASSABLE", "RESTRICTED", "PASSABLE"
+    ai_alternate_route: RouteAlternative
+    comparison: Dict[str, Any]
+    ai_advisory: str
+    recommended_action: str
+    voice_announcement: str

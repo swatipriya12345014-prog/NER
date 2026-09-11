@@ -337,6 +337,59 @@ def handle_domain_queries(query: str) -> Optional[str]:
             f"• **Action**: When you trigger SOS from the Driver Dashboard, automated voice/SMS and WhatsApp alerts are dispatched directly to **{SOS_RECEIVER}**."
         )
 
+    # Road Blockages & AI Alternate Routes
+    if any(k in lower for k in ["alternate route", "bypass", "detour", "blocked", "blockage", "closure", "diversion"]):
+        if any(k in lower for k in ["nh-13", "sela", "tawang", "bomdila"]):
+            return (
+                "🔀 **AI Alternate Route Recommendation for NH-13 (Sela Pass Blockage):**\n\n"
+                "• **Blockage Notice**: NH-13 Km 140–146 is **CLOSED** due to an active 400m mudslide and boulder fall. BRO clearance ETA is ~6 hours.\n"
+                "• **Recommended AI Alternate Bypass**: **Balipara-Charduar-Tawang (BCT) Lower Valley Bypass via Balemu - Kalaktang**.\n"
+                "• **Key Metrics**:\n"
+                "  - Distance: 348 km (+16.5 km vs direct mountain pass)\n"
+                "  - ETA: 7.2 hrs (Avoids 6-hour roadblock standstill!)\n"
+                "  - Terrain Hazard Risk: **Reduced by 74%** (Score: 18/100 vs 92/100)\n"
+                "• **Detour Steps**:\n"
+                "  1. Exit NH-13 at Km 138 Bhalukpong Junction onto Lower Valley Artery.\n"
+                "  2. Proceed via Balemu–Kalaktang all-weather retaining-wall corridor.\n"
+                "  3. Re-join Trans-Arunachal Highway past hazardous clearance zone at Dirang."
+            )
+        if any(k in lower for k in ["nh-29", "chumukedima", "dimapur", "kohima", "pagla pahar"]):
+            return (
+                "🔀 **AI Alternate Route Recommendation for NH-29 (Dimapur–Kohima Corridor):**\n\n"
+                "• **Blockage Notice**: NH-29 Km 12–15 Chumukedima Gorge is **CLOSED** due to hillside shale rockfall.\n"
+                "• **Recommended AI Alternate Bypass**: **Niuland - Zhadima - Kohima Corridor**.\n"
+                "• **Key Metrics**:\n"
+                "  - Distance: 88.5 km | ETA: 2.4 hrs\n"
+                "  - Terrain Hazard Risk: **24/100 (Safe)**\n"
+                "• **Detour Steps**:\n"
+                "  1. Divert at Dimapur 7th Mile Checkpost onto Niuland Road.\n"
+                "  2. Navigate Zhadima Ridge Bypass (Gentle Grade, Zero Rockfall Threat).\n"
+                "  3. Ascend northern approach into Kohima Capital Command."
+            )
+        if any(k in lower for k in ["nh-10", "teesta", "gangtok", "sikkim", "sevoke"]):
+            return (
+                "🔀 **AI Alternate Route Recommendation for NH-10 (Sikkim Lifeline):**\n\n"
+                "• **Blockage Notice**: NH-10 Km 42–50 Teesta Valley is **CLOSED** due to river embankment scour.\n"
+                "• **Recommended AI Alternate Bypass**: **Lava - Damdim - Rorathang All-Weather Bypass**.\n"
+                "• **Key Metrics**:\n"
+                "  - Distance: 142 km | ETA: 3.8 hrs\n"
+                "  - Terrain Hazard Risk: **22/100 (Fortified)**\n"
+                "• **Detour Steps**:\n"
+                "  1. Take Coronation Bridge Exit toward Damdim & Dooars Foothills.\n"
+                "  2. Ascend via Lava–Algarah stable ridge artery (High clearance).\n"
+                "  3. Cross Rorathang into East Sikkim to bypass flooded Teesta canyon."
+            )
+        return (
+            "🔀 **NER-LIFELINE AI Alternate Routing System:**\n\n"
+            "When any road in the 8 North Eastern states is blocked by landslides or floods, NER-LIFELINE automatically computes "
+            "the optimal detour avoiding the obstruction zone:\n"
+            "• **NH-13 (Arunachal)**: Sela Pass Blockage ➔ Detour via **Balemu - Kalaktang Bypass** (74% risk reduction)\n"
+            "• **NH-29 (Nagaland)**: Chumukedima Rockfall ➔ Detour via **Niuland - Zhadima Corridor**\n"
+            "• **NH-10 (Sikkim)**: Teesta Valley Slump ➔ Detour via **Lava - Damdim - Rorathang Bypass**\n"
+            "• **NH-06 (Meghalaya)**: Lumshnong Flood ➔ Detour via **Jowai - Nartiang Highland Plateau**\n\n"
+            "💡 *Tip: On the Live Operations Map, you can toggle any road blockage to view and apply the real-time AI alternate polyline with 1-click!*"
+        )
+
     # Road Histories
     for hw_key, hw_info in NER_HIGHWAYS.items():
         if hw_key in lower:

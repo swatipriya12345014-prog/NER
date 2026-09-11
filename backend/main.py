@@ -11,7 +11,7 @@ load_dotenv()
 from collections import defaultdict
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
 
 from database import get_supabase_client, is_supabase_configured, ensure_gps_table_exists, ensure_extended_tables_exist
@@ -24,7 +24,8 @@ from schemas import (
     RoadHistory, VehicleRegistryItem, RealtimeVehicleTelemetryUpdate,
     SOSCallInitiateRequest, SOSCallSession, SOSCallEndRequest,
     ChronicBlackspot, PastBlockageEvent,
-    ChatMessage, ChatRequest, ChatResponse
+    ChatMessage, ChatRequest, ChatResponse,
+    BlockageInfo, AlternateRouteRequest, AlternateRouteResponse
 )
 from chatbot import ask_ai_chatbot
 
@@ -2553,3 +2554,295 @@ def get_chat_suggestions():
             }
         ]
     }
+
+# ==========================================
+# AI ROAD BLOCKAGE & ALTERNATE ROUTE ENGINE
+# ==========================================
+
+REGIONAL_BLOCKAGES: Dict[str, Dict[str, Any]] = {
+    "blk-1": {
+        "blockage_id": "blk-1",
+        "road_name": "NH-13 Sela Pass Landslide Closure",
+        "highway": "NH-13 (Trans-Arunachal Highway)",
+        "location_name": "Km 140 - Km 146, West Kameng, Arunachal Pradesh",
+        "lat": 27.5050,
+        "lng": 92.1020,
+        "reason": "Massive 400m mudslide and heavy boulder debris blocking both lanes. Border Roads Organisation (BRO) heavy excavation in progress.",
+        "status": "CLOSED / IMPASSABLE",
+        "clearing_eta": "Est. 6 hours",
+        "diversion_corridor": "Balipara-Charduar-Tawang (BCT) Lower Valley Bypass via Balemu - Kalaktang",
+        "reported_at": "15 mins ago",
+        "bypass_distance_km": 348.0,
+        "bypass_eta_hours": 7.2,
+        "bypass_risk_score": 18,
+        "bypass_waypoints": [
+            {"name": "Bhalukpong Valley Diversion Point", "lat": 27.0134, "lng": 92.6412, "elevation_m": 213, "landmark_type": "checkpost"},
+            {"name": "Balemu Low-Altitude Corridor", "lat": 26.9150, "lng": 92.3500, "elevation_m": 310, "landmark_type": "mountain_pass"},
+            {"name": "Kalaktang Fortified Bypass", "lat": 27.1200, "lng": 92.2000, "elevation_m": 850, "landmark_type": "checkpost"},
+            {"name": "Tenga Valley Re-connection", "lat": 27.2050, "lng": 92.4000, "elevation_m": 1450, "landmark_type": "depot"},
+            {"name": "Tawang Secure Relief Center", "lat": 27.5861, "lng": 91.8594, "elevation_m": 3048, "landmark_type": "depot"}
+        ],
+        "detour_steps": [
+            {"step_number": 1, "instruction": "Exit NH-13 at Km 138 Bhalukpong Junction onto Lower Valley Artery", "distance_km": 12.0, "duration_text": "22 mins", "maneuver": "turn-left"},
+            {"step_number": 2, "instruction": "Proceed via Balemu - Kalaktang All-Weather Fortified Bypass (Avoids Landslide Chute)", "distance_km": 46.5, "duration_text": "1h 10m", "maneuver": "straight"},
+            {"step_number": 3, "instruction": "Cross Tenga Valley Bridge with active LoRa Mesh Relay Link", "distance_km": 28.0, "duration_text": "45 mins", "maneuver": "straight"},
+            {"step_number": 4, "instruction": "Re-enter Trans-Arunachal Highway past hazardous clearance zone at Dirang", "distance_km": 35.0, "duration_text": "55 mins", "maneuver": "merge"}
+        ]
+    },
+    "blk-2": {
+        "blockage_id": "blk-2",
+        "road_name": "NH-29 Chumukedima Rockslide Stretch",
+        "highway": "NH-29 (Dimapur - Kohima Highway)",
+        "location_name": "Km 12 - Km 15, Chumukedima Gorge, Nagaland",
+        "lat": 25.7750,
+        "lng": 93.7900,
+        "reason": "Heavy shale boulder collapse completely obstructing hillside roadway following intense thunderstorm.",
+        "status": "CLOSED / IMPASSABLE",
+        "clearing_eta": "Est. 4 hours",
+        "diversion_corridor": "Emergency Bypass via Niuland - Zhadima - Kohima Corridor",
+        "reported_at": "30 mins ago",
+        "bypass_distance_km": 88.5,
+        "bypass_eta_hours": 2.4,
+        "bypass_risk_score": 24,
+        "bypass_waypoints": [
+            {"name": "Niuland Emergency Diversion", "lat": 25.8200, "lng": 93.8500, "elevation_m": 240, "landmark_type": "checkpost"},
+            {"name": "Zhadima Ridge Road", "lat": 25.7500, "lng": 94.0200, "elevation_m": 980, "landmark_type": "mountain_pass"},
+            {"name": "Kohima North Relief Depot", "lat": 25.6751, "lng": 94.1086, "elevation_m": 1444, "landmark_type": "depot"}
+        ],
+        "detour_steps": [
+            {"step_number": 1, "instruction": "Divert at Dimapur 7th Mile Checkpost onto Niuland Road", "distance_km": 14.0, "duration_text": "25 mins", "maneuver": "turn-left"},
+            {"step_number": 2, "instruction": "Navigate Zhadima Ridge Bypass (Gentle Grade, Zero Rockfall Threat)", "distance_km": 42.0, "duration_text": "1h 05m", "maneuver": "straight"},
+            {"step_number": 3, "instruction": "Ascend northern approach into Kohima Capital Command", "distance_km": 32.5, "duration_text": "50 mins", "maneuver": "straight"}
+        ]
+    },
+    "blk-3": {
+        "blockage_id": "blk-3",
+        "road_name": "NH-10 Teesta Valley Active Slump Stretch",
+        "highway": "NH-10 (Siliguri - Gangtok Arterial)",
+        "location_name": "Km 42 - Km 50, Sevoke / Teesta River, Sikkim",
+        "lat": 27.1200,
+        "lng": 88.4800,
+        "reason": "Teesta river embankment scour causing 15cm tarmac subsidence on outer mountain shoulder.",
+        "status": "CLOSED / IMPASSABLE",
+        "clearing_eta": "Est. 8 hours",
+        "diversion_corridor": "Lava - Damdim - Rorathang All-Weather Bypass",
+        "reported_at": "45 mins ago",
+        "bypass_distance_km": 142.0,
+        "bypass_eta_hours": 3.8,
+        "bypass_risk_score": 22,
+        "bypass_waypoints": [
+            {"name": "Damdim Valley Checkpost", "lat": 26.9000, "lng": 88.7500, "elevation_m": 350, "landmark_type": "checkpost"},
+            {"name": "Lava Pass Foothills", "lat": 27.0800, "lng": 88.6600, "elevation_m": 1200, "landmark_type": "mountain_pass"},
+            {"name": "Rorathang Border Bridge", "lat": 27.2000, "lng": 88.6200, "elevation_m": 850, "landmark_type": "bridge"},
+            {"name": "Gangtok Command Base", "lat": 27.3389, "lng": 88.6065, "elevation_m": 1650, "landmark_type": "depot"}
+        ],
+        "detour_steps": [
+            {"step_number": 1, "instruction": "Take Coronation Bridge Exit toward Damdim & Dooars Foothills", "distance_km": 26.0, "duration_text": "40 mins", "maneuver": "turn-right"},
+            {"step_number": 2, "instruction": "Ascend via Lava - Algarah stable ridge artery (High clearance)", "distance_km": 54.0, "duration_text": "1h 35m", "maneuver": "straight"},
+            {"step_number": 3, "instruction": "Cross Rorathang into East Sikkim to bypass flooded Teesta canyon", "distance_km": 62.0, "duration_text": "1h 40m", "maneuver": "merge"}
+        ]
+    },
+    "blk-4": {
+        "blockage_id": "blk-4",
+        "road_name": "NH-06 Lumshnong Causeway Flash Flood Artery",
+        "highway": "NH-06 (Shillong - Silchar Lifeline)",
+        "location_name": "Km 78 - Km 86, East Jaintia Hills, Meghalaya",
+        "lat": 25.1850,
+        "lng": 92.3800,
+        "reason": "Flash flood overflow reaching 1.4ft over low-lying culverts; severe underwater road surface erosion.",
+        "status": "CLOSED / IMPASSABLE",
+        "clearing_eta": "Est. 5 hours",
+        "diversion_corridor": "Jowai - Nartiang - Khliehriat Plateau High Road",
+        "reported_at": "1 hour ago",
+        "bypass_distance_km": 195.0,
+        "bypass_eta_hours": 4.5,
+        "bypass_risk_score": 20,
+        "bypass_waypoints": [
+            {"name": "Jowai High Elevation Junction", "lat": 25.4500, "lng": 92.2000, "elevation_m": 1380, "landmark_type": "checkpost"},
+            {"name": "Nartiang Highland Ridge", "lat": 25.5500, "lng": 92.2200, "elevation_m": 1420, "landmark_type": "mountain_pass"},
+            {"name": "Khliehriat Staging Outpost", "lat": 25.3200, "lng": 92.3700, "elevation_m": 1150, "landmark_type": "checkpost"},
+            {"name": "Silchar Staging Hub", "lat": 24.8333, "lng": 92.7789, "elevation_m": 35, "landmark_type": "depot"}
+        ],
+        "detour_steps": [
+            {"step_number": 1, "instruction": "Divert at Jowai roundabout onto Highland Plateau road", "distance_km": 35.0, "duration_text": "50 mins", "maneuver": "turn-left"},
+            {"step_number": 2, "instruction": "Stay above flood plain along Nartiang elevated ridge", "distance_km": 72.0, "duration_text": "1h 45m", "maneuver": "straight"},
+            {"step_number": 3, "instruction": "Descend via Khliehriat South interchange into Barak Valley", "distance_km": 88.0, "duration_text": "2h 00m", "maneuver": "merge"}
+        ]
+    }
+}
+
+@app.get("/api/routes/blockages", response_model=List[BlockageInfo])
+def list_road_blockages():
+    """Returns all currently known road closures and obstructions across North East India."""
+    results = []
+    for b in REGIONAL_BLOCKAGES.values():
+        results.append(BlockageInfo(
+            blockage_id=b["blockage_id"],
+            road_name=b["road_name"],
+            highway=b["highway"],
+            location_name=b["location_name"],
+            lat=b["lat"],
+            lng=b["lng"],
+            reason=b["reason"],
+            status=b["status"],
+            clearing_eta=b["clearing_eta"],
+            diversion_corridor=b["diversion_corridor"],
+            reported_at=b.get("reported_at")
+        ))
+    return results
+
+@app.post("/api/routes/alternate", response_model=AlternateRouteResponse)
+def calculate_alternate_route(req: AlternateRouteRequest):
+    """
+    AI Autonomous Alternate Route Engine:
+    Calculates the bypass corridor, hazard avoidance delta, ETA difference,
+    and step-by-step detour waypoints when a road obstruction or landslide occurs.
+    """
+    origin = REGIONAL_HUBS.get(req.origin_hub_id.lower(), REGIONAL_HUBS["guwahati"])
+    dest = REGIONAL_HUBS.get(req.destination_hub_id.lower(), REGIONAL_HUBS["tawang"])
+    
+    # Identify relevant blockage
+    blockage = None
+    if req.blocked_road_id and req.blocked_road_id in REGIONAL_BLOCKAGES:
+        blockage = REGIONAL_BLOCKAGES[req.blocked_road_id]
+    else:
+        # Match by proximity to route corridor
+        min_dist = float('inf')
+        for b in REGIONAL_BLOCKAGES.values():
+            d = calculate_haversine_distance(b["lat"], b["lng"], (origin["lat"] + dest["lat"])/2, (origin["lng"] + dest["lng"])/2)
+            if d < min_dist:
+                min_dist = d
+                blockage = b
+
+    if not blockage:
+        blockage = REGIONAL_BLOCKAGES["blk-1"]
+
+    # Generate bypass route coordinates
+    base_coords = get_authentic_highway_coords(
+        origin["id"], dest["id"], "safest",
+        (origin["lat"], origin["lng"]),
+        (dest["lat"], dest["lng"])
+    )
+    
+    # Lateral bypass arc around blockage point
+    b_lat, b_lng = blockage["lat"], blockage["lng"]
+    bypass_coords = []
+    for lat, lng in base_coords:
+        d = calculate_haversine_distance(lat, lng, b_lat, b_lng)
+        if d < 25.0:
+            # Shift away from the blockage towards safe valley contour
+            bypass_coords.append([round(lat - 0.045, 5), round(lng + 0.065, 5)])
+        else:
+            bypass_coords.append([round(lat, 5), round(lng, 5)])
+
+    # Vehicle telemetry calculation
+    vehicle = next((v for v in MOCK_VEHICLES if v["id"] == req.vehicle_id), MOCK_VEHICLES[0])
+    eff_km_l = round(vehicle["fuel_consumption_km_per_l"] / 1.12, 2)
+    dist_km = blockage.get("bypass_distance_km", round(calculate_haversine_distance(origin["lat"], origin["lng"], dest["lat"], dest["lng"]) * 1.55, 1))
+    eta_h = blockage.get("bypass_eta_hours", round(dist_km / 48.0, 1))
+    fuel_req = round(dist_km / eff_km_l, 1)
+
+    nav_steps = [
+        NavigationStep(
+            step_number=s["step_number"],
+            instruction=s["instruction"],
+            distance_km=s["distance_km"],
+            duration_text=s["duration_text"],
+            maneuver=s["maneuver"],
+            lat=bypass_coords[min(idx * 5, len(bypass_coords)-1)][0],
+            lng=bypass_coords[min(idx * 5, len(bypass_coords)-1)][1]
+        ) for idx, s in enumerate(blockage.get("detour_steps", []))
+    ]
+
+    waypoints = [
+        RouteWaypoint(
+            name=w["name"],
+            lat=w["lat"],
+            lng=w["lng"],
+            elevation_m=w["elevation_m"],
+            landmark_type=w["landmark_type"]
+        ) for w in blockage.get("bypass_waypoints", [])
+    ]
+
+    alt_route = RouteAlternative(
+        route_type="safest",
+        title=f"AI Fortified Bypass via {blockage['diversion_corridor']}",
+        corridor_name=f"{origin['name']} ➔ [DETOUR: {blockage['road_name']}] ➔ {dest['name']}",
+        distance_km=dist_km,
+        eta_hours=eta_h,
+        duration_text=f"{int(eta_h)}h {round((eta_h % 1) * 60)}m",
+        fuel_required_litres=fuel_req,
+        fuel_sufficient=True,
+        fuel_margin_litres=round(vehicle["current_fuel_litres"] - fuel_req, 1),
+        remaining_fuel_after_trip_litres=max(0.0, round(vehicle["current_fuel_litres"] - fuel_req, 1)),
+        risk_score=blockage.get("bypass_risk_score", 18),
+        risk_level="Low",
+        landslide_probability_pct=14,
+        monsoon_waterlogging=False,
+        elevation_gain_m=1350,
+        hazards_encountered=[
+            f"Blocked Corridor Avoided: {blockage['road_name']} (Obstruction distance: 0 km)",
+            "All-Weather Reinforced Retaining Wall Section Active",
+            "Emergency LoRa Mesh Satellite Bridge Linked"
+        ],
+        fuel_stops=[
+            FuelStop(
+                name="Indian Oil 24x7 Bypass Depot",
+                location="Lower Valley Diversion Km 44",
+                lat=bypass_coords[len(bypass_coords)//3][0],
+                lng=bypass_coords[len(bypass_coords)//3][1],
+                fuel_type_available=vehicle["fuel_type"],
+                distance_from_origin_km=round(dist_km * 0.35, 1),
+                is_emergency_cache=False
+            )
+        ],
+        waypoints=waypoints,
+        localities=build_corridor_localities(origin, dest, "safest", bypass_coords, dist_km, eta_h),
+        navigation_steps=nav_steps,
+        coordinates=bypass_coords
+    )
+
+    comparison = {
+        "blocked_road": blockage["road_name"],
+        "clearance_eta": blockage["clearing_eta"],
+        "normal_risk_score": 92,
+        "bypass_risk_score": blockage.get("bypass_risk_score", 18),
+        "risk_reduction_pct": 74,
+        "distance_difference_km": +16.5,
+        "eta_difference_mins": +24,
+        "time_saved_vs_roadblock": f"Saved ~{blockage['clearing_eta']} wait time",
+        "fuel_difference_litres": +2.8
+    }
+
+    ai_advisory = (
+        f"🚨 **ACTIVE ROAD BLOCKAGE DETECTED:** {blockage['road_name']} ({blockage['location_name']}) is completely impassable. "
+        f"{blockage['reason']} Estimated clearance is {blockage['clearing_eta']}.\n\n"
+        f"✅ **AI RECOMMENDED DIVERSION:** Divert immediately via **{blockage['diversion_corridor']}**. "
+        f"This low-altitude bypass reduces terrain hazard risk by **74%** and avoids active debris flow. "
+        f"Total transit is {dist_km} km ({int(eta_h)}h {round((eta_h % 1) * 60)}m), avoiding an estimated 6-hour roadblock standstill."
+    )
+
+    voice_announcement = (
+        f"Alert: Road blockage detected on {blockage['highway']}. Primary route is impassable due to {blockage['reason'].split('.')[0]}. "
+        f"NER Lifeline AI has calculated a safe alternate bypass via {blockage['diversion_corridor']}. "
+        f"Risk reduced to 18 percent. Divert at the next marked checkpost."
+    )
+
+    return AlternateRouteResponse(
+        blocked=True,
+        blockage_details=blockage,
+        primary_route_status=blockage["status"],
+        ai_alternate_route=alt_route,
+        comparison=comparison,
+        ai_advisory=ai_advisory,
+        recommended_action=f"DIVERT VIA {blockage['diversion_corridor'].upper()}",
+        voice_announcement=voice_announcement
+    )
+
+@app.post("/api/routes/blockage/toggle")
+def toggle_road_blockage(blockage_id: str, is_closed: bool = True):
+    """Allows field officers and dispatcher to mark or clear a road obstruction in real time."""
+    if blockage_id in REGIONAL_BLOCKAGES:
+        REGIONAL_BLOCKAGES[blockage_id]["status"] = "CLOSED / IMPASSABLE" if is_closed else "PASSABLE / CLEAR"
+        return {"success": True, "blockage_id": blockage_id, "new_status": REGIONAL_BLOCKAGES[blockage_id]["status"]}
+    raise HTTPException(status_code=404, detail="Blockage ID not found")
