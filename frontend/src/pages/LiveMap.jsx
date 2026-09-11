@@ -42,7 +42,8 @@ import {
   Satellite,
   CircleDot,
   Globe,
-  Volume2
+  Volume2,
+  X
 } from 'lucide-react';
 import GoogleMapView from '../components/GoogleMapView';
 import {
@@ -241,61 +242,89 @@ const LiveMap = () => {
     }
   }, [selectedVehicleId, fleet]);
 
-  // Re-run route optimization whenever route parameters change
+  // ─────────────────────────────────────────────────────────────
+  // REAL-TIME FLEET TELEMETRY ENGINE (Live GPS & IoT Telemetry)
+  // ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    let isCancelled = false;
+    const telemetryInterval = setInterval(() => {
+      setFleet((prevFleet) =>
+        prevFleet.map((veh) => {
+          // Slight movement along current heading to simulate live moving GPS telemetry
+          const headingRad = ((veh.heading_deg || 0) * Math.PI) / 180;
+          const deltaKm = 0.035; // realistic continuous progression
+          const deltaLat = (deltaKm / 111) * Math.cos(headingRad);
+          const deltaLng = (deltaKm / (111 * Math.cos((veh.lat * Math.PI) / 180))) * Math.sin(headingRad);
 
-    async function runOptimization() {
-      setIsOptimizing(true);
-      try {
-        let originObj;
-        if (originHubId === 'current-gps' && deviceGPS) {
-          originObj = {
-            id: 'current-gps',
-            name: 'My Current Device GPS',
-            lat: deviceGPS.lat,
-            lng: deviceGPS.lng,
-            elevation_m: Math.round(deviceGPS.altitude_m || 80),
-            state: 'Live GPS Unit'
+          return {
+            ...veh,
+            lat: Number((veh.lat + deltaLat * 0.15).toFixed(5)),
+            lng: Number((veh.lng + deltaLng * 0.15).toFixed(5)),
+            speed_kmh: Math.round(42 + Math.random() * 16),
+            last_ping: 'Just now (LoRa Mesh)'
           };
-        } else if (originHubId === 'custom' && customOrigin) {
-          originObj = customOrigin;
-        } else {
-          originObj = NER_HUBS.find((h) => h.id === originHubId) || NER_HUBS[0];
-        }
+        })
+      );
+    }, 3500);
 
-        let destObj;
-        if (destHubId === 'custom' && customDest) {
-          destObj = customDest;
-        } else {
-          destObj = NER_HUBS.find((h) => h.id === destHubId) || NER_HUBS[1];
-        }
+    return () => clearInterval(telemetryInterval);
+  }, []);
 
-        const { calculateRealHighwayRoute } = await import('../services/googleDirectionsService');
-        const result = await calculateRealHighwayRoute({
-          origin: originObj,
-          destination: destObj,
-          vehicleId: selectedVehicleId,
-          simulatedFuel,
-          hazards: HAZARD_INCIDENTS
-        });
-
-        if (!isCancelled && result) {
-          setRouteResult(result);
-        }
-      } catch (err) {
-        console.error('Route optimization error:', err);
-      } finally {
-        if (!isCancelled) setIsOptimizing(false);
+  // ─────────────────────────────────────────────────────────────
+  // MANUAL ROUTE CALCULATION (Explicit user request ONLY)
+  // ─────────────────────────────────────────────────────────────
+  const handleCalculateRoute = useCallback(async () => {
+    setIsOptimizing(true);
+    try {
+      let originObj;
+      if (originHubId === 'current-gps' && deviceGPS) {
+        originObj = {
+          id: 'current-gps',
+          name: 'My Current Device GPS',
+          lat: deviceGPS.lat,
+          lng: deviceGPS.lng,
+          elevation_m: Math.round(deviceGPS.altitude_m || 80),
+          state: 'Live GPS Unit'
+        };
+      } else if (originHubId === 'custom' && customOrigin) {
+        originObj = customOrigin;
+      } else {
+        originObj = NER_HUBS.find((h) => h.id === originHubId) || NER_HUBS[0];
       }
+
+      let destObj;
+      if (destHubId === 'custom' && customDest) {
+        destObj = customDest;
+      } else {
+        destObj = NER_HUBS.find((h) => h.id === destHubId) || NER_HUBS[1];
+      }
+
+      const { calculateRealHighwayRoute } = await import('../services/googleDirectionsService');
+      const result = await calculateRealHighwayRoute({
+        origin: originObj,
+        destination: destObj,
+        vehicleId: selectedVehicleId,
+        simulatedFuel,
+        hazards: HAZARD_INCIDENTS
+      });
+
+      if (result) {
+        setRouteResult(result);
+      }
+    } catch (err) {
+      console.error('Route calculation error:', err);
+    } finally {
+      setIsOptimizing(false);
     }
+  }, [originHubId, destHubId, customOrigin, customDest, selectedVehicleId, simulatedFuel, deviceGPS]);
 
-    runOptimization();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [originHubId, destHubId, customOrigin, customDest, selectedVehicleId, simulatedFuel, originHubId === 'current-gps' ? deviceGPS?.lat : null]);
+  // If autoRoute query parameter was explicitly set in URL on first mount, run once
+  const initialAutoRouteTriggered = useRef(false);
+  useEffect(() => {
+    if (urlAutoRoute && !initialAutoRouteTriggered.current) {
+      initialAutoRouteTriggered.current = true;
+      handleCalculateRoute();
+    }
+  }, [urlAutoRoute, handleCalculateRoute]);
 
   // Update container dimensions dynamically
   useEffect(() => {
@@ -733,25 +762,63 @@ const LiveMap = () => {
             ))}
           </select>
 
-          {/* Optimization State */}
-          <div className="flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md">
-            {isOptimizing ? (
-              <>
-                <RefreshCw size={13} className="animate-spin" />
-                <span>Routing...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={13} className="text-amber-300" />
-                <span>AI Route Active</span>
-              </>
-            )}
-          </div>
+          {/* Manual Route Calculation & Clear Route Actions */}
+          {routeResult ? (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleCalculateRoute}
+                disabled={isOptimizing}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+              >
+                <RefreshCw size={13} className={isOptimizing ? "animate-spin" : ""} />
+                <span>Recalculate</span>
+              </button>
+              <button
+                onClick={() => {
+                  setRouteResult(null);
+                  setCustomOrigin(null);
+                  setCustomDest(null);
+                }}
+                className="flex items-center space-x-1.5 px-3 py-2 bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+                title="Clear Route and return to Real-time Fleet Tracking"
+              >
+                <X size={13} />
+                <span>Clear Route (Live Tracking)</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleCalculateRoute}
+              disabled={isOptimizing}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-emerald-950/40 cursor-pointer transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+            >
+              {isOptimizing ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Calculating Route...</span>
+                </>
+              ) : (
+                <>
+                  <Route size={14} />
+                  <span>Calculate Highway Route</span>
+                </>
+              )}
+            </button>
+          )}
 
-          {/* Click on Map Instruction Tip */}
-          <div className="hidden lg:flex items-center space-x-1 text-[11px] text-slate-400 bg-slate-950 px-2.5 py-2 rounded-xl border border-slate-800">
-            <MapPin size={12} className="text-emerald-400" />
-            <span>Click any point or hub on map to set route</span>
+          {/* Real-time Tracking Mode Badge */}
+          <div className="hidden lg:flex items-center space-x-1.5 text-[11px] font-bold px-3 py-2 rounded-xl border border-slate-800 bg-slate-950">
+            {routeResult ? (
+              <span className="text-blue-400 flex items-center space-x-1">
+                <Route size={13} />
+                <span>Route Feasibility View</span>
+              </span>
+            ) : (
+              <span className="text-emerald-400 flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Real-Time Fleet Tracking</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1645,11 +1712,16 @@ const LiveMap = () => {
                 <span>Copy Manifest</span>
               </button>
               <button
-                onClick={() => setIsAiRouteOpen(!isAiRouteOpen)}
-                className="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+                onClick={() => {
+                  setRouteResult(null);
+                  setCustomOrigin(null);
+                  setCustomDest(null);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer shadow-sm"
+                title="Clear Route and return to full real-time tracking"
               >
-                <Sparkles size={13} className="text-amber-400" />
-                <span>{isAiRouteOpen ? 'Hide Advanced' : 'Advanced Telemetry'}</span>
+                <X size={13} />
+                <span>Clear Route</span>
               </button>
             </div>
           </div>
