@@ -92,3 +92,36 @@ code {
 .animate-beacon-ripple {
   animation: beaconRipple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SAMSUNG GALAXY S24 & MOBILE AMOLED OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html, body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Smooth momentum scrolling for mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 9999px;
+  }
+}

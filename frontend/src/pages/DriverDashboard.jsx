@@ -392,7 +392,7 @@ SDRF Dispatch Status: Connected`;
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+    <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-6xl mx-auto pb-24 sm:pb-8 mobile-scroll">
       {/* Toast Notification */}
       {copyToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2 border border-emerald-400 animate-in fade-in slide-in-from-bottom-5">
@@ -440,8 +440,8 @@ SDRF Dispatch Status: Connected`;
 
       {/* Problem Reporting Modal */}
       {reportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92dvh] overflow-y-auto mobile-scroll animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
                 <div className="p-2 rounded-xl bg-rose-600/20 text-rose-400 border border-rose-500/30">
@@ -542,8 +542,8 @@ SDRF Dispatch Status: Connected`;
       {/* A. EMERGENCY SOS VOICE & DISPATCH CALL MODAL                  */}
       {/* ───────────────────────────────────────────────────────────── */}
       {sosCallModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-red-500/80 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl shadow-red-950/80 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border-2 border-red-500/80 rounded-2xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl shadow-red-950/80 max-h-[92dvh] overflow-y-auto mobile-scroll animate-in zoom-in-95 duration-200">
             {/* Call Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
@@ -661,18 +661,18 @@ SDRF Dispatch Status: Connected`;
             </div>
 
             {/* Call Controls */}
-            <div className="pt-2 flex items-center justify-between border-t border-slate-800">
-              <div className="flex items-center space-x-2">
+            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-800">
+              <div className="flex items-center justify-center space-x-3">
                 <button
                   onClick={() => setSosCallMuted(!sosCallMuted)}
-                  className={`p-3 rounded-full border cursor-pointer transition-colors ${
+                  className={`p-3.5 rounded-full border cursor-pointer transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center ${
                     sosCallMuted
                       ? 'bg-rose-600 text-white border-rose-400'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                      : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
                   }`}
                   title={sosCallMuted ? 'Unmute microphone' : 'Mute microphone'}
                 >
-                  {sosCallMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                  {sosCallMuted ? <MicOff size={20} /> : <Mic size={20} />}
                 </button>
 
                 <button
@@ -683,25 +683,25 @@ SDRF Dispatch Status: Connected`;
                       stopSpeech();
                     }
                   }}
-                  className={`p-3 rounded-full border cursor-pointer transition-colors ${
+                  className={`p-3.5 rounded-full border cursor-pointer transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center ${
                     sosCallSpeaker
                       ? 'bg-blue-600 text-white border-blue-400'
-                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                      : 'bg-slate-800 hover:bg-slate-750 text-slate-300 border-slate-700'
                   }`}
                   title={sosCallSpeaker ? 'Directly turn off speaker voice' : 'Enable speaker voice'}
                 >
-                  {sosCallSpeaker ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                  {sosCallSpeaker ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 </button>
               </div>
 
               {/* Direct GSM Emergency Dialing to User's Phone */}
-              <div className="flex items-center space-x-1.5 text-[11px]">
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <a
                   href={`tel:${EMERGENCY_CONTROLLER_RAW}`}
-                  className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center space-x-1.5 shadow-lg shadow-emerald-950/60 border border-emerald-400 animate-bounce cursor-pointer"
+                  className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-950/60 border border-emerald-400 animate-bounce cursor-pointer min-h-[44px]"
                   title="Direct phone call to Controller line 7811075355"
                 >
-                  <Phone size={14} />
+                  <Phone size={15} />
                   <span>Call {EMERGENCY_CONTROLLER_RAW}</span>
                 </a>
                 <a
@@ -714,7 +714,7 @@ SDRF Dispatch Status: Connected`;
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-2.5 rounded-xl bg-green-700 hover:bg-green-600 text-white font-bold flex items-center space-x-1 border border-green-500 cursor-pointer"
+                  className="py-3 px-3 rounded-xl bg-green-700 hover:bg-green-600 text-white font-bold flex items-center justify-center space-x-1 border border-green-500 cursor-pointer min-h-[44px]"
                   title="Send emergency WhatsApp distress message to 7811075355"
                 >
                   <span>WhatsApp SOS</span>
@@ -724,7 +724,7 @@ SDRF Dispatch Status: Connected`;
               {/* End Call Button */}
               <button
                 onClick={handleEndSosCall}
-                className="px-5 py-3 rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-xl shadow-red-900/60 flex items-center space-x-2 cursor-pointer transition-all hover:scale-105"
+                className="w-full sm:w-auto py-3 px-6 rounded-xl sm:rounded-full bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-xl shadow-red-900/60 flex items-center justify-center space-x-2 cursor-pointer transition-all active:scale-95 min-h-[48px]"
               >
                 <PhoneOff size={18} />
                 <span>END CALL</span>
@@ -738,8 +738,8 @@ SDRF Dispatch Status: Connected`;
       {/* B. LIFELINE ROAD HISTORIES DATABASE MODAL                    */}
       {/* ───────────────────────────────────────────────────────────── */}
       {roadHistoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl sm:rounded-3xl max-w-4xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[92dvh] flex flex-col animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-3">
@@ -871,8 +871,8 @@ SDRF Dispatch Status: Connected`;
       {/* C. REALTIME VEHICLE NUMBERS REGISTRY MODAL                   */}
       {/* ───────────────────────────────────────────────────────────── */}
       {vehicleRegistryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-4xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl sm:rounded-3xl max-w-4xl w-full p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[92dvh] flex flex-col animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-3">
@@ -1006,100 +1006,106 @@ SDRF Dispatch Status: Connected`;
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Voice Readout Button */}
-          <button
-            onClick={handleVoiceReadout}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all ${
-              isSpeaking
-                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-400 shadow-lg shadow-rose-950/60 animate-pulse'
-                : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
-            }`}
-            title={isSpeaking ? "Click to directly turn off and silence voice advisory" : "Listen to emergency road advisory aloud"}
-          >
-            {isSpeaking ? <VolumeX size={15} /> : <Volume2 size={15} />}
-            <span>{isSpeaking ? 'Stop Voice' : 'Audio Advisory'}</span>
-          </button>
+        <div className="flex flex-col space-y-2.5 w-full md:w-auto">
+          {/* Top Mobile Emergency Row: Primary SOS Voice Call & Direct Controller Call */}
+          <div className="grid grid-cols-2 gap-2 w-full">
+            {/* SOS Voice Call */}
+            <button
+              onClick={() => handleStartSosCall('EMERGENCY_SOS')}
+              className="py-3 px-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-red-950/60 border border-red-400 flex items-center justify-center space-x-2 cursor-pointer transition-all hover:scale-105 active:scale-95 animate-pulse min-h-[46px]"
+              title="Connect instant two-way voice dispatch with SDRF & BRO"
+            >
+              <PhoneCall size={18} />
+              <span className="tracking-wider">SOS CALL</span>
+            </button>
 
-          {/* Road Histories DB Button */}
-          <button
-            onClick={() => setRoadHistoryModalOpen(true)}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-amber-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-            title="Browse historical risk records for 8 NER highways"
-          >
-            <BookOpen size={14} />
-            <span>Road Histories DB</span>
-          </button>
+            {/* Direct Call to Controller */}
+            <a
+              href={`tel:${EMERGENCY_CONTROLLER_RAW}`}
+              className="py-3 px-3 rounded-xl bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 shadow-lg border border-emerald-500/80 cursor-pointer transition-all active:scale-95 min-h-[46px]"
+              title={`Direct phone call to Controller line ${EMERGENCY_CONTROLLER_PHONE}`}
+            >
+              <Phone size={16} />
+              <span className="truncate">Call {EMERGENCY_CONTROLLER_RAW}</span>
+            </a>
+          </div>
 
-          {/* Realtime Vehicle Numbers Registry Button */}
-          <button
-            onClick={() => setVehicleRegistryModalOpen(true)}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-emerald-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-            title="Realtime database of vehicle number plates and telemetry"
-          >
-            <Database size={14} />
-            <span>Vehicle Fleet ({realtimeVehicles.length || 8})</span>
-          </button>
+          {/* Secondary Tools Grid: 2 columns on mobile, flex-wrap on desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+            {/* Voice Readout Button */}
+            <button
+              onClick={handleVoiceReadout}
+              className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-all min-h-[40px] ${
+                isSpeaking
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-400 shadow-lg shadow-rose-950/60 animate-pulse'
+                  : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
+              }`}
+              title={isSpeaking ? "Click to directly turn off and silence voice advisory" : "Listen to emergency road advisory aloud"}
+            >
+              {isSpeaking ? <VolumeX size={15} /> : <Volume2 size={15} />}
+              <span className="truncate">{isSpeaking ? 'Stop Voice' : 'Audio Advisory'}</span>
+            </button>
 
-          {/* Sync All Databases & Telemetry */}
-          <button
-            onClick={handleSyncAllDatabases}
-            disabled={isSyncing}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-cyan-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors disabled:opacity-50"
-            title={`Force full database and telemetry sync with backend & Supabase (Last synced: ${lastSyncTime})`}
-          >
-            <RefreshCw size={14} className={isSyncing ? "animate-spin text-cyan-400" : "text-cyan-400"} />
-            <span>{isSyncing ? 'Syncing...' : 'Sync DB'}</span>
-          </button>
+            {/* Sync All Databases & Telemetry */}
+            <button
+              onClick={handleSyncAllDatabases}
+              disabled={isSyncing}
+              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-cyan-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors disabled:opacity-50 min-h-[40px]"
+              title={`Force full database and telemetry sync (Last: ${lastSyncTime})`}
+            >
+              <RefreshCw size={14} className={isSyncing ? "animate-spin text-cyan-400" : "text-cyan-400"} />
+              <span className="truncate">{isSyncing ? 'Syncing...' : 'Sync DB'}</span>
+            </button>
 
-          {/* Copy Manifest */}
-          <button
-            onClick={handleCopyManifest}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-            title="Copy driver problem report manifest"
-          >
-            <Copy size={14} />
-            <span className="hidden sm:inline">Copy Manifest</span>
-          </button>
+            {/* Road Histories DB Button */}
+            <button
+              onClick={() => setRoadHistoryModalOpen(true)}
+              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-amber-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              title="Browse historical risk records for 8 NER highways"
+            >
+              <BookOpen size={14} />
+              <span className="truncate">Road Histories</span>
+            </button>
 
-          {/* Tactical Map */}
-          <button
-            onClick={() => navigate('/live-map')}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl flex items-center space-x-1.5 cursor-pointer transition-all hover:scale-105"
-          >
-            <Navigation size={14} />
-            <span>Interactive Map</span>
-          </button>
+            {/* Realtime Vehicle Numbers Registry Button */}
+            <button
+              onClick={() => setVehicleRegistryModalOpen(true)}
+              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-emerald-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              title="Realtime database of vehicle number plates and telemetry"
+            >
+              <Database size={14} />
+              <span className="truncate">Fleet ({realtimeVehicles.length || 8})</span>
+            </button>
 
-          {/* Direct Call to Controller */}
-          <a
-            href={`tel:${EMERGENCY_CONTROLLER_RAW}`}
-            className="px-3.5 py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold text-xs flex items-center space-x-1.5 shadow-lg border border-emerald-500/80 cursor-pointer transition-all"
-            title="Direct phone call to Controller line +91 78110 75355"
-          >
-            <Phone size={14} />
-            <span>Call Controller ({EMERGENCY_CONTROLLER_RAW})</span>
-          </a>
+            {/* Tactical Map */}
+            <button
+              onClick={() => navigate('/live-map')}
+              className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer transition-all min-h-[40px]"
+            >
+              <Navigation size={14} />
+              <span className="truncate">Live Map</span>
+            </button>
 
-          {/* SOS Voice Call (Primary Emergency Action) */}
-          <button
-            onClick={() => handleStartSosCall('EMERGENCY_SOS')}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs shadow-xl shadow-red-950/60 border border-red-400 flex items-center space-x-2 cursor-pointer transition-all hover:scale-105 animate-pulse"
-            title="Connect instant two-way voice dispatch with SDRF & BRO"
-          >
-            <PhoneCall size={16} />
-            <span>SOS CALL</span>
-          </button>
+            {/* Copy Manifest */}
+            <button
+              onClick={handleCopyManifest}
+              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              title="Copy driver problem report manifest"
+            >
+              <Copy size={14} />
+              <span className="truncate">Manifest</span>
+            </button>
 
-          {/* SOS Beacon */}
-          <button
-            onClick={handleTriggerSos}
-            className="px-3 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 border border-rose-600/70 text-rose-200 font-bold text-xs flex items-center space-x-1.5 cursor-pointer transition-all"
-            title="Broadcast silent emergency beacon coordinates"
-          >
-            <AlertTriangle size={14} />
-            <span>BEACON</span>
-          </button>
+            {/* Silent Beacon */}
+            <button
+              onClick={handleTriggerSos}
+              className="col-span-2 sm:col-span-1 px-3 py-2.5 rounded-xl bg-rose-950 hover:bg-rose-900 border border-rose-600/70 text-rose-200 font-bold text-xs flex items-center justify-center space-x-1.5 cursor-pointer transition-all min-h-[40px]"
+              title="Broadcast silent emergency beacon coordinates"
+            >
+              <AlertTriangle size={14} />
+              <span>BEACON</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1385,6 +1391,44 @@ SDRF Dispatch Status: Connected`;
           </div>
         </div>
       </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* 4. SAMSUNG GALAXY S24 MOBILE FLOATING EMERGENCY SPEED-DIAL   */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <aside
+        aria-label="Mobile Emergency Floating Speed-Dial"
+        className="block sm:hidden fixed bottom-3 inset-x-3 z-40 pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="bg-slate-950/95 border-2 border-red-500/80 rounded-2xl p-2 shadow-2xl backdrop-blur-xl flex items-center justify-between gap-2 shadow-red-950/90">
+          <button
+            onClick={() => handleStartSosCall('EMERGENCY_SOS')}
+            className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs shadow-lg flex items-center justify-center space-x-1.5 active:scale-95 animate-pulse min-h-[46px]"
+          >
+            <PhoneCall size={16} />
+            <span>SOS CALL</span>
+          </button>
+
+          <a
+            href={`tel:${EMERGENCY_CONTROLLER_RAW}`}
+            className="flex-1 py-3 px-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center space-x-1 border border-emerald-500 active:scale-95 min-h-[46px]"
+          >
+            <Phone size={15} />
+            <span className="truncate">Call {EMERGENCY_CONTROLLER_RAW}</span>
+          </a>
+
+          <button
+            onClick={handleVoiceReadout}
+            className={`p-3 rounded-xl border flex items-center justify-center min-w-[46px] min-h-[46px] active:scale-95 ${
+              isSpeaking
+                ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
+                : 'bg-slate-800 text-cyan-300 border-slate-700'
+            }`}
+            title={isSpeaking ? "Stop Voice" : "Audio Advisory"}
+          >
+            {isSpeaking ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }
