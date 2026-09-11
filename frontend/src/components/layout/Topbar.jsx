@@ -44,7 +44,7 @@ const SEARCHABLE_ENTITIES = [
   { id: 'sh-3', type: 'shipment', title: 'Polyvalent Snake Antivenom Vials (250 Doses)', subtitle: 'From: Tezpur Airforce Base ➔ To: Zunheboto Mountain Outpost', path: '/shipments', meta: 'Cold-Chain: +3.8°C • Priority: High' }
 ];
 
-export default function Topbar({ onMenuToggle }) {
+export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileOpen = false }) {
   const { user, role, logout } = useAuth();
   const { language, setLanguage, t, languagesList, soundAlertsEnabled, setSoundAlertsEnabled, playAlertChime } = useLanguage();
   const navigate = useNavigate();
@@ -152,11 +152,13 @@ export default function Topbar({ onMenuToggle }) {
       {/* Left: Mobile menu toggle & Global Command Search */}
       <div className="flex items-center space-x-3">
         <button
+          id="topbar-sidebar-toggle"
           onClick={onMenuToggle}
-          className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-          title="Toggle Navigation Menu"
+          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer flex items-center justify-center active:scale-95 border border-transparent hover:border-slate-700 shadow-sm"
+          title={sidebarCollapsed ? "Expand Navigation Menu (Ctrl+B)" : "Collapse Navigation Menu (Ctrl+B)"}
+          aria-label="Toggle Navigation Menu"
         >
-          <Menu size={22} />
+          <Menu size={22} className={`transition-transform duration-200 hover:scale-110 ${sidebarCollapsed ? 'rotate-90 text-blue-400' : ''}`} />
         </button>
 
         {/* Global Autocomplete Command Search */}
