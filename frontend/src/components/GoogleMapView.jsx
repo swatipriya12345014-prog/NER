@@ -485,6 +485,10 @@ export default function GoogleMapView({
       polylinesRef.current.shortest.setMap(null);
       polylinesRef.current.shortest = null;
     }
+    if (polylinesRef.current.bypass) {
+      polylinesRef.current.bypass.setMap(null);
+      polylinesRef.current.bypass = null;
+    }
     if (polylinesRef.current.flowSymbolInterval) {
       clearInterval(polylinesRef.current.flowSymbolInterval);
       polylinesRef.current.flowSymbolInterval = null;
@@ -494,11 +498,9 @@ export default function GoogleMapView({
 
     const bounds = new window.google.maps.LatLngBounds();
 
-    // 1. SAFEST ROUTE (Vibrant Emerald with Animated Forward Flow)
-    if (
-      (activeRouteView === 'both' || activeRouteView === 'safest') &&
-      routeResult.safest_route?.coordinates
-    ) {
+    // 1. ROAD X: SAFEST ROUTE (Vibrant Emerald with Animated Forward Flow)
+    const showSafest = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'safest' || activeRouteView === 'road-x';
+    if (showSafest && routeResult.safest_route?.coordinates) {
       const safestPath = routeResult.safest_route.coordinates.map(([lat, lng]) => {
         const pt = new window.google.maps.LatLng(lat, lng);
         bounds.extend(pt);
@@ -520,8 +522,8 @@ export default function GoogleMapView({
         geodesic: true,
         strokeColor: '#10b981',
         strokeOpacity: 0.95,
-        strokeWeight: activeRouteView === 'safest' ? 6 : 4.5,
-        zIndex: 20,
+        strokeWeight: activeRouteView === 'safest' || activeRouteView === 'road-x' ? 6.5 : 4.5,
+        zIndex: 30,
         icons: [
           {
             icon: lineSymbol,
@@ -547,12 +549,10 @@ export default function GoogleMapView({
       polylinesRef.current.flowSymbolInterval = flowInterval;
     }
 
-    // 2. SHORTEST ROUTE (Rose Dashed Polyline)
-    if (
-      (activeRouteView === 'both' || activeRouteView === 'shortest') &&
-      routeResult.shortest_route?.coordinates
-    ) {
-      const shortestPath = routeResult.shortest_route.coordinates.map(([lat, lng]) => {
+    // 2. ROAD Y: DIRECT / LANDSLIDE AFFECTED (Rose/Red Dashed Polyline)
+    const showDirect = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'shortest' || activeRouteView === 'direct' || activeRouteView === 'road-y';
+    if (showDirect && routeResult.shortest_route?.coordinates) {
+      const directPath = routeResult.shortest_route.coordinates.map(([lat, lng]) => {
         const pt = new window.google.maps.LatLng(lat, lng);
         bounds.extend(pt);
         return pt;
@@ -562,16 +562,16 @@ export default function GoogleMapView({
         path: 'M 0,-1 0,1',
         strokeOpacity: 1,
         scale: 3,
-        strokeColor: '#f43f5e'
+        strokeColor: '#ef4444'
       };
 
-      const shortestPolyline = new window.google.maps.Polyline({
-        path: shortestPath,
+      const directPolyline = new window.google.maps.Polyline({
+        path: directPath,
         geodesic: true,
-        strokeColor: '#f43f5e',
+        strokeColor: '#ef4444',
         strokeOpacity: 0,
-        strokeWeight: 3.5,
-        zIndex: 15,
+        strokeWeight: activeRouteView === 'shortest' || activeRouteView === 'direct' || activeRouteView === 'road-y' ? 5.5 : 3.5,
+        zIndex: 20,
         icons: [
           {
             icon: dashSymbol,
@@ -582,7 +582,45 @@ export default function GoogleMapView({
         map: map
       });
 
-      polylinesRef.current.shortest = shortestPolyline;
+      polylinesRef.current.shortest = directPolyline;
+    }
+
+    // 3. ROAD Z: VALLEY RIDGE STRATEGIC BYPASS (Cyan Dotted Polyline)
+    const showBypass = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'bypass' || activeRouteView === 'road-z';
+    if (showBypass && routeResult.bypass_route?.coordinates) {
+      const bypassPath = routeResult.bypass_route.coordinates.map(([lat, lng]) => {
+        const pt = new window.google.maps.LatLng(lat, lng);
+        bounds.extend(pt);
+        return pt;
+      });
+
+      const dotSymbol = {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 2.5,
+        fillColor: '#06b6d4',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 1
+      };
+
+      const bypassPolyline = new window.google.maps.Polyline({
+        path: bypassPath,
+        geodesic: true,
+        strokeColor: '#06b6d4',
+        strokeOpacity: 0,
+        strokeWeight: activeRouteView === 'bypass' || activeRouteView === 'road-z' ? 5.0 : 3.0,
+        zIndex: 25,
+        icons: [
+          {
+            icon: dotSymbol,
+            offset: '0',
+            repeat: '18px'
+          }
+        ],
+        map: map
+      });
+
+      polylinesRef.current.bypass = bypassPolyline;
     }
 
     // Fit map bounds to show full route if available

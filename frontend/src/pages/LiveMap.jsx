@@ -197,7 +197,7 @@ const LiveMap = () => {
   const [customDest, setCustomDest] = useState(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState(urlVehicle || 'AS-01-EV-4421');
   const [simulatedFuel, setSimulatedFuel] = useState(48);
-  const [activeRouteView, setActiveRouteView] = useState('both'); // 'both' | 'safest' | 'shortest'
+  const [activeRouteView, setActiveRouteView] = useState('all'); // 'all' | 'both' | 'safest' | 'shortest' | 'bypass'
   const [routeResult, setRouteResult] = useState(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
@@ -309,6 +309,8 @@ const LiveMap = () => {
 
       if (result) {
         setRouteResult(result);
+        setIsAiRouteOpen(true);
+        setActiveRouteView('all');
       }
     } catch (err) {
       console.error('Route calculation error:', err);
@@ -557,6 +559,11 @@ const LiveMap = () => {
     return getSvgPathFromCoords(routeResult.safest_route.coordinates);
   }, [routeResult, center, zoom, dimensions]);
 
+  const bypassSvgPath = useMemo(() => {
+    if (!routeResult?.bypass_route?.coordinates) return '';
+    return getSvgPathFromCoords(routeResult.bypass_route.coordinates);
+  }, [routeResult, center, zoom, dimensions]);
+
   const safestMidpointScreen = useMemo(() => {
     const coords = routeResult?.safest_route?.coordinates;
     if (!coords || coords.length < 2) return null;
@@ -569,10 +576,17 @@ const LiveMap = () => {
     if (!routeResult) return [];
     if (activeRouteView === 'safest') return routeResult.safest_route?.localities || [];
     if (activeRouteView === 'shortest') return routeResult.shortest_route?.localities || [];
+    if (activeRouteView === 'bypass') return routeResult.bypass_route?.localities || [];
     const safest = routeResult.safest_route?.localities || [];
     const shortest = routeResult.shortest_route?.localities || [];
-    // If 'both', show safest as primary and non-duplicate shortest localities
-    return [...safest, ...shortest.filter((s) => !safest.some((sf) => sf.name === s.name))];
+    const bypass = routeResult.bypass_route?.localities || [];
+    const all = [...safest];
+    for (const loc of [...shortest, ...bypass]) {
+      if (!all.some((sf) => sf.name === loc.name)) {
+        all.push(loc);
+      }
+    }
+    return all;
   }, [routeResult, activeRouteView]);
 
   const currentVehicleObj = fleet.find((v) => v.id === selectedVehicleId) || fleet[0];
@@ -916,16 +930,17 @@ const LiveMap = () => {
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Route Selector on map header */}
+              {/* Route Selector on map header (Road X, Road Y, Road Z) */}
               {filterLayer.routes && routeResult && (
                 <div className="flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-700 text-[11px] shadow-md backdrop-blur-sm">
                   <button
-                    onClick={() => setActiveRouteView('both')}
+                    onClick={() => setActiveRouteView('all')}
                     className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
-                      activeRouteView === 'both' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                      activeRouteView === 'all' || activeRouteView === 'both' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                     }`}
+                    title="View all 3 computed highway corridors simultaneously"
                   >
-                    Both Routes
+                    All 3 Roads
                   </button>
                   <button
                     onClick={() => setActiveRouteView('safest')}
@@ -934,17 +949,29 @@ const LiveMap = () => {
                         ? 'bg-emerald-600 text-white shadow-[0_0_12px_#10b981] ring-1 ring-emerald-300'
                         : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/50'
                     }`}
+                    title="Road X: Safest all-weather contour (No landslides)"
                   >
                     <Shield size={12} className={activeRouteView === 'safest' ? 'animate-pulse text-white' : 'text-emerald-400'} />
-                    <span>Safest</span>
+                    <span>🟢 Road X (Safest)</span>
                   </button>
                   <button
                     onClick={() => setActiveRouteView('shortest')}
-                    className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                       activeRouteView === 'shortest' ? 'bg-rose-600 text-white shadow' : 'text-rose-400 hover:text-rose-300'
                     }`}
+                    title="Road Y: Direct mountain pass (⚠️ Active Landslide Hazard)"
                   >
-                    Shortest
+                    <AlertTriangle size={12} />
+                    <span>🔴 Road Y (Landslide)</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveRouteView('bypass')}
+                    className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer flex items-center space-x-1 ${
+                      activeRouteView === 'bypass' ? 'bg-cyan-600 text-white shadow' : 'text-cyan-400 hover:text-cyan-300'
+                    }`}
+                    title="Road Z: Valley Ridge Strategic Bypass"
+                  >
+                    <span>🔵 Road Z (Bypass)</span>
                   </button>
                 </div>
               )}
@@ -1087,8 +1114,8 @@ const LiveMap = () => {
                   </filter>
                 </defs>
 
-                {/* 1. Safest Route (Emerald Green Multi-layered Highlight with Flow & Photon Animation) */}
-                {(activeRouteView === 'both' || activeRouteView === 'safest') && safestSvgPath && (
+                {/* 1. Road X: Safest Route (Emerald Green Multi-layered Highlight with Flow & Photon Animation) */}
+                {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'safest') && safestSvgPath && (
                   <g>
                     {/* Outer Pulsating Halo */}
                     <path
@@ -1096,48 +1123,53 @@ const LiveMap = () => {
                       fill="none"
                       stroke="#10b981"
                       strokeWidth={activeRouteView === 'safest' ? '18' : '14'}
-                      strokeOpacity="0.45"
+                      strokeOpacity="0.3"
                       filter="url(#glow-emerald)"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="animate-lifeline-pulse"
-                    />
-                    {/* Secondary Deep Protective Bed */}
+                    >
+                      <animate attributeName="strokeWidth" values="14;18;14" dur="2.5s" repeatCount="indefinite" />
+                      <animate attributeName="strokeOpacity" values="0.25;0.45;0.25" dur="2.5s" repeatCount="indefinite" />
+                    </path>
+                    {/* Intermediate Vivid Core */}
                     <path
                       d={safestSvgPath}
                       fill="none"
-                      stroke="#047857"
+                      stroke="#059669"
                       strokeWidth={activeRouteView === 'safest' ? '8' : '7'}
                       strokeOpacity="0.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                    {/* Main High-Visibility Emerald Vector Core */}
+                    {/* Bright Core Vector Line */}
                     <path
                       d={safestSvgPath}
                       fill="none"
-                      stroke="#10b981"
-                      strokeWidth="4.5"
+                      stroke="#34d399"
+                      strokeWidth="3"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                    {/* High-Tech Animated Forward-Flowing Light Streamer */}
+                    {/* Flowing animated dash pattern */}
                     <path
                       d={safestSvgPath}
                       fill="none"
-                      stroke="#a7f3d0"
+                      stroke="#ffffff"
                       strokeWidth="2.5"
-                      strokeDasharray="14 14"
+                      strokeDasharray="6 22"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="animate-lifeline-flow"
-                    />
-                    {/* Continuous Moving GPS Light Photons / Convoy Beacons along Safest Path */}
+                      strokeOpacity="0.9"
+                    >
+                      <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2.5s" repeatCount="indefinite" />
+                    </path>
+                    {/* High-speed Photon Pulse Particle Group */}
                     <g>
-                      <circle r="7" fill="#10b981" fillOpacity="0.5" filter="url(#glow-emerald)">
+                      {/* Primary Leading Photon */}
+                      <circle r="7" fill="#6ee7b7" fillOpacity="0.5" filter="url(#glow-emerald)">
                         <animateMotion dur="5.5s" repeatCount="indefinite" path={safestSvgPath} />
                       </circle>
-                      <circle r="3.5" fill="#6ee7b7">
+                      <circle r="3.5" fill="#34d399">
                         <animateMotion dur="5.5s" repeatCount="indefinite" path={safestSvgPath} />
                       </circle>
                       <circle r="1.5" fill="#ffffff">
@@ -1155,8 +1187,8 @@ const LiveMap = () => {
                   </g>
                 )}
 
-                {/* 2. Shortest Route (Amber/Rose Dashed Line) */}
-                {(activeRouteView === 'both' || activeRouteView === 'shortest') && shortestSvgPath && (
+                {/* 2. Road Y: Direct Route (Amber/Rose Dashed Line - Landslide Hazard) */}
+                {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'shortest') && shortestSvgPath && (
                   <g>
                     {/* Outer Glow Halo */}
                     <path
@@ -1176,6 +1208,32 @@ const LiveMap = () => {
                       stroke="#f43f5e"
                       strokeWidth="3.5"
                       strokeDasharray="8 6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </g>
+                )}
+
+                {/* 3. Road Z: Valley Ridge Strategic Bypass (Cyan Dotted Line) */}
+                {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'bypass') && bypassSvgPath && (
+                  <g>
+                    {/* Outer Glow Halo */}
+                    <path
+                      d={bypassSvgPath}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="8"
+                      strokeOpacity="0.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {/* Main Dotted Vector Line */}
+                    <path
+                      d={bypassSvgPath}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="3.5"
+                      strokeDasharray="4 6"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -1254,9 +1312,11 @@ const LiveMap = () => {
                   </div>
                 )}
                 {/* Fuel Stops Pins */}
-                {((activeRouteView === 'both' || activeRouteView === 'safest')
-                  ? routeResult.safest_route.fuel_stops
-                  : routeResult.shortest_route.fuel_stops
+                {((activeRouteView === 'shortest'
+                    ? routeResult.shortest_route?.fuel_stops
+                    : activeRouteView === 'bypass'
+                    ? (routeResult.bypass_route?.fuel_stops || routeResult.safest_route?.fuel_stops)
+                    : routeResult.safest_route?.fuel_stops) || []
                 ).map((stop, sIdx) => {
                   const pos = coordToScreen(stop.lat, stop.lng);
                   if (pos.x < -30 || pos.x > dimensions.width + 30 || pos.y < -30 || pos.y > dimensions.height + 30) return null;
@@ -1690,7 +1750,7 @@ const LiveMap = () => {
               <button
                 onClick={() => {
                   if (window.speechSynthesis) {
-                    const text = `Route calculated from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Total distance is ${routeResult.safest_route?.distance_km} kilometers. Estimated drive time is ${routeResult.safest_route?.duration_text}. Road is passable with low terrain risk.`;
+                    const text = `NER AI Route Assessment from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Caution: Road Y is affected by active landslides and rockfall hazards. Road X is recommended as the safest all-weather route, spanning ${routeResult.safest_route?.distance_km} kilometers with estimated travel time of ${routeResult.safest_route?.duration_text}. Road Z is also available as a valley bypass corridor.`;
                     const utter = new SpeechSynthesisUtterance(text);
                     window.speechSynthesis.speak(utter);
                   }
@@ -1951,7 +2011,7 @@ const LiveMap = () => {
                   </span>
                 </div>
 
-                {/* 1. Safest Route Card */}
+                {/* 1. Road X: Safest Route Card (AI Pick) */}
                 <div
                   onClick={() => {
                     setActiveRouteView('safest');
@@ -1960,12 +2020,11 @@ const LiveMap = () => {
                     }
                   }}
                   className={`relative overflow-hidden p-4 rounded-2xl border transition-all cursor-pointer space-y-3 ${
-                    activeRouteView === 'safest' || activeRouteView === 'both'
+                    activeRouteView === 'safest' || activeRouteView === 'all' || activeRouteView === 'both'
                       ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900/90 to-emerald-950/30 border-emerald-400 ring-2 ring-emerald-400/50 shadow-[0_0_25px_rgba(16,185,129,0.3)]'
                       : 'bg-slate-900/60 border-slate-700/80 hover:border-emerald-500/50'
                   }`}
                 >
-                  {/* Subtle dynamic shimmer layer */}
                   <div className="absolute inset-0 animate-safest-shimmer pointer-events-none opacity-30"></div>
 
                   <div className="relative flex items-center justify-between">
@@ -1976,16 +2035,20 @@ const LiveMap = () => {
                       </span>
                       <div>
                         <div className="flex items-center space-x-1.5">
-                          <Shield size={13} className="text-emerald-400" />
-                          <span className="font-extrabold text-emerald-300 text-xs tracking-wide">Safest Route (Fortified Bypass)</span>
+                          <Shield size={14} className="text-emerald-400" />
+                          <span className="font-extrabold text-emerald-300 text-sm tracking-wide">Road X • Safest Corridor</span>
                         </div>
-                        <span className="text-[10px] text-emerald-400/80 font-semibold block">★ AI Top Recommendation</span>
+                        <span className="text-[10px] text-emerald-400/90 font-bold block">★ AI Top Recommendation (All-Weather Fortified)</span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                      LOW RISK ({routeResult.safest_route.landslide_probability_pct}%)
+                      LOW RISK ({routeResult.safest_route.landslide_probability_pct}%) • SAFE
                     </span>
                   </div>
+
+                  <p className="text-[11px] text-emerald-200/80 leading-relaxed relative z-10 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/40">
+                    Reinforced all-weather alignment. Bypasses all active landslide & debris flow zones completely. High bridge structural clearance.
+                  </p>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs relative z-10">
                     <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
@@ -2019,7 +2082,7 @@ const LiveMap = () => {
                   </div>
                 </div>
 
-                {/* 2. Shortest Route Card */}
+                {/* 2. Road Y: Direct Highway Card (⚠️ LANDSLIDE AFFECTED) */}
                 <div
                   onClick={() => {
                     setActiveRouteView('shortest');
@@ -2027,20 +2090,34 @@ const LiveMap = () => {
                       jumpToLocation(routeResult.shortest_route.coordinates[3][0], routeResult.shortest_route.coordinates[3][1], 8);
                     }
                   }}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-2.5 ${
-                    activeRouteView === 'shortest' || activeRouteView === 'both'
-                      ? 'bg-rose-950/30 border-rose-500/60 shadow-lg'
-                      : 'bg-slate-900/60 border-slate-700/80 hover:border-slate-600'
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                    activeRouteView === 'shortest'
+                      ? 'bg-rose-950/60 border-rose-400 ring-2 ring-rose-400/50 shadow-[0_0_25px_rgba(244,63,94,0.3)]'
+                      : 'bg-slate-900/60 border-rose-900/50 hover:border-rose-600/70'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
-                      <span className="font-bold text-rose-300 text-xs">Shortest Route (Direct Pass)</span>
+                      <span className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-pulse"></span>
+                      <div>
+                        <span className="font-extrabold text-rose-300 text-sm">Road Y • Direct Highway</span>
+                        <span className="text-[10px] text-rose-400 block font-semibold">Direct Mountain Pass (Shortest km)</span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                      HIGH RISK ({routeResult.shortest_route.landslide_probability_pct}%)
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/50">
+                      HIGH RISK ({routeResult.shortest_route.landslide_probability_pct}%) • ⛔ IMPASSABLE
                     </span>
+                  </div>
+
+                  {/* Prominent Landslide Hazard Warning Box */}
+                  <div className="p-2.5 rounded-lg bg-rose-950/80 border border-rose-500/70 text-rose-200 text-xs flex items-start space-x-2">
+                    <AlertTriangle size={16} className="text-rose-400 flex-shrink-0 mt-0.5 animate-bounce" />
+                    <div>
+                      <span className="font-black text-rose-100 block">⚠️ ACTIVE LANDSLIDE & DEBRIS HAZARD</span>
+                      <span className="text-[11px] text-rose-300 leading-snug">
+                        Active slope failure reported. Road Y is blocked/impassable due to mudflow & boulder slips. Border Roads Organisation (BRO) clearance in progress. <strong>AI diverted to Road X.</strong>
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -2060,18 +2137,67 @@ const LiveMap = () => {
 
                   {/* Fuel Feasibility Margin Badge */}
                   <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-slate-400 text-[11px]">Fuel Feasibility Status:</span>
-                    {routeResult.shortest_route.fuel_sufficient ? (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
-                        <Check size={12} />
-                        <span>Sufficient (+{routeResult.shortest_route.fuel_margin_litres}L Margin)</span>
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center space-x-1">
-                        <AlertTriangle size={12} />
-                        <span>Deficit ({routeResult.shortest_route.fuel_margin_litres}L)</span>
-                      </span>
-                    )}
+                    <span className="text-slate-400 text-[11px]">Fuel Feasibility:</span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center space-x-1">
+                      <AlertTriangle size={12} />
+                      <span>Avoid: Severe Landslide Hazard</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Road Z: Valley Ridge Strategic Bypass Card (Alternate Route) */}
+                <div
+                  onClick={() => {
+                    setActiveRouteView('bypass');
+                    if (routeResult.bypass_route?.coordinates?.[3]) {
+                      jumpToLocation(routeResult.bypass_route.coordinates[3][0], routeResult.bypass_route.coordinates[3][1], 8);
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                    activeRouteView === 'bypass'
+                      ? 'bg-cyan-950/60 border-cyan-400 ring-2 ring-cyan-400/50 shadow-[0_0_25px_rgba(6,182,212,0.3)]'
+                      : 'bg-slate-900/60 border-cyan-900/40 hover:border-cyan-500/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]"></span>
+                      <div>
+                        <span className="font-extrabold text-cyan-300 text-sm">Road Z • Valley Ridge Bypass</span>
+                        <span className="text-[10px] text-cyan-400/80 block font-semibold">Strategic Secondary Contour (Alternate)</span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                      MODERATE RISK ({routeResult.bypass_route?.landslide_probability_pct || 36}%) • PASSABLE
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-cyan-200/80 leading-relaxed bg-cyan-950/40 p-2 rounded-lg border border-cyan-800/40">
+                    Secondary valley bypass corridor. Loops completely around the mountain slope affected by landslides. Passable for heavy relief vehicles.
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">DISTANCE</span>
+                      <span className="font-bold text-white">{routeResult.bypass_route?.distance_km || Math.round(routeResult.safest_route.distance_km * 1.08)} km</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">EST. TIME</span>
+                      <span className="font-bold text-white">{routeResult.bypass_route?.eta_hours || (parseFloat(routeResult.safest_route.eta_hours) + 0.3).toFixed(1)} hrs</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block">FUEL NEEDED</span>
+                      <span className="font-bold text-cyan-400">{routeResult.bypass_route?.fuel_required_litres || +(routeResult.safest_route.fuel_required_litres + 2.4).toFixed(1)} L</span>
+                    </div>
+                  </div>
+
+                  {/* Fuel Feasibility Margin Badge */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-slate-400 text-[11px]">Bypass Status:</span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center space-x-1">
+                      <Check size={12} />
+                      <span>Passable Alternate Bypass Route</span>
+                    </span>
                   </div>
                 </div>
 
@@ -2166,58 +2292,70 @@ const LiveMap = () => {
                   </div>
                 )}
 
-                {/* 4. Turn-by-Turn Real Navigation Steps (Google Directions Road Maneuvers) */}
-                {((activeRouteView === 'safest' ? routeResult.safest_route?.navigation_steps : routeResult.shortest_route?.navigation_steps) || routeResult.safest_route?.navigation_steps)?.length > 0 && (
-                  <div className="p-3.5 rounded-xl border border-slate-700/80 bg-slate-900/90 space-y-3 shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Navigation size={15} className="text-blue-400 rotate-45" />
-                        <span className="font-extrabold text-white text-xs tracking-tight">
-                          Turn-by-Turn Road Navigation ({((activeRouteView === 'safest' ? routeResult.safest_route?.navigation_steps : routeResult.shortest_route?.navigation_steps) || routeResult.safest_route?.navigation_steps).length} Steps)
+                {/* 4. Turn-by-Turn Real Navigation Steps */}
+                {(() => {
+                  const currentNavSteps = (
+                    activeRouteView === 'shortest'
+                      ? routeResult.shortest_route?.navigation_steps
+                      : activeRouteView === 'bypass'
+                      ? (routeResult.bypass_route?.navigation_steps || routeResult.safest_route?.navigation_steps)
+                      : routeResult.safest_route?.navigation_steps
+                  ) || routeResult.safest_route?.navigation_steps || [];
+
+                  if (!currentNavSteps.length) return null;
+
+                  return (
+                    <div className="p-3.5 rounded-xl border border-slate-700/80 bg-slate-900/90 space-y-3 shadow-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Navigation size={15} className="text-blue-400 rotate-45" />
+                          <span className="font-extrabold text-white text-xs tracking-tight">
+                            Turn-by-Turn Road Navigation ({currentNavSteps.length} Steps)
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-blue-400 font-mono font-bold bg-blue-950/60 px-2 py-0.5 rounded border border-blue-500/30">
+                          {activeRouteView === 'shortest' ? 'Road Y (Direct)' : activeRouteView === 'bypass' ? 'Road Z (Bypass)' : 'Road X (Safest)'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-blue-400 font-mono font-bold bg-blue-950/60 px-2 py-0.5 rounded border border-blue-500/30">
-                        {routeResult.is_real_google_route ? 'Google Directions' : 'Authentic Highway'}
-                      </span>
-                    </div>
 
-                    <p className="text-[11px] text-slate-400 leading-snug">
-                      Real-world highway instructions & maneuvers along this transit corridor. Click any step to inspect road segment.
-                    </p>
+                      <p className="text-[11px] text-slate-400 leading-snug">
+                        Real-world highway instructions & maneuvers along this transit corridor. Click any step to inspect road segment.
+                      </p>
 
-                    <div className="space-y-2">
-                      {((activeRouteView === 'safest' ? routeResult.safest_route?.navigation_steps : routeResult.shortest_route?.navigation_steps) || routeResult.safest_route?.navigation_steps).map((step, sIdx) => (
-                        <div
-                          key={sIdx}
-                          onClick={() => {
-                            if (step.lat && step.lng) {
-                              jumpToLocation(step.lat, step.lng, 10);
-                            }
-                          }}
-                          className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/80 transition-all cursor-pointer flex items-start space-x-2.5 text-xs"
-                        >
-                          <div className="w-5 h-5 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40 flex items-center justify-center font-mono font-bold text-[10px] flex-shrink-0 mt-0.5">
-                            {step.step_number || sIdx + 1}
-                          </div>
-                          <div className="flex-1 space-y-0.5">
-                            <div className="text-slate-200 font-medium text-[11px] leading-snug">
-                              {step.instruction}
+                      <div className="space-y-2">
+                        {currentNavSteps.map((step, sIdx) => (
+                          <div
+                            key={sIdx}
+                            onClick={() => {
+                              if (step.lat && step.lng) {
+                                jumpToLocation(step.lat, step.lng, 10);
+                              }
+                            }}
+                            className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/80 transition-all cursor-pointer flex items-start space-x-2.5 text-xs"
+                          >
+                            <div className="w-5 h-5 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40 flex items-center justify-center font-mono font-bold text-[10px] flex-shrink-0 mt-0.5">
+                              {step.step_number || sIdx + 1}
                             </div>
-                            <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
-                              <span className="text-emerald-400 font-bold">+{step.distance_km} km</span>
-                              {step.duration_text && <span>• {step.duration_text}</span>}
-                              {step.maneuver && step.maneuver !== 'straight' && (
-                                <span className="capitalize px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-[9px] border border-slate-700">
-                                  {step.maneuver}
-                                </span>
-                              )}
+                            <div className="flex-1 space-y-0.5">
+                              <div className="text-slate-200 font-medium text-[11px] leading-snug">
+                                {step.instruction}
+                              </div>
+                              <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                                <span className="text-emerald-400 font-bold">+{step.distance_km} km</span>
+                                {step.duration_text && <span>• {step.duration_text}</span>}
+                                {step.maneuver && step.maneuver !== 'straight' && (
+                                  <span className="capitalize px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-[9px] border border-slate-700">
+                                    {step.maneuver}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
           </div>
