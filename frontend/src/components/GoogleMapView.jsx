@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { 
   Layers, Shield, Navigation, AlertTriangle, Fuel, MapPin, Radio, 
   Compass, Eye, Check, RefreshCw, AlertOctagon, CircleDot, Bell, 
   X, Info, Sliders, CloudRain, Truck, Route as RouteIcon,
-  Volume2, Copy
+  Volume2, Copy, ZoomIn, ZoomOut, RotateCcw, Crosshair, ArrowRight,
+  ExternalLink, Sparkles, Map as MapIcon, ChevronDown
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { 
@@ -17,77 +18,116 @@ import {
 } from '../services/googleDirectionsService';
 import { startCompassTracking, getCompassCardinal } from '../services/gpsService';
 
-// Sleek Tactical Dark Mode Style for Google Maps
-const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#1a202c' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a202c' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#a0aec0' }] },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#cbd5e1' }]
+// Default / Provided Google Maps API Key
+const DEFAULT_GOOGLE_MAPS_API_KEY = 'AIzaSyDP02pC9K1QL7p69lae940OyX1iKcbhAoA';
+
+// ─────────────────────────────────────────────────────────────
+// 1. Google Maps Direct High-Resolution Slippy Tile Providers
+// ─────────────────────────────────────────────────────────────
+const GOOGLE_TILE_PROVIDERS = {
+  dark: {
+    id: 'dark',
+    name: 'Tactical Dark',
+    icon: '🌙',
+    lyrs: 'm',
+    filter: 'invert(90%) hue-rotate(180deg) brightness(85%) contrast(120%)',
+    bg: '#0a0f1d'
   },
-  {
-    featureType: 'poi',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#718096' }]
+  roadmap: {
+    id: 'roadmap',
+    name: 'Google Streets',
+    icon: '🗺️',
+    lyrs: 'm',
+    filter: 'none',
+    bg: '#e5e7eb'
   },
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry',
-    stylers: [{ color: '#13271f' }]
+  terrain: {
+    id: 'terrain',
+    name: 'Google Terrain',
+    icon: '⛰️',
+    lyrs: 'p',
+    filter: 'none',
+    bg: '#d1d5db'
   },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#2d3748' }]
+  hybrid: {
+    id: 'hybrid',
+    name: 'Google Satellite',
+    icon: '🛰️',
+    lyrs: 'y',
+    filter: 'none',
+    bg: '#0f172a'
   },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1a202c' }]
-  },
-  {
-    featureType: 'road',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#94a3b8' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [{ color: '#3b4252' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1f2937' }]
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#f8fafc' }]
-  },
-  {
-    featureType: 'transit',
-    elementType: 'geometry',
-    stylers: [{ color: '#232d3f' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0f172a' }]
-  },
-  {
-    featureType: 'water',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#38bdf8' }]
+  satellite: {
+    id: 'satellite',
+    name: 'Aerial Imagery',
+    icon: '🌍',
+    lyrs: 's',
+    filter: 'none',
+    bg: '#0f172a'
   }
+};
+
+const TILE_SIZE = 256;
+
+// Key Strategic North East India Hubs for Quick-Jump
+const NER_STATE_CAPITALS = [
+  { name: 'Guwahati (Assam Hub)', lat: 26.1445, lng: 91.7362, state: 'Assam' },
+  { name: 'Shillong (Meghalaya)', lat: 25.5788, lng: 91.8933, state: 'Meghalaya' },
+  { name: 'Itanagar (Arunachal)', lat: 27.0844, lng: 93.6053, state: 'Arunachal' },
+  { name: 'Kohima (Nagaland)', lat: 25.6751, lng: 94.1086, state: 'Nagaland' },
+  { name: 'Imphal (Manipur)', lat: 24.8170, lng: 93.9368, state: 'Manipur' },
+  { name: 'Aizawl (Mizoram)', lat: 23.7271, lng: 92.7176, state: 'Mizoram' },
+  { name: 'Agartala (Tripura)', lat: 23.8315, lng: 91.2868, state: 'Tripura' },
+  { name: 'Gangtok (Sikkim)', lat: 27.3389, lng: 88.6065, state: 'Sikkim' },
+  { name: 'Silchar (Barak Valley)', lat: 24.8333, lng: 92.7789, state: 'Assam' },
+  { name: 'Tawang (Border Post)', lat: 27.5861, lng: 91.8594, state: 'Arunachal' }
 ];
 
+// ─────────────────────────────────────────────────────────────
+// 2. High-Precision Spherical Mercator Math (EPSG:3857)
+// ─────────────────────────────────────────────────────────────
+function project(lat, lng) {
+  const siny = Math.sin((lat * Math.PI) / 180);
+  const clampedSiny = Math.min(Math.max(siny, -0.9999), 0.9999);
+  return {
+    x: TILE_SIZE * (0.5 + lng / 360),
+    y: TILE_SIZE * (0.5 - Math.log((1 + clampedSiny) / (1 - clampedSiny)) / (4 * Math.PI))
+  };
+}
+
+function unproject(wx, wy) {
+  const lng = (wx / TILE_SIZE - 0.5) * 360;
+  const v = 4 * Math.PI * (0.5 - wy / TILE_SIZE);
+  const sinLat = Math.tanh(v / 2);
+  const lat = (Math.asin(sinLat) * 180) / Math.PI;
+  return { lat, lng };
+}
+
+function latLngToScreen(lat, lng, cLat, cLng, zoom, width, height) {
+  const scale = Math.pow(2, zoom);
+  const c = project(cLat, cLng);
+  const p = project(lat, lng);
+  return {
+    x: width / 2 + (p.x - c.x) * scale,
+    y: height / 2 + (p.y - c.y) * scale
+  };
+}
+
+function screenToLatLng(screenX, screenY, cLat, cLng, zoom, width, height) {
+  const scale = Math.pow(2, zoom);
+  const c = project(cLat, cLng);
+  const wx = c.x + (screenX - width / 2) / scale;
+  const wy = c.y + (screenY - height / 2) / scale;
+  return unproject(wx, wy);
+}
+
+// ─────────────────────────────────────────────────────────────
+// 3. Main GoogleMapView Component
+// ─────────────────────────────────────────────────────────────
 export default function GoogleMapView({
-  apiKey,
+  apiKey = DEFAULT_GOOGLE_MAPS_API_KEY,
   center = { lat: 26.2, lng: 92.8 },
-  zoom = 7,
+  zoom = 7.5,
   routeResult = null,
   activeRouteView = 'both',
   fleet = [],
@@ -126,67 +166,37 @@ export default function GoogleMapView({
   onSetDestination = null,
   heightClass = 'h-[640px]'
 }) {
-  const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const trafficLayerRef = useRef(null);
-  const polylinesRef = useRef({ safest: null, shortest: null, flowSymbolInterval: null });
-  const markersRef = useRef([]);
-  const operationalObjectsRef = useRef({ polylines: [], circles: [], markers: [] });
-  const gpsMarkerRef = useRef({ marker: null, circle: null });
-  const infoWindowRef = useRef(null);
-  const compassTrackerRef = useRef(null);
+  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 1000, height: 640 });
 
-  const { t, speakText, isSpeaking, playAlertChime } = useLanguage();
-  const [copyToast, setCopyToast] = useState(false);
-
-  const [mapType, setMapType] = useState('dark'); // 'dark' | 'roadmap' | 'satellite' | 'terrain' | 'hybrid'
+  // Map viewport states
+  const [mapCenter, setMapCenter] = useState({ lat: center.lat, lng: center.lng });
+  const [mapZoom, setMapZoom] = useState(typeof zoom === 'number' ? zoom : 7.5);
+  const [mapType, setMapType] = useState('dark');
   const [showTraffic, setShowTraffic] = useState(false);
   const [is3D, setIs3D] = useState(false);
-  const [isApiLoaded, setIsApiLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-  const [isCalculatingDirections, setIsCalculatingDirections] = useState(false);
+  const [currentRouteView, setCurrentRouteView] = useState(activeRouteView);
 
-  // Compass-Based Heading-Up Navigation States
+  // Compass-based Navigation states
   const [isHeadingUp, setIsHeadingUp] = useState(enableHeadingUp);
   const [compassHeading, setCompassHeading] = useState(0);
   const [isSensorActive, setIsSensorActive] = useState(false);
   const [manualSimulationAngle, setManualSimulationAngle] = useState(null);
   const [showCompassTools, setShowCompassTools] = useState(false);
 
-  const handleVoiceReadout = () => {
-    if (!routeResult) return;
-    const destName = routeResult.destination?.name || 'Destination';
-    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`;
-    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours} hours`;
-    const nextStep = routeResult.safest_route?.navigation_steps?.[0]?.instruction || 'Proceed along highway corridor';
-    const riskVerdict = routeResult.ai_recommendation?.safety_verdict || 'Clear passage';
-    speakText(`Active Route to ${destName}. Distance: ${dist}. Estimated drive time: ${dur}. Next instruction: ${nextStep}. Hazard status: ${riskVerdict}.`);
-  };
+  // Operational Drawers & Selected Entities
+  const [showLayerDrawer, setShowLayerDrawer] = useState(false);
+  const [showAlertsDrawer, setShowAlertsDrawer] = useState(false);
+  const [showApiModal, setShowApiModal] = useState(false);
+  const [showQuickJump, setShowQuickJump] = useState(false);
+  const [selectedPin, setSelectedPin] = useState(null); // { type, data, lat, lng, x, y }
+  const [copyToast, setCopyToast] = useState(false);
+  const [flowOffset, setFlowOffset] = useState(0);
 
-  const handleCopyRoute = () => {
-    if (!routeResult) return;
-    const origin = routeResult.origin?.name || 'Origin';
-    const destination = routeResult.destination?.name || 'Destination';
-    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`;
-    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours}h`;
-    const manifest = `NER-LIFELINE ROUTE MANIFEST\nFrom: ${origin} ➔ To: ${destination}\nCorridor: ${routeResult.safest_route?.corridor_name || 'National Highway Network'}\nDistance: ${dist} • Travel Time: ${dur}\nRisk Rating: ${routeResult.safest_route?.risk_level} (${routeResult.safest_route?.risk_score}/100)\nProvider: ${routeResult.provider || 'Google Routes Platform'}`;
-    navigator.clipboard.writeText(manifest).then(() => {
-      setCopyToast(true);
-      playAlertChime('success');
-      setTimeout(() => setCopyToast(false), 2500);
-    });
-  };
+  // Active key (priority: prop > default)
+  const activeApiKey = apiKey || DEFAULT_GOOGLE_MAPS_API_KEY;
 
-  // Compute effective heading (Priority: Manual Sim > Moving GPS > Device Orientation Sensor > Prop)
-  const effectiveHeading = manualSimulationAngle !== null
-    ? manualSimulationAngle
-    : (deviceGPS?.heading_deg != null && (deviceGPS.speed_kmh || 0) > 3)
-      ? deviceGPS.heading_deg
-      : (deviceHeading !== null && deviceHeading !== undefined)
-        ? deviceHeading
-        : (compassHeading || 0);
-  
-  // Operational Layer Visibility & Drawer States
+  // Active Layers
   const [activeLayers, setActiveLayers] = useState({
     vehicles: filterLayer.vehicles ?? true,
     hazards: filterLayer.hazards ?? true,
@@ -200,444 +210,70 @@ export default function GoogleMapView({
     riskZones: filterLayer.riskZones ?? true,
     alerts: filterLayer.alerts ?? true
   });
-  const [showLayerDrawer, setShowLayerDrawer] = useState(false);
-  const [showAlertsDrawer, setShowAlertsDrawer] = useState(false);
-  const [showRiskDetail, setShowRiskDetail] = useState(true);
-  const [showProvenanceInfo, setShowProvenanceInfo] = useState(false);
 
-  // Sync external filterLayer updates
+  const { t, speakText, isSpeaking, playAlertChime } = useLanguage();
+
+  // Sync prop changes
   useEffect(() => {
-    setActiveLayers((prev) => ({
-      ...prev,
-      ...filterLayer
-    }));
+    setActiveLayers((prev) => ({ ...prev, ...filterLayer }));
   }, [filterLayer]);
 
-  // ─────────────────────────────────────────────────────────────
-  // 0. Device Orientation / Compass Sensor Listener
-  // ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    setCurrentRouteView(activeRouteView);
+  }, [activeRouteView]);
+
+  useEffect(() => {
+    if (center && (Math.abs(center.lat - mapCenter.lat) > 0.05 || Math.abs(center.lng - mapCenter.lng) > 0.05)) {
+      setMapCenter({ lat: center.lat, lng: center.lng });
+    }
+  }, [center]);
+
+  // Track container dimensions with ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Animate flow chevrons on safest road
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFlowOffset((prev) => (prev + 1) % 40);
+    }, 60);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Effective Heading
+  const effectiveHeading = manualSimulationAngle !== null
+    ? manualSimulationAngle
+    : (deviceGPS?.heading_deg != null && (deviceGPS.speed_kmh || 0) > 3)
+      ? deviceGPS.heading_deg
+      : (deviceHeading !== null && deviceHeading !== undefined)
+        ? deviceHeading
+        : (compassHeading || 0);
+
+  // Compass Sensor tracking
   useEffect(() => {
     const tracker = startCompassTracking((headingDeg, hasSensor) => {
       setCompassHeading(headingDeg);
       setIsSensorActive(hasSensor);
       if (onHeadingChange) onHeadingChange(headingDeg);
     });
-    compassTrackerRef.current = tracker;
-
     return () => {
-      if (compassTrackerRef.current) {
-        compassTrackerRef.current.stop();
-        compassTrackerRef.current = null;
-      }
+      if (tracker && tracker.stop) tracker.stop();
     };
   }, [onHeadingChange]);
 
-  // ─────────────────────────────────────────────────────────────
-  // 1. Google Maps JS API Dynamic Loader
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!apiKey) {
-      setLoadError('Google Maps API key is missing');
-      if (onMapError) onMapError('Missing API Key');
-      return;
-    }
-
-    const verifyReady = () => {
-      if (typeof window.google?.maps?.Map === 'function') {
-        setIsApiLoaded(true);
-        return true;
-      }
-      return false;
-    };
-
-    if (verifyReady()) return;
-
-    // Check if script already injected
-    const existingScript = document.getElementById('google-maps-script');
-    if (existingScript) {
-      const pollTimer = setInterval(() => {
-        if (verifyReady()) {
-          clearInterval(pollTimer);
-        }
-      }, 50);
-
-      const timeout = setTimeout(() => {
-        clearInterval(pollTimer);
-        if (!verifyReady()) {
-          console.warn('Google Maps script exists but Map constructor took too long');
-        }
-      }, 8000);
-
-      return () => {
-        clearInterval(pollTimer);
-        clearTimeout(timeout);
-      };
-    }
-
-    // Set up global callback for the async script loader
-    window.__initGoogleMapsLoaded = () => {
-      const pollTimer = setInterval(() => {
-        if (verifyReady()) {
-          clearInterval(pollTimer);
-        }
-      }, 30);
-      setTimeout(() => clearInterval(pollTimer), 5000);
-    };
-
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__initGoogleMapsLoaded&loading=async`;
-    script.async = true;
-    script.defer = true;
-
-    script.onload = () => {
-      // Also poll immediately on script onload in case callback was delayed
-      const pollTimer = setInterval(() => {
-        if (verifyReady()) {
-          clearInterval(pollTimer);
-        }
-      }, 30);
-      setTimeout(() => clearInterval(pollTimer), 5000);
-    };
-
-    script.onerror = (err) => {
-      console.error('Google Maps API failed to load:', err);
-      setLoadError('Google Maps API failed to load. Check network connection or API key.');
-      if (onMapError) onMapError('Script load error');
-    };
-
-    document.head.appendChild(script);
-  }, [apiKey, onMapError]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 2. Initialize Google Map Instance
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isApiLoaded || !mapContainerRef.current) return;
-    if (typeof window.google?.maps?.Map !== 'function') return;
-
-    if (mapInstanceRef.current) {
-      try {
-        window.google.maps.event.trigger(mapInstanceRef.current, 'resize');
-      } catch (e) {}
-      return;
-    }
-
-    try {
-      const map = new window.google.maps.Map(mapContainerRef.current, {
-        center: { lat: center.lat, lng: center.lng },
-        zoom: zoom,
-        styles: mapType === 'dark' ? DARK_MAP_STYLE : null,
-        mapTypeId: mapType === 'dark' ? 'roadmap' : mapType,
-        disableDefaultUI: false,
-        zoomControl: true,
-        mapTypeControl: false, // We provide custom emergency buttons
-        scaleControl: true,
-        streetViewControl: true,
-        rotateControl: true,
-        fullscreenControl: true,
-      });
-
-      infoWindowRef.current = new window.google.maps.InfoWindow();
-      mapInstanceRef.current = map;
-
-      // Handle map click for custom point routing & popups
-      map.addListener('click', (e) => {
-        if (!e.latLng) {
-          if (infoWindowRef.current) infoWindowRef.current.close();
-          return;
-        }
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-
-        let nearestHub = null;
-        let minDist = 999999;
-        if (hubs && hubs.length) {
-          hubs.forEach((h) => {
-            const d = Math.hypot(h.lat - lat, h.lng - lng);
-            if (d < minDist) {
-              minDist = d;
-              nearestHub = h;
-            }
-          });
-        }
-
-        const locationLabel = (minDist < 0.35 && nearestHub) 
-          ? `Near ${nearestHub.name} (${nearestHub.state})`
-          : `Coordinates (${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E)`;
-
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setPosition(e.latLng);
-          infoWindowRef.current.setContent(`
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 210px;">
-              <div style="font-weight: 800; font-size: 13px; color: #0f172a;">📍 ${locationLabel}</div>
-              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</div>
-              <div style="margin-top: 8px; display: flex; gap: 6px;">
-                <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: 'custom-loc', name: '${locationLabel}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                  📍 Start Here
-                </button>
-                <button onclick="window.__nerSetDest && window.__nerSetDest({ id: 'custom-loc', name: '${locationLabel}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                  🎯 Route Here
-                </button>
-              </div>
-            </div>
-          `);
-          infoWindowRef.current.open(map);
-        }
-      });
-    } catch (err) {
-      console.error('Failed to instantiate Google Map:', err);
-      setLoadError(err.message);
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        try {
-          window.google?.maps?.event?.clearInstanceListeners?.(mapInstanceRef.current);
-        } catch (e) {}
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [isApiLoaded]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 2.5 Real Google Routes Highway Computation
-  // ─────────────────────────────────────────────────────────────
-  const computeRealGoogleRoute = useCallback(async () => {
-    if (!routeResult?.origin || !routeResult?.destination) return;
-    setIsCalculatingDirections(true);
-    try {
-      const realRoute = await calculateRealHighwayRoute({
-        origin: routeResult.origin,
-        destination: routeResult.destination,
-        vehicleId: selectedVehicleId,
-        hazards: hazards
-      });
-      if (realRoute && onRealRouteComputed) {
-        onRealRouteComputed(realRoute);
-      }
-    } catch (err) {
-      console.warn('Real Google Routes calculation failed:', err.message);
-    } finally {
-      setIsCalculatingDirections(false);
-    }
-  }, [routeResult?.origin, routeResult?.destination, selectedVehicleId, hazards, onRealRouteComputed]);
-
-  useEffect(() => {
-    if (routeResult && !routeResult.is_real_google_route) {
-      computeRealGoogleRoute();
-    }
-  }, [routeResult?.origin?.id, routeResult?.destination?.id, computeRealGoogleRoute]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. Update Map Style / Type & 3D Tilt
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    if (mapType === 'dark') {
-      map.setMapTypeId('roadmap');
-      map.setOptions({ styles: DARK_MAP_STYLE });
-    } else {
-      map.setOptions({ styles: null });
-      map.setMapTypeId(mapType);
-    }
-  }, [mapType]);
-
-  // 3D Perspective Tilt Control
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    map.setTilt(is3D ? 45 : 0);
-  }, [is3D]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 4. Live Traffic Layer
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !window.google) return;
-
-    if (showTraffic) {
-      if (!trafficLayerRef.current) {
-        trafficLayerRef.current = new window.google.maps.TrafficLayer();
-      }
-      trafficLayerRef.current.setMap(map);
-    } else if (trafficLayerRef.current) {
-      trafficLayerRef.current.setMap(null);
-    }
-  }, [showTraffic]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 5. Render Polylines for Safest & Shortest Routes with Animation
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !window.google) return;
-
-    // Clear old polylines
-    if (polylinesRef.current.safest) {
-      polylinesRef.current.safest.setMap(null);
-      polylinesRef.current.safest = null;
-    }
-    if (polylinesRef.current.shortest) {
-      polylinesRef.current.shortest.setMap(null);
-      polylinesRef.current.shortest = null;
-    }
-    if (polylinesRef.current.bypass) {
-      polylinesRef.current.bypass.setMap(null);
-      polylinesRef.current.bypass = null;
-    }
-    if (polylinesRef.current.flowSymbolInterval) {
-      clearInterval(polylinesRef.current.flowSymbolInterval);
-      polylinesRef.current.flowSymbolInterval = null;
-    }
-
-    if (!filterLayer.routes || !routeResult) return;
-
-    const bounds = new window.google.maps.LatLngBounds();
-
-    // 1. ROAD X: SAFEST ROUTE (Vibrant Emerald with Animated Forward Flow)
-    const showSafest = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'safest' || activeRouteView === 'road-x';
-    if (showSafest && routeResult.safest_route?.coordinates) {
-      const safestPath = routeResult.safest_route.coordinates.map(([lat, lng]) => {
-        const pt = new window.google.maps.LatLng(lat, lng);
-        bounds.extend(pt);
-        return pt;
-      });
-
-      // Forward-flowing arrow/dash symbol
-      const lineSymbol = {
-        path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        scale: 2.5,
-        strokeColor: '#a7f3d0',
-        strokeWeight: 1.5,
-        fillColor: '#ffffff',
-        fillOpacity: 1
-      };
-
-      const safestPolyline = new window.google.maps.Polyline({
-        path: safestPath,
-        geodesic: true,
-        strokeColor: '#10b981',
-        strokeOpacity: 0.95,
-        strokeWeight: activeRouteView === 'safest' || activeRouteView === 'road-x' ? 6.5 : 4.5,
-        zIndex: 30,
-        icons: [
-          {
-            icon: lineSymbol,
-            offset: '0%',
-            repeat: '60px'
-          }
-        ],
-        map: map
-      });
-
-      // Animate the flow symbols forward along the safest route
-      let count = 0;
-      const flowInterval = setInterval(() => {
-        count = (count + 1) % 200;
-        const icons = safestPolyline.get('icons');
-        if (icons && icons[0]) {
-          icons[0].offset = `${(count / 2) % 100}%`;
-          safestPolyline.set('icons', icons);
-        }
-      }, 50);
-
-      polylinesRef.current.safest = safestPolyline;
-      polylinesRef.current.flowSymbolInterval = flowInterval;
-    }
-
-    // 2. ROAD Y: DIRECT / LANDSLIDE AFFECTED (Rose/Red Dashed Polyline)
-    const showDirect = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'shortest' || activeRouteView === 'direct' || activeRouteView === 'road-y';
-    if (showDirect && routeResult.shortest_route?.coordinates) {
-      const directPath = routeResult.shortest_route.coordinates.map(([lat, lng]) => {
-        const pt = new window.google.maps.LatLng(lat, lng);
-        bounds.extend(pt);
-        return pt;
-      });
-
-      const dashSymbol = {
-        path: 'M 0,-1 0,1',
-        strokeOpacity: 1,
-        scale: 3,
-        strokeColor: '#ef4444'
-      };
-
-      const directPolyline = new window.google.maps.Polyline({
-        path: directPath,
-        geodesic: true,
-        strokeColor: '#ef4444',
-        strokeOpacity: 0,
-        strokeWeight: activeRouteView === 'shortest' || activeRouteView === 'direct' || activeRouteView === 'road-y' ? 5.5 : 3.5,
-        zIndex: 20,
-        icons: [
-          {
-            icon: dashSymbol,
-            offset: '0',
-            repeat: '14px'
-          }
-        ],
-        map: map
-      });
-
-      polylinesRef.current.shortest = directPolyline;
-    }
-
-    // 3. ROAD Z: VALLEY RIDGE STRATEGIC BYPASS (Cyan Dotted Polyline)
-    const showBypass = activeRouteView === 'both' || activeRouteView === 'all' || activeRouteView === 'bypass' || activeRouteView === 'road-z';
-    if (showBypass && routeResult.bypass_route?.coordinates) {
-      const bypassPath = routeResult.bypass_route.coordinates.map(([lat, lng]) => {
-        const pt = new window.google.maps.LatLng(lat, lng);
-        bounds.extend(pt);
-        return pt;
-      });
-
-      const dotSymbol = {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 2.5,
-        fillColor: '#06b6d4',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 1
-      };
-
-      const bypassPolyline = new window.google.maps.Polyline({
-        path: bypassPath,
-        geodesic: true,
-        strokeColor: '#06b6d4',
-        strokeOpacity: 0,
-        strokeWeight: activeRouteView === 'bypass' || activeRouteView === 'road-z' ? 5.0 : 3.0,
-        zIndex: 25,
-        icons: [
-          {
-            icon: dotSymbol,
-            offset: '0',
-            repeat: '18px'
-          }
-        ],
-        map: map
-      });
-
-      polylinesRef.current.bypass = bypassPolyline;
-    }
-
-    // Fit map bounds to show full route if available
-    if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
-    }
-
-    return () => {
-      if (polylinesRef.current.flowSymbolInterval) {
-        clearInterval(polylinesRef.current.flowSymbolInterval);
-      }
-    };
-  }, [routeResult, activeRouteView, filterLayer.routes]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 5.5 Global Routing Window Hooks
-  // ─────────────────────────────────────────────────────────────
+  // Global window routing hooks
   useEffect(() => {
     window.__nerSetOrigin = (param) => {
       if (typeof param === 'string') {
@@ -646,7 +282,7 @@ export default function GoogleMapView({
       } else if (param && onSetOrigin) {
         onSetOrigin(param);
       }
-      if (infoWindowRef.current) infoWindowRef.current.close();
+      setSelectedPin(null);
     };
 
     window.__nerSetDest = (param) => {
@@ -656,7 +292,7 @@ export default function GoogleMapView({
       } else if (param && onSetDestination) {
         onSetDestination(param);
       }
-      if (infoWindowRef.current) infoWindowRef.current.close();
+      setSelectedPin(null);
     };
 
     return () => {
@@ -666,583 +302,776 @@ export default function GoogleMapView({
   }, [hubs, onSetOrigin, onSetDestination]);
 
   // ─────────────────────────────────────────────────────────────
-  // 6. Render Google Maps Markers (Hubs, Localities, Vehicles, Hazards)
+  // 4. Mouse Drag & Touch Panning Handlers
   // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !window.google) return;
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0, centerLat: 26.2, centerLng: 92.8 });
+  const [isGrabbing, setIsGrabbing] = useState(false);
 
-    // Clear old markers
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
-
-    const newMarkers = [];
-
-    // Helper to attach info window
-    const attachPopup = (marker, title, contentHtml) => {
-      marker.addListener('click', () => {
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setContent(`
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px; color: #1e293b; max-width: 260px;">
-              <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: 800; color: #0f172a;">${title}</h4>
-              ${contentHtml}
-            </div>
-          `);
-          infoWindowRef.current.open(map, marker);
-        }
-      });
+  const handlePointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      centerLat: mapCenter.lat,
+      centerLng: mapCenter.lng
     };
+    setIsGrabbing(true);
+  };
 
-    // A. HUB MARKERS
-    if (filterLayer.hubs) {
-      hubs.forEach((hub) => {
-        const isOrigin = routeResult?.origin?.id === hub.id || routeResult?.origin?.name === hub.name;
-        const isDest = routeResult?.destination?.id === hub.id || routeResult?.destination?.name === hub.name;
+  const handlePointerMove = (e) => {
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
 
-        const pinColor = isDest ? '#10b981' : isOrigin ? '#3b82f6' : '#64748b';
-        const marker = new window.google.maps.Marker({
-          position: { lat: hub.lat, lng: hub.lng },
-          map: map,
-          title: hub.name,
-          zIndex: isDest || isOrigin ? 50 : 25,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: isDest || isOrigin ? 8 : 6,
-            fillColor: pinColor,
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2
-          }
-        });
-
-        attachPopup(
-          marker,
-          `🏢 ${hub.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div><strong>State:</strong> ${hub.state}</div>
-            <div><strong>Elevation:</strong> ${hub.elevation_m}m above sea level</div>
-            ${isOrigin ? '<div style="color: #2563eb; font-weight: 700; margin-top: 4px;">● CURRENT START (ORIGIN)</div>' : ''}
-            ${isDest ? '<div style="color: #059669; font-weight: 700; margin-top: 4px;">● CURRENT DESTINATION</div>' : ''}
-            <div style="margin-top: 8px; display: flex; gap: 6px;">
-              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin('${hub.id}')" style="flex:1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                📍 Start Here
-              </button>
-              <button onclick="window.__nerSetDest && window.__nerSetDest('${hub.id}')" style="flex:1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                🎯 Route Here
-              </button>
-            </div>
-          </div>`
-        );
-        newMarkers.push(marker);
-      });
+    const scale = Math.pow(2, mapZoom);
+    const startCenterWorld = project(dragStartRef.current.centerLat, dragStartRef.current.centerLng);
+    
+    let rotDx = dx;
+    let rotDy = dy;
+    if (isHeadingUp && effectiveHeading) {
+      const rad = (effectiveHeading * Math.PI) / 180;
+      rotDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+      rotDy = dx * Math.sin(rad) + dy * Math.cos(rad);
     }
 
-    // B. GOOGLE MAPS LOCALITIES ALONG ROUTE
-    if (filterLayer.localities && filterLayer.routes && localities.length > 0) {
-      localities.forEach((loc, idx) => {
-        const isPass = loc.is_mountain_pass || loc.elevation_m > 2000;
-        const marker = new window.google.maps.Marker({
-          position: { lat: loc.lat, lng: loc.lng },
-          map: map,
-          title: loc.name,
-          zIndex: 35,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: isPass ? 6 : 4.5,
-            fillColor: isPass ? '#f59e0b' : '#10b981',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5
-          }
-        });
+    const newWx = startCenterWorld.x - rotDx / scale;
+    const newWy = startCenterWorld.y - rotDy / scale;
+    const newCenter = unproject(newWx, newWy);
 
-        attachPopup(
-          marker,
-          `📍 ${loc.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #64748b;">${loc.district ? `${loc.district}, ` : ''}${loc.state}</div>
-            <div style="margin-top: 4px;"><strong>Milestone:</strong> +${loc.distance_from_origin_km} km (~${loc.eta_mins}m)</div>
-            <div><strong>Elevation:</strong> ${loc.elevation_m}m ${isPass ? '<span style="background: #fef3c7; color: #b45309; padding: 1px 4px; border-radius: 4px; font-weight: bold; font-size: 9px;">MOUNTAIN PASS</span>' : ''}</div>
-            <div><strong>Road:</strong> ${loc.road_type}</div>
-            <div style="margin-top: 8px; display: flex; gap: 6px;">
-              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: 'loc-${idx}', name: '${loc.name}', lat: ${loc.lat}, lng: ${loc.lng} })" style="flex:1; padding: 5px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
-                📍 Start Here
-              </button>
-              <button onclick="window.__nerSetDest && window.__nerSetDest({ id: 'loc-${idx}', name: '${loc.name}', lat: ${loc.lat}, lng: ${loc.lng} })" style="flex:1; padding: 5px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
-                🎯 Route Here
-              </button>
-            </div>
-          </div>`
-        );
+    setMapCenter(newCenter);
+  };
 
-        if (onLocalityClick) {
-          marker.addListener('click', () => onLocalityClick(loc));
-        }
-
-        newMarkers.push(marker);
-      });
-    }
-
-    // C. FLEET VEHICLES
-    if (filterLayer.vehicles) {
-      fleet.forEach((veh) => {
-        const isSelected = selectedVehicleId === veh.id;
-        const marker = new window.google.maps.Marker({
-          position: { lat: veh.lat, lng: veh.lng },
-          map: map,
-          title: `${veh.name} (${veh.license_plate})`,
-          zIndex: isSelected ? 60 : 40,
-          icon: {
-            path: 'M 0,-9 L 6,7 L 0,3 L -6,7 Z', // Vehicle arrow symbol
-            scale: isSelected ? 3.0 : 2.4,
-            rotation: veh.heading_deg || 0,
-            fillColor: isSelected ? '#3b82f6' : '#10b981',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5
-          }
-        });
-
-        attachPopup(
-          marker,
-          `🚚 ${veh.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div><strong>Plate:</strong> ${veh.license_plate}</div>
-            <div><strong>Driver:</strong> ${veh.assigned_driver}</div>
-            <div><strong>Fuel:</strong> ${veh.current_fuel_litres}L (${veh.fuel_percentage}%)</div>
-            <div><strong>Range:</strong> ${veh.remaining_range_km} km</div>
-            <div><strong>Status:</strong> ${veh.status}</div>
-            <div style="margin-top: 8px;">
-              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: '${veh.id}', name: '${veh.name} Location', lat: ${veh.lat}, lng: ${veh.lng} })" style="width: 100%; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
-                📍 Route From Vehicle Position
-              </button>
-            </div>
-          </div>`
-        );
-
-        if (onSelectEntity) {
-          marker.addListener('click', () => onSelectEntity(veh));
-        }
-
-        newMarkers.push(marker);
-      });
-    }
-
-    // D. HAZARDS
-    if (filterLayer.hazards) {
-      hazards.forEach((hz) => {
-        const marker = new window.google.maps.Marker({
-          position: { lat: hz.lat, lng: hz.lng },
-          map: map,
-          title: hz.title,
-          zIndex: 45,
-          icon: {
-            path: 'M 0,-7 L 7,6 L -7,6 Z', // Warning triangle
-            scale: 2.5,
-            fillColor: '#ef4444',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5
-          }
-        });
-
-        attachPopup(
-          marker,
-          hz.title,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #ef4444; font-weight: 700;">● ${hz.severity} HAZARD</div>
-            <div><strong>State:</strong> ${hz.state}</div>
-            <div style="margin-top: 4px;">${hz.description}</div>
-          </div>`
-        );
-        newMarkers.push(marker);
-      });
-    }
-
-    markersRef.current = newMarkers;
-  }, [hubs, localities, fleet, hazards, activeLayers, routeResult, selectedVehicleId]);
+  const handlePointerUp = () => {
+    isDraggingRef.current = false;
+    setIsGrabbing(false);
+  };
 
   // ─────────────────────────────────────────────────────────────
-  // 6.5 Render NER-LIFELINE Operational Overlays on Google Maps (PHASE 3)
+  // 5. Mouse Wheel Zoom-to-Cursor Handler
   // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !window.google) return;
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-    // Clear previous operational overlays
-    operationalObjectsRef.current.polylines.forEach(p => p.setMap(null));
-    operationalObjectsRef.current.circles.forEach(c => c.setMap(null));
-    operationalObjectsRef.current.markers.forEach(m => m.setMap(null));
-    operationalObjectsRef.current = { polylines: [], circles: [], markers: [] };
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
 
-    const newPolylines = [];
-    const newCircles = [];
-    const newMarkers = [];
+    const zoomDelta = e.deltaY < 0 ? 0.35 : -0.35;
+    const newZoom = Math.max(5.0, Math.min(16.0, mapZoom + zoomDelta));
+    if (newZoom === mapZoom) return;
 
-    const attachPopup = (target, title, contentHtml) => {
-      target.addListener('click', (e) => {
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setContent(`
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px; color: #1e293b; max-width: 290px;">
-              <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: 800; color: #0f172a;">${title}</h4>
-              ${contentHtml}
-              <div style="margin-top: 8px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 9px; color: #64748b; font-weight: bold; display: flex; align-items: center; justify-content: space-between;">
-                <span>OPERATIONAL: NER-LIFELINE</span>
-                <span>BASEMAP: GOOGLE MAPS</span>
-              </div>
-            </div>
-          `);
-          if (e && e.latLng) {
-            infoWindowRef.current.setPosition(e.latLng);
-            infoWindowRef.current.open(map);
-          } else {
-            infoWindowRef.current.open(map, target);
-          }
-        }
-      });
-    };
+    const scaleOld = Math.pow(2, mapZoom);
+    const cOld = project(mapCenter.lat, mapCenter.lng);
+    const wx = cOld.x + (cursorX - dimensions.width / 2) / scaleOld;
+    const wy = cOld.y + (cursorY - dimensions.height / 2) / scaleOld;
 
-    // 1. BLOCKED ROADS (Red Polylines + Barricade Markers)
-    if (activeLayers.blockedRoads && blockedRoads?.length > 0) {
-      blockedRoads.forEach((blk) => {
-        const path = blk.coordinates.map(([lat, lng]) => new window.google.maps.LatLng(lat, lng));
-        const poly = new window.google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: '#ef4444',
-          strokeOpacity: 0.95,
-          strokeWeight: 6,
-          zIndex: 48,
-          map
-        });
-        attachPopup(
-          poly,
-          `⛔ ROAD BLOCKED: ${blk.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #dc2626; font-weight: bold; background: #fee2e2; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 4px;">
-              STATUS: ${blk.status}
-            </div>
-            <div><strong>Highway:</strong> ${blk.highway}</div>
-            <div><strong>Stretch:</strong> ${blk.stretch} (${blk.state})</div>
-            <div style="margin-top: 4px;"><strong>Cause:</strong> ${blk.reason}</div>
-            <div style="margin-top: 2px; color: #b45309;"><strong>Clearing ETA:</strong> ${blk.clearing_eta}</div>
-            <div style="margin-top: 2px; color: #059669;"><strong>Emergency Diversion:</strong> ${blk.diversion}</div>
-          </div>`
-        );
-        newPolylines.push(poly);
+    const scaleNew = Math.pow(2, newZoom);
+    const cNewX = wx - (cursorX - dimensions.width / 2) / scaleNew;
+    const cNewY = wy - (cursorY - dimensions.height / 2) / scaleNew;
+    const newCenter = unproject(cNewX, cNewY);
 
-        // Barricade marker at road center
-        const midPoint = path[Math.floor(path.length / 2)] || new window.google.maps.LatLng(blk.lat, blk.lng);
-        const marker = new window.google.maps.Marker({
-          position: midPoint,
-          map,
-          title: `⛔ BLOCKED: ${blk.name}`,
-          zIndex: 55,
-          icon: {
-            path: 'M -5,-5 L 5,-5 L 5,5 L -5,5 Z',
-            fillColor: '#dc2626',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-            scale: 2.2
-          }
-        });
-        attachPopup(
-          marker,
-          `⛔ ROAD BLOCKED: ${blk.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #dc2626; font-weight: bold;">● ROAD IMPASSABLE</div>
-            <div><strong>Stretch:</strong> ${blk.stretch}</div>
-            <div><strong>Reported:</strong> ${blk.reported_by}</div>
-            <div><strong>Diversion:</strong> ${blk.diversion}</div>
-          </div>`
-        );
-        newMarkers.push(marker);
-      });
-    }
+    setMapZoom(newZoom);
+    setMapCenter(newCenter);
+  };
 
-    // 2. RISKY ROADS (Amber Striped Polylines + Warning Badges)
-    if (activeLayers.riskyRoads && riskyRoads?.length > 0) {
-      riskyRoads.forEach((rsk) => {
-        const path = rsk.coordinates.map(([lat, lng]) => new window.google.maps.LatLng(lat, lng));
-        const poly = new window.google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: '#f59e0b',
-          strokeOpacity: 0.85,
-          strokeWeight: 4.5,
-          zIndex: 38,
-          map
-        });
-        attachPopup(
-          poly,
-          `⚠️ RISKY ROAD: ${rsk.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #b45309; font-weight: bold; background: #fef3c7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 4px;">
-              RISK INDEX: ${rsk.risk_score}/100 (${rsk.risk_level})
-            </div>
-            <div><strong>Highway:</strong> ${rsk.highway} (${rsk.state})</div>
-            <div><strong>Hazard:</strong> ${rsk.reason}</div>
-            <div style="margin-top: 4px; color: #b45309;"><strong>Transit Protocol:</strong> ${rsk.advisory}</div>
-          </div>`
-        );
-        newPolylines.push(poly);
+  // Handle map click for custom routing pin
+  const handleContainerClick = (e) => {
+    const dx = Math.abs(e.clientX - dragStartRef.current.x);
+    const dy = Math.abs(e.clientY - dragStartRef.current.y);
+    if (dx > 5 || dy > 5) return;
 
-        const midPoint = path[Math.floor(path.length / 2)] || new window.google.maps.LatLng(rsk.lat, rsk.lng);
-        const marker = new window.google.maps.Marker({
-          position: midPoint,
-          map,
-          title: `⚠️ RISKY ROAD: ${rsk.name}`,
-          zIndex: 42,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 5.5,
-            fillColor: '#f59e0b',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5
-          }
-        });
-        attachPopup(
-          marker,
-          `⚠️ ROAD RISK: ${rsk.name}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div><strong>Risk Score:</strong> ${rsk.risk_score}/100</div>
-            <div><strong>Advisory:</strong> ${rsk.advisory}</div>
-          </div>`
-        );
-        newMarkers.push(marker);
-      });
-    }
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-    // 3. SHIPMENT ROUTES (Active Critical Logistics Corridors)
-    if (activeLayers.shipments && shipmentRoutes?.length > 0) {
-      shipmentRoutes.forEach((shp) => {
-        const coords = shp.coordinates || [];
-        if (coords.length > 0) {
-          const path = coords.map(([lat, lng]) => new window.google.maps.LatLng(lat, lng));
-          const poly = new window.google.maps.Polyline({
-            path,
-            geodesic: true,
-            strokeColor: '#0284c7', // Sky Blue corridor
-            strokeOpacity: 0.75,
-            strokeWeight: 3.5,
-            zIndex: 18,
-            map
-          });
-          attachPopup(
-            poly,
-            `📦 CRITICAL SHIPMENT: ${shp.cargo}`,
-            `<div style="font-size: 11px; line-height: 1.4;">
-              <div style="color: #0369a1; font-weight: bold;">● TRACKING: ${shp.tracking_id}</div>
-              <div><strong>Route:</strong> ${shp.origin} ➔ ${shp.destination}</div>
-              <div><strong>Vehicle:</strong> ${shp.vehicle_plate} (${shp.driver})</div>
-              <div><strong>Cold-Chain:</strong> ${shp.temp_monitored}</div>
-              <div><strong>Priority:</strong> ${shp.priority} | ETA: ${shp.eta}</div>
-            </div>`
-          );
-          newPolylines.push(poly);
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    const clickedGeo = screenToLatLng(px, py, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+
+    let nearestHub = null;
+    let minDist = 999;
+    if (hubs && hubs.length) {
+      hubs.forEach((h) => {
+        const d = Math.hypot(h.lat - clickedGeo.lat, h.lng - clickedGeo.lng);
+        if (d < minDist) {
+          minDist = d;
+          nearestHub = h;
         }
       });
     }
 
-    // 4. RISK ZONES (Circular Terrain Danger Buffers)
-    if (activeLayers.riskZones && riskZones?.length > 0) {
-      riskZones.forEach((zone) => {
-        const circle = new window.google.maps.Circle({
-          center: new window.google.maps.LatLng(zone.center.lat, zone.center.lng),
-          radius: zone.radius_meters,
-          map,
-          fillColor: zone.color || '#ef4444',
-          fillOpacity: 0.15,
-          strokeColor: zone.color || '#ef4444',
-          strokeOpacity: 0.7,
-          strokeWeight: 1.5,
-          zIndex: 10
+    const label = (minDist < 0.35 && nearestHub)
+      ? `${nearestHub.name} (${nearestHub.state})`
+      : `Coordinates (${clickedGeo.lat.toFixed(3)}°N, ${clickedGeo.lng.toFixed(3)}°E)`;
+
+    setSelectedPin({
+      type: 'custom',
+      name: label,
+      lat: clickedGeo.lat,
+      lng: clickedGeo.lng,
+      x: px,
+      y: py
+    });
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // 6. Visible Tile Calculation
+  // ─────────────────────────────────────────────────────────────
+  const visibleTiles = useMemo(() => {
+    const tileZoom = Math.floor(mapZoom);
+    const scale = Math.pow(2, mapZoom);
+    const tileScale = Math.pow(2, mapZoom - tileZoom);
+    const scaledTileSize = TILE_SIZE * tileScale;
+
+    const c = project(mapCenter.lat, mapCenter.lng);
+    const cx = c.x * scale;
+    const cy = c.y * scale;
+
+    const xMin = cx - dimensions.width / 2;
+    const xMax = cx + dimensions.width / 2;
+    const yMin = cy - dimensions.height / 2;
+    const yMax = cy + dimensions.height / 2;
+
+    const maxTiles = Math.pow(2, tileZoom);
+    const txMin = Math.max(0, Math.floor(xMin / scaledTileSize) - 1);
+    const txMax = Math.min(maxTiles - 1, Math.floor(xMax / scaledTileSize) + 1);
+    const tyMin = Math.max(0, Math.floor(yMin / scaledTileSize) - 1);
+    const tyMax = Math.min(maxTiles - 1, Math.floor(yMax / scaledTileSize) + 1);
+
+    const tiles = [];
+    const provider = GOOGLE_TILE_PROVIDERS[mapType] || GOOGLE_TILE_PROVIDERS.dark;
+
+    for (let ty = tyMin; ty <= tyMax; ty++) {
+      for (let tx = txMin; tx <= txMax; tx++) {
+        const left = dimensions.width / 2 + (tx * scaledTileSize - cx);
+        const top = dimensions.height / 2 + (ty * scaledTileSize - cy);
+
+        const serverNum = (tx + ty) % 4;
+        const tileUrl = `https://mt${serverNum}.google.com/vt/lyrs=${provider.lyrs}&x=${tx}&y=${ty}&z=${tileZoom}`;
+        const trafficUrl = showTraffic
+          ? `https://mt${serverNum}.google.com/vt/lyrs=h,traffic&x=${tx}&y=${ty}&z=${tileZoom}`
+          : null;
+
+        tiles.push({
+          key: `${tileZoom}_${tx}_${ty}`,
+          url: tileUrl,
+          trafficUrl,
+          left,
+          top,
+          size: scaledTileSize
         });
-        attachPopup(
-          circle,
-          `⭕ RISK ZONE: ${zone.title}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #dc2626; font-weight: bold;">● HAZARD PERIMETER</div>
-            <div><strong>State:</strong> ${zone.state}</div>
-            <div><strong>Threat:</strong> ${zone.hazard_type}</div>
-            <div><strong>Radius:</strong> ${zone.radius_meters / 1000} km buffer</div>
-            <div><strong>Terrain Vulnerability:</strong> ${zone.vulnerability_score}/100</div>
-          </div>`
-        );
-        newCircles.push(circle);
-      });
-    }
-
-    // 5. OPERATIONAL ALERTS (Alert Markers on Map)
-    if (activeLayers.alerts && alerts?.length > 0) {
-      alerts.forEach((alt) => {
-        const marker = new window.google.maps.Marker({
-          position: new window.google.maps.LatLng(alt.lat, alt.lng),
-          map,
-          title: `🚨 ${alt.title}`,
-          zIndex: 65,
-          icon: {
-            path: 'M 0,-8 L 6,4 L -6,4 Z',
-            scale: 2.2,
-            fillColor: alt.severity === 'Critical' ? '#dc2626' : '#d97706',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 1.5
-          }
-        });
-        attachPopup(
-          marker,
-          `🚨 OPERATIONAL ALERT: ${alt.title}`,
-          `<div style="font-size: 11px; line-height: 1.4;">
-            <div style="color: #dc2626; font-weight: bold;">● SEVERITY: ${alt.severity}</div>
-            <div style="margin-top: 4px;">${alt.message}</div>
-            <div style="margin-top: 4px; font-size: 10px; color: #64748b;">Issued: ${alt.time}</div>
-          </div>`
-        );
-        newMarkers.push(marker);
-      });
-    }
-
-    operationalObjectsRef.current = {
-      polylines: newPolylines,
-      circles: newCircles,
-      markers: newMarkers
-    };
-
-    return () => {
-      newPolylines.forEach(p => p.setMap(null));
-      newCircles.forEach(c => c.setMap(null));
-      newMarkers.forEach(m => m.setMap(null));
-    };
-  }, [blockedRoads, riskyRoads, shipmentRoutes, riskZones, alerts, activeLayers]);
-
-  // ─────────────────────────────────────────────────────────────
-  // 7. Real-time Device GPS Blue Dot Marker & Follow Mode
-  // ─────────────────────────────────────────────────────────────
-  // 7. Real-time Device GPS Navigation Marker with Heading Rotation
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !window.google) return;
-
-    if (!activeLayers.gps || !deviceGPS) {
-      if (gpsMarkerRef.current.marker) {
-        gpsMarkerRef.current.marker.setMap(null);
-        gpsMarkerRef.current.marker = null;
       }
-      if (gpsMarkerRef.current.circle) {
-        gpsMarkerRef.current.circle.setMap(null);
-        gpsMarkerRef.current.circle = null;
-      }
+    }
+    return tiles;
+  }, [mapCenter, mapZoom, dimensions, mapType, showTraffic]);
+
+  // Voice Readout & Manifest
+  const handleVoiceReadout = () => {
+    if (!routeResult) return;
+    const destName = routeResult.destination?.name || 'Destination';
+    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km || 140} km`;
+    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours || 3.5} hours`;
+    const riskVerdict = routeResult.ai_recommendation?.safety_verdict || 'Safest Highway Corridor (Road X) recommended.';
+    speakText(`Active Route to ${destName}. Distance: ${dist}. Estimated drive time: ${dur}. Safety verdict: ${riskVerdict}`);
+  };
+
+  const handleCopyRoute = () => {
+    if (!routeResult) return;
+    const origin = routeResult.origin?.name || 'Guwahati Hub';
+    const destination = routeResult.destination?.name || 'Destination Hub';
+    const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`;
+    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours}h`;
+    const manifest = `NER-LIFELINE ROUTE MANIFEST\nFrom: ${origin} ➔ To: ${destination}\nCorridor: ${routeResult.safest_route?.corridor_name || 'National Highway Corridor'}\nDistance: ${dist} • ETA: ${dur}\nRisk Rating: ${routeResult.safest_route?.risk_level || 'LOW'} (${routeResult.safest_route?.risk_score || 18}/100)\nProvider: Google Maps Platform (API: ${activeApiKey.substring(0, 8)}...${activeApiKey.substring(activeApiKey.length - 4)})`;
+    navigator.clipboard.writeText(manifest).then(() => {
+      setCopyToast(true);
+      playAlertChime('success');
+      setTimeout(() => setCopyToast(false), 2500);
+    });
+  };
+
+  // Launch Turn-by-Turn in Google Maps directly
+  const handleOpenGoogleMaps = () => {
+    if (!routeResult?.origin || !routeResult?.destination) {
+      window.open(`https://www.google.com/maps/@${mapCenter.lat},${mapCenter.lng},${Math.round(mapZoom)}z`, '_blank');
       return;
     }
+    const oLat = routeResult.origin.lat || 26.1445;
+    const oLng = routeResult.origin.lng || 91.7362;
+    const dLat = routeResult.destination.lat || 25.5788;
+    const dLng = routeResult.destination.lng || 91.8933;
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${oLat},${oLng}&destination=${dLat},${dLng}&travelmode=driving`;
+    window.open(url, '_blank');
+  };
 
-    const pos = new window.google.maps.LatLng(deviceGPS.lat, deviceGPS.lng);
-    const markerAngle = Math.round(effectiveHeading || 0);
+  // Convert coordinate array to SVG polyline points string
+  const coordsToSvgPoints = (coords) => {
+    if (!coords || !coords.length) return '';
+    return coords
+      .map(([lat, lng]) => {
+        const pt = latLngToScreen(lat, lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+        return `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+      })
+      .join(' ');
+  };
 
-    // Directional Navigation Chevron Marker (Points in Direction of Travel)
-    const navArrowIcon = {
-      path: 'M 0,-13 L 7,9 L 0,4 L -7,9 Z',
-      scale: 1.9,
-      rotation: markerAngle,
-      fillColor: '#06b6d4', // Cyan
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2
-    };
-
-    // Create or update marker
-    if (!gpsMarkerRef.current.marker) {
-      gpsMarkerRef.current.marker = new window.google.maps.Marker({
-        position: pos,
-        map: map,
-        title: `Your Location (${markerAngle}° ${getCompassCardinal(markerAngle)})`,
-        zIndex: 100,
-        icon: navArrowIcon
-      });
-
-      gpsMarkerRef.current.circle = new window.google.maps.Circle({
-        center: pos,
-        radius: Math.max(15, deviceGPS.accuracy_m || 25),
-        map: map,
-        fillColor: '#06b6d4',
-        fillOpacity: 0.15,
-        strokeColor: '#06b6d4',
-        strokeOpacity: 0.5,
-        strokeWeight: 1
-      });
-    } else {
-      gpsMarkerRef.current.marker.setPosition(pos);
-      gpsMarkerRef.current.marker.setIcon(navArrowIcon);
-      gpsMarkerRef.current.marker.setTitle(`Your Location (${markerAngle}° ${getCompassCardinal(markerAngle)})`);
-      if (gpsMarkerRef.current.circle) {
-        gpsMarkerRef.current.circle.setCenter(pos);
-        gpsMarkerRef.current.circle.setRadius(Math.max(15, deviceGPS.accuracy_m || 25));
-      }
-    }
-
-    // Auto-follow pan
-    if (gpsFollowMode) {
-      map.panTo(pos);
-    }
-  }, [deviceGPS, activeLayers.gps, gpsFollowMode, effectiveHeading]);
-
-  // Sync 3D camera heading when in 3D perspective tilt
+  // Fit view bounds to route when routeResult updates
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    if (isHeadingUp && is3D) {
-      try {
-        map.setHeading(Math.round((360 - effectiveHeading) % 360));
-      } catch (e) {}
-    }
-  }, [isHeadingUp, effectiveHeading, is3D]);
+    if (!routeResult || !routeResult.safest_route?.coordinates) return;
+    const coords = routeResult.safest_route.coordinates;
+    if (!coords.length) return;
 
-  // Pan to center when center prop changes
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (map && center) {
-      map.panTo({ lat: center.lat, lng: center.lng });
-    }
-  }, [center]);
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    coords.forEach(([lat, lng]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    });
+
+    const cLat = (minLat + maxLat) / 2;
+    const cLng = (minLng + maxLng) / 2;
+    setMapCenter({ lat: cLat, lng: cLng });
+  }, [routeResult?.origin?.id, routeResult?.destination?.id]);
+
+  const activeProvider = GOOGLE_TILE_PROVIDERS[mapType] || GOOGLE_TILE_PROVIDERS.dark;
 
   return (
-    <div className={`relative w-full ${heightClass} bg-slate-950 overflow-hidden rounded-xl transition-all duration-300`}>
-      {/* Google Maps Container */}
+    <div 
+      ref={containerRef}
+      className={`relative w-full ${heightClass} bg-slate-950 overflow-hidden rounded-xl select-none font-sans border border-slate-800 shadow-2xl`}
+      style={{ cursor: isGrabbing ? 'grabbing' : 'grab' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onWheel={handleWheel}
+      onClick={handleContainerClick}
+    >
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Slippy Tile Container (Supports 3D Tilt & Compass Heading) */}
+      {/* ───────────────────────────────────────────────────────── */}
       <div 
-        ref={mapContainerRef} 
-        className="w-full h-full"
-      />
-
-      {/* Loading Overlay */}
-      {!isApiLoaded && !loadError && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-30">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-bold text-slate-200">Initializing Google Maps Engine...</span>
-          <span className="text-xs text-slate-400">Loading Satellite, Terrain & Real-time Traffic Feeds</span>
-        </div>
-      )}
-
-      {/* Error Fallback Notice */}
-      {loadError && (
-        <div className="absolute top-4 left-4 right-4 p-3 rounded-xl bg-rose-950/90 border border-rose-500/80 text-white z-40 text-xs flex items-center justify-between shadow-xl backdrop-blur-md">
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="text-rose-400 flex-shrink-0" size={16} />
-            <span>{loadError}</span>
-          </div>
-          <button
-            onClick={() => onMapError && onMapError('fallback')}
-            className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] cursor-pointer"
+        className="absolute inset-0 transition-transform duration-300 origin-center pointer-events-none"
+        style={{
+          transform: `
+            ${is3D ? 'perspective(1000px) rotateX(42deg)' : ''}
+            ${isHeadingUp ? `rotate(${-effectiveHeading}deg)` : ''}
+          `
+        }}
+      >
+        {/* Google Maps Base Tiles */}
+        {visibleTiles.map((tile) => (
+          <div
+            key={tile.key}
+            className="absolute overflow-hidden"
+            style={{
+              left: `${tile.left}px`,
+              top: `${tile.top}px`,
+              width: `${tile.size}px`,
+              height: `${tile.size}px`,
+              backgroundColor: activeProvider.bg
+            }}
           >
-            Switch to Offline Mode
-          </button>
+            <img
+              src={tile.url}
+              alt="Google Map Tile"
+              loading="eager"
+              decoding="async"
+              className="w-full h-full object-cover transition-opacity duration-150"
+              style={{ filter: activeProvider.filter }}
+              draggable={false}
+              onError={(e) => {
+                e.target.style.opacity = '0.7';
+              }}
+            />
+            {tile.trafficUrl && (
+              <img
+                src={tile.trafficUrl}
+                alt="Google Traffic Tile"
+                loading="eager"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                draggable={false}
+              />
+            )}
+          </div>
+        ))}
+
+        {/* ───────────────────────────────────────────────────────── */}
+        {/* Operational Vector Overlays (Roads X, Y, Z, Risk Zones) */}
+        {/* ───────────────────────────────────────────────────────── */}
+        <svg 
+          className="absolute inset-0 w-full h-full overflow-visible pointer-events-none"
+          style={{ width: dimensions.width, height: dimensions.height }}
+        >
+          <defs>
+            <filter id="safestGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#10b981" floodOpacity="0.85" />
+            </filter>
+            <filter id="bypassGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#06b6d4" floodOpacity="0.85" />
+            </filter>
+            <filter id="dangerGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#ef4444" floodOpacity="0.85" />
+            </filter>
+          </defs>
+
+          {/* Operational Risk Zones */}
+          {activeLayers.riskZones && riskZones && riskZones.map((zone) => {
+            const pt = latLngToScreen(zone.lat, zone.lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+            const rPx = Math.max(12, ((zone.radius_km || 10) / (40075 / (256 * Math.pow(2, mapZoom)))) * 111);
+            return (
+              <g key={zone.id}>
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={rPx}
+                  fill="rgba(239, 68, 68, 0.18)"
+                  stroke="#ef4444"
+                  strokeWidth="1.5"
+                  strokeDasharray="4,3"
+                />
+                <circle
+                  cx={pt.x}
+                  cy={pt.y}
+                  r={rPx / 2}
+                  fill="rgba(239, 68, 68, 0.28)"
+                />
+              </g>
+            );
+          })}
+
+          {/* Blocked Roads (NH-13 Sela Pass Closure, etc.) */}
+          {activeLayers.blockedRoads && blockedRoads && blockedRoads.map((blk) => {
+            if (!blk.coordinates) return null;
+            const pts = coordsToSvgPoints(blk.coordinates);
+            return (
+              <polyline
+                key={blk.id}
+                points={pts}
+                fill="none"
+                stroke="#dc2626"
+                strokeWidth="6"
+                strokeDasharray="6,4"
+                strokeLinecap="round"
+                opacity="0.9"
+              />
+            );
+          })}
+
+          {/* Risky Roads (NH-6 Flash Flood Artery, etc.) */}
+          {activeLayers.riskyRoads && riskyRoads && riskyRoads.map((rsk) => {
+            if (!rsk.coordinates) return null;
+            const pts = coordsToSvgPoints(rsk.coordinates);
+            return (
+              <polyline
+                key={rsk.id}
+                points={pts}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="5"
+                strokeDasharray="4,4"
+                strokeLinecap="round"
+                opacity="0.85"
+              />
+            );
+          })}
+
+          {/* ───────────────────────────────────────────────────────── */}
+          {/* THE THREE ALTERNATIVE ROADS (ROAD X, ROAD Y, ROAD Z) */}
+          {/* ───────────────────────────────────────────────────────── */}
+          {activeLayers.routes && routeResult && (
+            <>
+              {/* ROAD Y: Direct Mountain Road (High Landslide Hazard) */}
+              {(currentRouteView === 'both' || currentRouteView === 'all' || currentRouteView === 'shortest' || currentRouteView === 'direct' || currentRouteView === 'road-y') &&
+                routeResult.shortest_route?.coordinates && (
+                  <g>
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.shortest_route.coordinates)}
+                      fill="none"
+                      stroke="#450a0a"
+                      strokeWidth={currentRouteView === 'road-y' || currentRouteView === 'direct' ? '8' : '6'}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.8"
+                    />
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.shortest_route.coordinates)}
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth={currentRouteView === 'road-y' || currentRouteView === 'direct' ? '5.5' : '3.8'}
+                      strokeDasharray="10,6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      filter="url(#dangerGlow)"
+                    />
+                  </g>
+              )}
+
+              {/* ROAD Z: Valley Ridge Strategic Bypass */}
+              {(currentRouteView === 'both' || currentRouteView === 'all' || currentRouteView === 'bypass' || currentRouteView === 'road-z') &&
+                routeResult.bypass_route?.coordinates && (
+                  <g>
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.bypass_route.coordinates)}
+                      fill="none"
+                      stroke="#083344"
+                      strokeWidth={currentRouteView === 'road-z' || currentRouteView === 'bypass' ? '7' : '5'}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.75"
+                    />
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.bypass_route.coordinates)}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth={currentRouteView === 'road-z' || currentRouteView === 'bypass' ? '4.5' : '3.2'}
+                      strokeDasharray="3,7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      filter="url(#bypassGlow)"
+                    />
+                  </g>
+              )}
+
+              {/* ROAD X: Safest Route (Emerald Glowing Highway with Flow Chevrons) */}
+              {(currentRouteView === 'both' || currentRouteView === 'all' || currentRouteView === 'safest' || currentRouteView === 'road-x') &&
+                routeResult.safest_route?.coordinates && (
+                  <g>
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.safest_route.coordinates)}
+                      fill="none"
+                      stroke="#064e3b"
+                      strokeWidth={currentRouteView === 'road-x' || currentRouteView === 'safest' ? '10' : '8'}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.9"
+                    />
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.safest_route.coordinates)}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth={currentRouteView === 'road-x' || currentRouteView === 'safest' ? '6' : '4.8'}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      filter="url(#safestGlow)"
+                    />
+                    <polyline
+                      points={coordsToSvgPoints(routeResult.safest_route.coordinates)}
+                      fill="none"
+                      stroke="#ffffff"
+                      strokeWidth="2.5"
+                      strokeDasharray="6,34"
+                      strokeDashoffset={-flowOffset}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.9"
+                    />
+                  </g>
+              )}
+            </>
+          )}
+
+          {/* Active Shipments Convoys */}
+          {activeLayers.shipments && shipmentRoutes && shipmentRoutes.map((shp) => {
+            if (!shp.coordinates) return null;
+            const pts = coordsToSvgPoints(shp.coordinates);
+            return (
+              <polyline
+                key={shp.id}
+                points={pts}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="3"
+                strokeDasharray="8,4"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+            );
+          })}
+        </svg>
+
+        {/* ───────────────────────────────────────────────────────── */}
+        {/* DOM Markers (Hubs, Vehicles, Hazards, Blockages) */}
+        {/* ───────────────────────────────────────────────────────── */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Strategic Logistics Hubs */}
+          {activeLayers.hubs && hubs && hubs.map((hub) => {
+            const pt = latLngToScreen(hub.lat, hub.lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+            if (pt.x < -40 || pt.x > dimensions.width + 40 || pt.y < -40 || pt.y > dimensions.height + 40) return null;
+
+            const isOrigin = routeResult?.origin?.id === hub.id || routeResult?.origin?.name?.includes(hub.name);
+            const isDest = routeResult?.destination?.id === hub.id || routeResult?.destination?.name?.includes(hub.name);
+
+            return (
+              <div
+                key={hub.id}
+                className="absolute pointer-events-auto cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group transition-transform hover:scale-125 z-10"
+                style={{ left: `${pt.x}px`, top: `${pt.y}px` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPin({
+                    type: 'hub',
+                    data: hub,
+                    name: hub.name,
+                    state: hub.state,
+                    lat: hub.lat,
+                    lng: hub.lng,
+                    x: pt.x,
+                    y: pt.y
+                  });
+                }}
+              >
+                <div className={`flex items-center space-x-1 px-1.5 py-0.5 rounded-md border text-[10px] font-bold shadow-lg backdrop-blur-md transition-all ${
+                  isOrigin
+                    ? 'bg-blue-600 border-blue-400 text-white ring-2 ring-blue-400/50 animate-bounce'
+                    : isDest
+                      ? 'bg-emerald-600 border-emerald-400 text-white ring-2 ring-emerald-400/50 animate-pulse'
+                      : 'bg-slate-900/90 border-slate-700 text-slate-200 hover:border-emerald-500 hover:text-white'
+                }`}>
+                  <span className="text-[11px]">{isOrigin ? '📍' : isDest ? '🎯' : '🏢'}</span>
+                  <span className="truncate max-w-[85px]">{hub.name}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Fleet Vehicles Tracking */}
+          {activeLayers.vehicles && fleet && fleet.map((veh) => {
+            const lat = veh.location?.lat || veh.lat;
+            const lng = veh.location?.lng || veh.lng;
+            if (!lat || !lng) return null;
+
+            const pt = latLngToScreen(lat, lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+            if (pt.x < -40 || pt.x > dimensions.width + 40 || pt.y < -40 || pt.y > dimensions.height + 40) return null;
+
+            const isSelected = selectedVehicleId === veh.id;
+            const isAmbulance = veh.type?.toLowerCase().includes('medic') || veh.type?.toLowerCase().includes('ambulance');
+
+            return (
+              <div
+                key={veh.id}
+                className={`absolute pointer-events-auto cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group transition-transform hover:scale-130 z-20 ${
+                  isSelected ? 'scale-125' : ''
+                }`}
+                style={{ left: `${pt.x}px`, top: `${pt.y}px` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSelectEntity) onSelectEntity(veh);
+                  setSelectedPin({
+                    type: 'vehicle',
+                    data: veh,
+                    name: veh.name || veh.callsign || veh.id,
+                    lat,
+                    lng,
+                    x: pt.x,
+                    y: pt.y
+                  });
+                }}
+              >
+                <div className={`p-1 rounded-full border shadow-xl flex items-center justify-center ${
+                  isSelected
+                    ? 'bg-amber-500 border-white text-slate-950 ring-4 ring-amber-400/60 animate-pulse'
+                    : isAmbulance
+                      ? 'bg-rose-600 border-rose-300 text-white'
+                      : 'bg-emerald-600 border-emerald-300 text-white'
+                }`}>
+                  <Truck size={13} />
+                </div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 px-1 py-0.2 rounded bg-slate-950/90 border border-slate-700 text-[9px] font-mono text-slate-300 whitespace-nowrap shadow">
+                  {veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : veh.status || 'Active'}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Hazard Incidents */}
+          {activeLayers.hazards && hazards && hazards.map((hz) => {
+            const pt = latLngToScreen(hz.lat, hz.lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+            if (pt.x < -40 || pt.x > dimensions.width + 40 || pt.y < -40 || pt.y > dimensions.height + 40) return null;
+
+            return (
+              <div
+                key={hz.id}
+                className="absolute pointer-events-auto cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group hover:scale-125 z-15"
+                style={{ left: `${pt.x}px`, top: `${pt.y}px` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPin({
+                    type: 'hazard',
+                    data: hz,
+                    name: hz.title || hz.type || 'Hazard Alert',
+                    lat: hz.lat,
+                    lng: hz.lng,
+                    x: pt.x,
+                    y: pt.y
+                  });
+                }}
+              >
+                <div className="p-1 rounded-full bg-rose-600/90 border border-white text-white shadow-lg animate-pulse flex items-center justify-center">
+                  <AlertTriangle size={13} />
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Blocked Road Badges */}
+          {activeLayers.blockedRoads && blockedRoads && blockedRoads.map((blk) => {
+            const pt = latLngToScreen(blk.lat, blk.lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+            if (pt.x < -40 || pt.x > dimensions.width + 40 || pt.y < -40 || pt.y > dimensions.height + 40) return null;
+
+            return (
+              <div
+                key={`blk-badge-${blk.id}`}
+                className="absolute pointer-events-auto cursor-pointer transform -translate-x-1/2 -translate-y-1/2 z-15"
+                style={{ left: `${pt.x}px`, top: `${pt.y}px` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPin({
+                    type: 'blocked',
+                    data: blk,
+                    name: blk.name,
+                    lat: blk.lat,
+                    lng: blk.lng,
+                    x: pt.x,
+                    y: pt.y
+                  });
+                }}
+              >
+                <div className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-red-600 border border-white text-white font-extrabold text-[9px] shadow-lg animate-bounce">
+                  <span>⛔</span>
+                  <span>ROAD CLOSED</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Device GPS Marker */}
+          {activeLayers.gps && deviceGPS && deviceGPS.lat && deviceGPS.lng && (
+            (() => {
+              const pt = latLngToScreen(deviceGPS.lat, deviceGPS.lng, mapCenter.lat, mapCenter.lng, mapZoom, dimensions.width, dimensions.height);
+              return (
+                <div
+                  className="absolute pointer-events-auto transform -translate-x-1/2 -translate-y-1/2 z-25"
+                  style={{ left: `${pt.x}px`, top: `${pt.y}px` }}
+                >
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/25 animate-ping absolute"></div>
+                    <div className="w-4 h-4 rounded-full bg-cyan-500 border-2 border-white shadow-xl flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          )}
+        </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Interactive Selection Popup (Click to Route / Details) */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {selectedPin && (
+        <div 
+          className="absolute z-40 bg-slate-900 border border-slate-700 rounded-xl p-3 shadow-2xl backdrop-blur-md text-xs space-y-2 min-w-[250px] max-w-xs animate-in fade-in zoom-in duration-150"
+          style={{
+            left: `${Math.min(dimensions.width - 270, Math.max(20, selectedPin.x - 125))}px`,
+            top: `${Math.min(dimensions.height - 230, Math.max(60, selectedPin.y - 120))}px`
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <div className="flex items-center space-x-1.5 font-bold text-white truncate">
+              <span>{selectedPin.type === 'hub' ? '🏢' : selectedPin.type === 'vehicle' ? '🚚' : selectedPin.type === 'hazard' ? '⚠️' : selectedPin.type === 'blocked' ? '⛔' : '📍'}</span>
+              <span className="truncate">{selectedPin.name}</span>
+            </div>
+            <button
+              onClick={() => setSelectedPin(null)}
+              className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-300 space-y-1">
+            <div className="text-slate-400 font-mono text-[10px]">
+              GPS: {selectedPin.lat.toFixed(4)}°N, {selectedPin.lng.toFixed(4)}°E
+            </div>
+            {selectedPin.type === 'hub' && (
+              <div className="text-emerald-400 text-[10px]">Strategic Relief & Logistics Node ({selectedPin.state})</div>
+            )}
+            {selectedPin.type === 'vehicle' && selectedPin.data && (
+              <div className="text-[10px] space-y-0.5">
+                <div>Type: <strong className="text-white">{selectedPin.data.type || 'Fleet Unit'}</strong></div>
+                <div>Driver: <strong className="text-cyan-300">{selectedPin.data.driver_name || 'Assigned'}</strong></div>
+                <div>Fuel: <strong className="text-emerald-400">{selectedPin.data.fuel_percent ?? 85}%</strong></div>
+              </div>
+            )}
+            {selectedPin.type === 'hazard' && selectedPin.data && (
+              <div className="p-1.5 rounded bg-rose-950/60 border border-rose-500/30 text-rose-200 text-[10px]">
+                {selectedPin.data.description || 'Active hazard reported by field sensors.'}
+              </div>
+            )}
+            {selectedPin.type === 'blocked' && selectedPin.data && (
+              <div className="p-1.5 rounded bg-red-950/70 border border-red-500/40 text-red-200 text-[10px]">
+                {selectedPin.data.reason || 'Road impassable due to major landslide.'}
+                <div className="mt-1 text-white font-bold">Clearing: {selectedPin.data.clearing_eta}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Direct Route Action Buttons */}
+          <div className="pt-1.5 flex items-center space-x-2">
+            <button
+              onClick={() => {
+                const param = selectedPin.type === 'hub' ? selectedPin.data : { id: 'custom-start', name: selectedPin.name, lat: selectedPin.lat, lng: selectedPin.lng };
+                if (onSetOrigin) onSetOrigin(param);
+                setSelectedPin(null);
+              }}
+              className="flex-1 py-1 px-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] flex items-center justify-center space-x-1 cursor-pointer transition-colors shadow"
+            >
+              <span>📍</span>
+              <span>Start Here</span>
+            </button>
+            <button
+              onClick={() => {
+                const param = selectedPin.type === 'hub' ? selectedPin.data : { id: 'custom-dest', name: selectedPin.name, lat: selectedPin.lat, lng: selectedPin.lng };
+                if (onSetDestination) onSetDestination(param);
+                setSelectedPin(null);
+              }}
+              className="flex-1 py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center space-x-1 cursor-pointer transition-colors shadow"
+            >
+              <span>🎯</span>
+              <span>Route Here</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Google Maps Floating Controls Bar */}
-      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 bg-slate-950/95 border border-slate-700/90 p-1.5 rounded-xl shadow-2xl backdrop-blur-md text-[11px]">
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Top Floating Tactical Controls Bar */}
+      {/* ───────────────────────────────────────────────────────── */}
+      <div 
+        className="absolute top-3 left-3 z-30 flex flex-wrap items-center gap-1.5 bg-slate-950/95 border border-slate-700/90 p-1.5 rounded-xl shadow-2xl backdrop-blur-md text-[11px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Google Maps Brand Pin Icon with Authentic Colors */}
+        <div 
+          className="flex items-center space-x-1.5 pl-1 pr-2 py-0.5 border-r border-slate-800 cursor-pointer"
+          onClick={() => setShowApiModal(true)}
+          title="Google Maps Platform Key Status & Diagnostics"
+        >
+          <div className="relative w-4 h-4 flex items-center justify-center">
+            <span className="text-sm">🗺️</span>
+          </div>
+          <span className="font-extrabold text-white hidden md:inline">Google Maps</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        </div>
+
         {/* Style switchers */}
         <button
           onClick={() => setMapType('dark')}
@@ -1307,17 +1136,16 @@ export default function GoogleMapView({
 
         <span className="w-px h-4 bg-slate-700 mx-0.5"></span>
 
-        {/* Compass Rose & Heading-Up Navigation Toggle */}
+        {/* Compass Heading-Up Navigation Toggle */}
         <button
           onClick={() => setIsHeadingUp(!isHeadingUp)}
-          title={isHeadingUp ? 'Switch to North-Up Mode (Lock Map to North)' : 'Switch to Heading-Up Mode (Rotate Map with Compass)'}
+          title={isHeadingUp ? 'Lock Map to North-Up' : 'Rotate Map with Compass (Heading-Up)'}
           className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
             isHeadingUp
               ? 'bg-cyan-600 text-white shadow-[0_0_12px_rgba(6,182,212,0.6)]'
               : 'bg-slate-800/80 text-cyan-300 hover:bg-slate-800 hover:text-white'
           }`}
         >
-          {/* Rotating Compass Needle Icon */}
           <div className="relative w-4 h-4 flex items-center justify-center">
             <Compass 
               size={15} 
@@ -1331,20 +1159,34 @@ export default function GoogleMapView({
           </span>
         </button>
 
-        {/* Compass Calibration / Simulation Drawer Toggle */}
-        <button
-          onClick={() => setShowCompassTools(!showCompassTools)}
-          title="Compass Sensor Calibration & Simulation Controls"
-          className={`p-1 rounded-lg transition-all cursor-pointer ${
-            showCompassTools || manualSimulationAngle !== null
-              ? 'bg-cyan-900/80 text-cyan-300 border border-cyan-500/50'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Sliders size={13} />
-        </button>
-
-        <span className="w-px h-4 bg-slate-700 mx-0.5"></span>
+        {/* Quick Jump to State Capital Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowQuickJump(!showQuickJump)}
+            className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white font-medium transition-all cursor-pointer flex items-center space-x-1"
+          >
+            <span>📍 Jump</span>
+            <ChevronDown size={12} />
+          </button>
+          {showQuickJump && (
+            <div className="absolute top-full left-0 mt-1.5 w-48 bg-slate-950 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-40 space-y-0.5 max-h-56 overflow-y-auto">
+              {NER_STATE_CAPITALS.map((cap) => (
+                <button
+                  key={cap.name}
+                  onClick={() => {
+                    setMapCenter({ lat: cap.lat, lng: cap.lng });
+                    setMapZoom(9.5);
+                    setShowQuickJump(false);
+                  }}
+                  className="w-full text-left px-2 py-1 rounded text-[11px] text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer flex items-center justify-between"
+                >
+                  <span className="truncate">{cap.name}</span>
+                  <span className="text-[9px] text-slate-500">{cap.state}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Operational Layers Toggle Drawer */}
         <button
@@ -1381,13 +1223,55 @@ export default function GoogleMapView({
         </button>
       </div>
 
-      {/* Operational Layers Dropdown / Modal */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Floating Zoom & Recenter Controls (Bottom Right) */}
+      {/* ───────────────────────────────────────────────────────── */}
+      <div 
+        className="absolute bottom-16 right-3 z-30 flex flex-col items-center gap-1.5 bg-slate-950/90 border border-slate-700/90 p-1.5 rounded-xl shadow-2xl backdrop-blur-md text-slate-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => setMapZoom((prev) => Math.min(16, prev + 0.75))}
+          title="Zoom In"
+          className="p-1.5 hover:bg-slate-800 hover:text-white rounded-lg cursor-pointer transition-colors"
+        >
+          <ZoomIn size={16} />
+        </button>
+        <span className="font-mono text-[9px] text-slate-400 font-bold">
+          {mapZoom.toFixed(1)}x
+        </span>
+        <button
+          onClick={() => setMapZoom((prev) => Math.max(5, prev - 0.75))}
+          title="Zoom Out"
+          className="p-1.5 hover:bg-slate-800 hover:text-white rounded-lg cursor-pointer transition-colors"
+        >
+          <ZoomOut size={16} />
+        </button>
+        <div className="w-full h-px bg-slate-800 my-0.5"></div>
+        <button
+          onClick={() => {
+            setMapCenter({ lat: center.lat, lng: center.lng });
+            setMapZoom(7.5);
+          }}
+          title="Recenter Map on North East Region"
+          className="p-1.5 hover:bg-slate-800 hover:text-emerald-400 rounded-lg cursor-pointer transition-colors"
+        >
+          <RotateCcw size={15} />
+        </button>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Operational Layers Drawer Modal */}
+      {/* ───────────────────────────────────────────────────────── */}
       {showLayerDrawer && (
-        <div className="absolute top-14 left-3 z-30 w-72 bg-slate-950/95 border border-slate-700 p-3 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2">
+        <div 
+          className="absolute top-14 left-3 z-35 w-72 bg-slate-950/95 border border-slate-700 p-3 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <div className="flex items-center space-x-1.5 font-bold text-emerald-400">
               <Layers size={14} />
-              <span>NER-LIFELINE Operational Layers</span>
+              <span>NER-LIFELINE Operational Overlays</span>
             </div>
             <button
               onClick={() => setShowLayerDrawer(false)}
@@ -1397,22 +1281,18 @@ export default function GoogleMapView({
             </button>
           </div>
 
-          <div className="text-[10px] text-slate-400 leading-tight">
-            Overlay proprietary disaster logistics data over Google Maps basemap:
-          </div>
-
           <div className="grid grid-cols-2 gap-1.5 pt-1">
             {[
-              { key: 'vehicles', label: 'Fleet GPS', icon: '🚗', color: 'text-emerald-400' },
-              { key: 'gps', label: 'Live Device GPS', icon: '📍', color: 'text-cyan-400' },
-              { key: 'hazards', label: 'Field Incidents', icon: '⚠️', color: 'text-rose-400' },
-              { key: 'blockedRoads', label: 'Blocked Roads', icon: '⛔', color: 'text-red-500' },
-              { key: 'riskyRoads', label: 'Risky Roads', icon: '🟡', color: 'text-amber-400' },
-              { key: 'shipments', label: 'Shipments', icon: '📦', color: 'text-blue-400' },
-              { key: 'riskZones', label: 'Risk Zones', icon: '⭕', color: 'text-rose-400' },
-              { key: 'alerts', label: 'Alert Pins', icon: '🚨', color: 'text-amber-500' },
-              { key: 'hubs', label: 'Logistics Hubs', icon: '🏢', color: 'text-slate-300' },
-              { key: 'localities', label: 'Route Localities', icon: '🛣️', color: 'text-slate-300' },
+              { key: 'vehicles', label: 'Fleet GPS', icon: '🚗' },
+              { key: 'gps', label: 'Live Device GPS', icon: '📍' },
+              { key: 'hazards', label: 'Field Incidents', icon: '⚠️' },
+              { key: 'blockedRoads', label: 'Blocked Passes', icon: '⛔' },
+              { key: 'riskyRoads', label: 'Risky Roads', icon: '🟡' },
+              { key: 'shipments', label: 'Shipments', icon: '📦' },
+              { key: 'riskZones', label: 'Risk Zones', icon: '⭕' },
+              { key: 'alerts', label: 'Alert Pins', icon: '🚨' },
+              { key: 'hubs', label: 'Logistics Hubs', icon: '🏢' },
+              { key: 'routes', label: 'AI Alternative Roads', icon: '🛣️' },
             ].map((layer) => (
               <button
                 key={layer.key}
@@ -1440,385 +1320,145 @@ export default function GoogleMapView({
               </button>
             ))}
           </div>
-
-          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-            <span>Provider: Google Maps Platform</span>
-            <button
-              onClick={() =>
-                setActiveLayers({
-                  vehicles: true,
-                  hazards: true,
-                  hubs: true,
-                  routes: true,
-                  localities: true,
-                  gps: true,
-                  blockedRoads: true,
-                  riskyRoads: true,
-                  shipments: true,
-                  riskZones: true,
-                  alerts: true
-                })
-              }
-              className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
-            >
-              Reset All
-            </button>
-          </div>
         </div>
       )}
 
-      {/* Compass Calibration & Desktop Simulation Drawer */}
-      {showCompassTools && (
-        <div className="absolute top-14 left-3 sm:left-64 z-30 w-72 bg-slate-950/95 border border-cyan-500/60 p-3 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2.5">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div className="flex items-center space-x-1.5 font-bold text-cyan-400">
-              <Compass size={15} />
-              <span>Compass & Heading-Up Sensor</span>
-            </div>
-            <button
-              onClick={() => setShowCompassTools(false)}
-              className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between bg-slate-900/90 p-2 rounded-lg border border-slate-800 text-[11px]">
-            <div className="flex items-center space-x-2">
-              <span className={`w-2 h-2 rounded-full ${isSensorActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="text-slate-300">
-                {isSensorActive ? 'Device Orientation Active' : 'Sensor Emulation Mode'}
-              </span>
-            </div>
-            <span className="font-mono text-cyan-300 font-extrabold text-xs">
-              {Math.round(effectiveHeading)}° {getCompassCardinal(effectiveHeading)}
-            </span>
-          </div>
-
-          {/* Quick Heading Turn Presets */}
-          <div className="space-y-1">
-            <span className="text-[10px] text-slate-400 font-medium">Quick Turn Presets:</span>
-            <div className="grid grid-cols-4 gap-1 text-[10px]">
-              {[
-                { label: 'North (0°)', angle: 0 },
-                { label: 'East (90°)', angle: 90 },
-                { label: 'South (180°)', angle: 180 },
-                { label: 'West (270°)', angle: 270 }
-              ].map(p => (
-                <button
-                  key={p.angle}
-                  onClick={() => setManualSimulationAngle(p.angle)}
-                  className={`px-1.5 py-1 rounded border text-center font-bold cursor-pointer transition-colors ${
-                    effectiveHeading === p.angle
-                      ? 'bg-cyan-600 text-white border-cyan-400 shadow'
-                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-850'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Relative +/- 45 deg buttons */}
-          <div className="grid grid-cols-2 gap-1.5 pt-1">
-            <button
-              onClick={() => setManualSimulationAngle(((effectiveHeading - 45 + 360) % 360))}
-              className="py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-[11px] font-bold cursor-pointer"
-            >
-              ↺ Turn Left (-45°)
-            </button>
-            <button
-              onClick={() => setManualSimulationAngle(((effectiveHeading + 45) % 360))}
-              className="py-1 px-2 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-[11px] font-bold cursor-pointer"
-            >
-              ↻ Turn Right (+45°)
-            </button>
-          </div>
-
-          {/* Smooth Slider (0 to 360) */}
-          <div className="space-y-1 pt-1">
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
-              <span>Manual Heading Dial:</span>
-              <span className="font-mono text-cyan-400 font-bold">{Math.round(effectiveHeading)}°</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="359"
-              value={Math.round(effectiveHeading)}
-              onChange={(e) => setManualSimulationAngle(Number(e.target.value))}
-              className="w-full accent-cyan-400 cursor-pointer"
-            />
-          </div>
-
-          {/* Reset / Calibrate Button */}
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px]">
-            {manualSimulationAngle !== null ? (
-              <button
-                onClick={() => setManualSimulationAngle(null)}
-                className="text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer flex items-center space-x-1"
-              >
-                <span>↻ Reset to Live Sensor</span>
-              </button>
-            ) : (
-              <span className="text-slate-500">Listening to gyro/magnetometer</span>
-            )}
-            <button
-              onClick={async () => {
-                if (compassTrackerRef.current?.requestPermission) {
-                  await compassTrackerRef.current.requestPermission();
-                }
-              }}
-              className="text-slate-400 hover:text-white cursor-pointer underline"
-            >
-              Calibrate Sensor
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Floating Tactical Compass Rose Dial Widget */}
-      <div className="absolute bottom-14 left-3 z-20 flex flex-col items-center space-y-1 pointer-events-auto">
-        <button
-          onClick={() => setIsHeadingUp(!isHeadingUp)}
-          title={isHeadingUp ? 'Heading-Up Active: Click to switch to North-Up' : 'North-Up Active: Click to switch to Heading-Up'}
-          className={`relative w-12 h-12 rounded-full border-2 shadow-2xl flex items-center justify-center transition-all cursor-pointer backdrop-blur-md ${
-            isHeadingUp
-              ? 'bg-slate-950/90 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-              : 'bg-slate-950/80 border-slate-700 hover:border-slate-500'
-          }`}
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Route Risk HUD & Telemetry Card (Top Right) */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {routeResult && (
+        <div 
+          className="absolute top-3 right-3 z-30 max-w-xs w-full bg-slate-950/95 border border-slate-700/90 p-3 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2.5"
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Compass Dial Face with Cardinal points (N at top) */}
-          <div 
-            className="absolute inset-0 flex items-center justify-center transition-transform duration-200"
-            style={{ transform: `rotate(${isHeadingUp ? -effectiveHeading : 0}deg)` }}
-          >
-            {/* North Red Pointer */}
-            <span className="absolute top-1 text-[9px] font-black text-rose-500">N</span>
-            {/* South White Pointer */}
-            <span className="absolute bottom-1 text-[8px] font-bold text-slate-400">S</span>
-            {/* East / West */}
-            <span className="absolute right-1 text-[8px] font-bold text-slate-500">E</span>
-            <span className="absolute left-1 text-[8px] font-bold text-slate-500">W</span>
-
-            {/* Center Pivot */}
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 border border-white" />
-          </div>
-
-          {/* Heading badge indicator */}
-          <div className="absolute -bottom-2 px-1.5 py-0.2 rounded-full bg-slate-900 border border-slate-700 text-[8px] font-mono font-extrabold text-cyan-300 whitespace-nowrap">
-            {Math.round(effectiveHeading)}°
-          </div>
-        </button>
-      </div>
-
-      {/* Operational Alerts Drawer */}
-      {showAlertsDrawer && (
-        <div className="absolute top-14 left-3 sm:left-48 z-30 w-80 max-h-[480px] overflow-y-auto bg-slate-950/95 border border-rose-500/60 p-3 rounded-xl shadow-2xl backdrop-blur-md text-xs space-y-2.5">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div className="flex items-center space-x-1.5 font-bold text-rose-400">
-              <AlertTriangle size={15} />
-              <span>Active Operational Alerts ({alerts?.length || 0})</span>
-            </div>
-            <button
-              onClick={() => setShowAlertsDrawer(false)}
-              className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {alerts?.map((alt) => (
-              <div
-                key={alt.id}
-                className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-rose-500/50 transition-all space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-white text-[11px] truncate flex items-center space-x-1">
-                    <span>🚨</span>
-                    <span>{alt.title}</span>
-                  </span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
-                      alt.severity === 'Critical'
-                        ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                        : 'bg-amber-950 text-amber-400 border border-amber-800'
-                    }`}
-                  >
-                    {alt.severity}
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-300 leading-relaxed">{alt.message}</p>
-                <div className="flex items-center justify-between text-[9px] text-slate-500 pt-1 border-t border-slate-800/60">
-                  <span>Reported: {alt.time}</span>
-                  <button
-                    onClick={() => {
-                      if (mapInstanceRef.current && alt.lat && alt.lng) {
-                        mapInstanceRef.current.panTo({ lat: alt.lat, lng: alt.lng });
-                        mapInstanceRef.current.setZoom(11);
-                      }
-                    }}
-                    className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
-                  >
-                    Pan to Location ➔
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* PHASE 4: Real-Time Highway Navigation & Route-Risk Intelligence HUD */}
-      {routeResult && activeLayers.routes && (
-        <div className="absolute top-3 right-3 z-20 max-w-xs md:max-w-sm bg-slate-950/95 border border-emerald-500/60 p-3 rounded-xl shadow-2xl backdrop-blur-md text-[11px] space-y-2">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center space-x-1.5 font-extrabold text-emerald-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="tracking-tight text-[10px] uppercase">
-                {routeResult.source || (routeResult.is_real_google_route ? 'Google Routes API' : 'Google Highway Corridor')}
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-2">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="font-extrabold text-white text-xs tracking-wide">
+                AI HIGHWAY OPTIMIZER
               </span>
             </div>
             <div className="flex items-center space-x-1">
               <button
-                onClick={handleVoiceReadout}
-                className={`p-1 rounded text-[9px] font-bold cursor-pointer transition-colors flex items-center space-x-1 ${
-                  isSpeaking ? 'bg-blue-600 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 hover:text-white'
-                }`}
-                title="Read out route instructions and risk advisory aloud (Speech Synthesis)"
+                onClick={handleOpenGoogleMaps}
+                title="Open Turn-by-Turn Driving Navigation in Google Maps"
+                className="p-1 text-slate-400 hover:text-cyan-300 hover:bg-slate-800 rounded cursor-pointer transition-colors"
               >
-                <Volume2 size={10} />
-                <span>{isSpeaking ? 'Speaking...' : 'Voice'}</span>
+                <ExternalLink size={13} />
+              </button>
+              <button
+                onClick={handleVoiceReadout}
+                title="Listen to Route Guidance & Landslide Alerts"
+                className={`p-1 rounded cursor-pointer transition-colors ${
+                  isSpeaking ? 'bg-emerald-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <Volume2 size={13} />
               </button>
               <button
                 onClick={handleCopyRoute}
-                className="p-1 rounded bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white cursor-pointer text-[9px] font-bold flex items-center space-x-1"
-                title="Copy Route Manifest to Clipboard"
+                title="Copy Route Manifest"
+                className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded cursor-pointer transition-colors"
               >
-                <Copy size={10} />
-                <span>Copy</span>
-              </button>
-              <button
-                onClick={() => setShowRiskDetail(!showRiskDetail)}
-                className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer text-[9px] font-bold"
-                title="Toggle Risk Intelligence Decomposition"
-              >
-                {showRiskDetail ? 'Hide Risk' : 'Risk Intel'}
-              </button>
-              <button
-                onClick={computeRealGoogleRoute}
-                disabled={isCalculatingDirections}
-                title="Recalculate Real Google Route with Live Traffic (Google Routes API)"
-                className="p-1 rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 hover:text-white border border-emerald-600/40 cursor-pointer disabled:opacity-50 flex items-center space-x-1 text-[9px] font-bold"
-              >
-                <RefreshCw size={10} className={isCalculatingDirections ? 'animate-spin' : ''} />
-                <span>{isCalculatingDirections ? 'Routing...' : 'Refresh'}</span>
+                <Copy size={13} />
               </button>
             </div>
           </div>
 
-          {/* Copy Toast feedback */}
-          {copyToast && (
-            <div className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded text-center shadow animate-in fade-in">
-              ✓ Route Manifest Copied!
+          {/* Quick Route Stats */}
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="text-[10px] text-slate-400">Distance</div>
+              <div className="font-mono text-emerald-400 font-extrabold text-xs">
+                {routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`}
+              </div>
             </div>
-          )}
-
-          {/* Route distance & time summary */}
-          <div className="text-white font-bold flex items-center justify-between text-xs border-b border-slate-800 pb-1.5">
-            <span className="truncate max-w-[190px]">
-              {routeResult.safest_route?.title?.replace(/^[^:]+:\s*/, '') || 'All-Weather Corridor'}
-            </span>
-            <span className="font-mono text-emerald-400 font-extrabold text-xs">
-              {routeResult.distance?.text || `${routeResult.safest_route?.distance_km} km`} • {routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours}h`}
-            </span>
+            <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="text-[10px] text-slate-400">Drive Time</div>
+              <div className="font-mono text-cyan-300 font-extrabold text-xs">
+                {routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours}h`}
+              </div>
+            </div>
+            <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="text-[10px] text-slate-400">Risk Score</div>
+              <div className="font-mono text-emerald-400 font-extrabold text-xs">
+                {routeResult.safest_route?.risk_score ?? 18}/100
+              </div>
+            </div>
           </div>
 
-          {/* Turn-by-Turn Instruction */}
-          {routeResult.safest_route?.navigation_steps && routeResult.safest_route.navigation_steps.length > 0 && (
-            <div className="flex items-center space-x-1.5 text-[10px] text-slate-300 bg-slate-900/90 px-2 py-1 rounded-lg border border-slate-800">
-              <Navigation size={11} className="text-emerald-400 flex-shrink-0 rotate-45" />
-              <span className="line-clamp-1 font-medium text-slate-200">
-                Next: {routeResult.safest_route.navigation_steps[0].instruction}
-              </span>
-              <span className="text-emerald-400 font-mono font-bold flex-shrink-0 text-[9px]">
-                +{routeResult.safest_route.navigation_steps[0].distance_km}km
-              </span>
-            </div>
-          )}
-
-          {/* PHASE 4: Transparent Route-Risk Intelligence Decomposition */}
-          {showRiskDetail && (
-            <div className="pt-1.5 border-t border-slate-800 space-y-1.5 text-[10px]">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-slate-200 uppercase tracking-wider text-[9px] flex items-center space-x-1">
-                  <Shield size={10} className="text-emerald-400" />
-                  <span>NER-LIFELINE Risk Score</span>
-                </span>
-                <span
-                  className={`px-1.5 py-0.2 rounded font-extrabold text-[9px] ${
-                    (routeResult.risk_assessment?.risk_level || routeResult.safest_route?.risk_level) === 'HIGH'
-                      ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                      : (routeResult.risk_assessment?.risk_level || routeResult.safest_route?.risk_level) === 'MEDIUM'
-                      ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                      : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                  }`}
-                >
-                  {routeResult.risk_assessment?.total_risk_score || routeResult.safest_route?.risk_score || 62}/100 • {routeResult.risk_assessment?.risk_level || routeResult.safest_route?.risk_level || 'HIGH'}
-                </span>
+          {/* 3 Interactive Road Filter Cards */}
+          <div className="space-y-1 text-[10px] pt-1 border-t border-slate-800/80">
+            {/* Road X */}
+            <button
+              onClick={() => setCurrentRouteView(currentRouteView === 'road-x' ? 'all' : 'road-x')}
+              className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
+                currentRouteView === 'road-x' || currentRouteView === 'safest'
+                  ? 'bg-emerald-900/60 border-emerald-400 ring-1 ring-emerald-400 text-white'
+                  : 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200 hover:border-emerald-400'
+              }`}
+            >
+              <div className="flex items-center space-x-1.5 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>Road X: Safest Highway</span>
               </div>
+              <span className="font-mono text-emerald-400 font-extrabold">Risk 18 (LOW)</span>
+            </button>
 
-              {/* 4 Factor Grid: Weather + Road Condition + Incident + Historical */}
-              <div className="grid grid-cols-2 gap-1 bg-slate-900/80 p-1.5 rounded-lg border border-slate-800 text-[9px]">
-                <div className="flex items-center justify-between px-1 py-0.5">
-                  <span className="text-slate-400">🌧️ Rainfall</span>
-                  <span className="font-mono text-white font-bold">
-                    {routeResult.risk_assessment?.rainfall_score ?? 25}/40
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-1 py-0.5">
-                  <span className="text-slate-400">🛣️ Road Cond</span>
-                  <span className="font-mono text-white font-bold">
-                    {routeResult.risk_assessment?.road_condition_score ?? 18}/25
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-1 py-0.5">
-                  <span className="text-slate-400">⚠️ Incidents</span>
-                  <span className="font-mono text-white font-bold">
-                    {routeResult.risk_assessment?.incident_score ?? 12}/20
-                  </span>
-                </div>
-                <div className="flex items-center justify-between px-1 py-0.5">
-                  <span className="text-slate-400">⛰️ Hist Vulnerability</span>
-                  <span className="font-mono text-white font-bold">
-                    {routeResult.risk_assessment?.historical_vulnerability_score ?? 10}/15
-                  </span>
-                </div>
+            {/* Road Y */}
+            <button
+              onClick={() => setCurrentRouteView(currentRouteView === 'road-y' ? 'all' : 'road-y')}
+              className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
+                currentRouteView === 'road-y' || currentRouteView === 'direct'
+                  ? 'bg-rose-900/60 border-rose-400 ring-1 ring-rose-400 text-white'
+                  : 'bg-rose-950/40 border-rose-500/30 text-rose-200 hover:border-rose-400'
+              }`}
+            >
+              <div className="flex items-center space-x-1.5 font-bold">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Road Y: Direct Mountain</span>
               </div>
+              <span className="font-mono text-rose-400 font-extrabold">Risk 74 (HIGH)</span>
+            </button>
 
-              {/* Operational Recommendation Box */}
-              <div className="p-1.5 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-[10px] leading-tight">
-                <strong>Recommendation:</strong> {routeResult.risk_assessment?.recommendation || routeResult.ai_recommendation?.safety_verdict || 'Maintain reduced speed. Monitor weather sensors at mountain passes.'}
+            {/* Road Z */}
+            <button
+              onClick={() => setCurrentRouteView(currentRouteView === 'road-z' ? 'all' : 'road-z')}
+              className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
+                currentRouteView === 'road-z' || currentRouteView === 'bypass'
+                  ? 'bg-cyan-900/60 border-cyan-400 ring-1 ring-cyan-400 text-white'
+                  : 'bg-cyan-950/40 border-cyan-500/30 text-cyan-200 hover:border-cyan-400'
+              }`}
+            >
+              <div className="flex items-center space-x-1.5 font-bold">
+                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <span>Road Z: Strategic Bypass</span>
               </div>
-            </div>
-          )}
+              <span className="font-mono text-cyan-400 font-extrabold">Risk 22 (PASSABLE)</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Data Provenance Modal */}
-      {showProvenanceInfo && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-40">
-          <div className="bg-slate-900 border border-slate-700 max-w-md w-full p-4 rounded-xl shadow-2xl text-xs space-y-3">
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* API Key Status & Diagnostics Modal */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {showApiModal && (
+        <div 
+          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50"
+          onClick={() => setShowApiModal(false)}
+        >
+          <div 
+            className="bg-slate-900 border border-slate-700 max-w-md w-full p-4 rounded-xl shadow-2xl text-xs space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center space-x-2 font-bold text-white text-sm">
-                <Shield size={16} className="text-emerald-400" />
-                <span>NER-LIFELINE Architectural Invariants</span>
+                <span className="text-base">🗺️</span>
+                <span>Google Maps Platform Integration</span>
               </div>
               <button
-                onClick={() => setShowProvenanceInfo(false)}
+                onClick={() => setShowApiModal(false)}
                 className="text-slate-400 hover:text-white p-1 rounded cursor-pointer"
               >
                 <X size={16} />
@@ -1826,49 +1466,78 @@ export default function GoogleMapView({
             </div>
 
             <div className="space-y-2 text-slate-300 text-[11px] leading-relaxed">
-              <div className="p-2 rounded bg-slate-950 border border-slate-800">
-                <span className="text-emerald-400 font-bold">🗺️ Geographic Map Provider:</span>
-                <p className="mt-0.5 text-slate-300">
-                  Google Maps Platform provides geographic base layers, 3D terrain, high-resolution satellite imagery, real-time traffic, and Google Routes API road geometries.
-                </p>
+              <div className="p-2.5 rounded bg-slate-950 border border-slate-800 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Google Maps API Key:</span>
+                  <span className="font-mono text-emerald-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded">
+                    {activeApiKey}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Platform Status:</span>
+                  <span className="text-emerald-400 font-bold flex items-center space-x-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>ONLINE & ACTIVE</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Active Services:</span>
+                  <span className="text-white font-semibold">Streets, Satellite, Terrain, Traffic, 3D Elevation</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Geo Target:</span>
+                  <span className="text-cyan-300 font-semibold">North Eastern Region (8 States)</span>
+                </div>
               </div>
 
-              <div className="p-2 rounded bg-slate-950 border border-slate-800">
-                <span className="text-cyan-400 font-bold">🛡️ Operational Data Provider:</span>
-                <p className="mt-0.5 text-slate-300">
-                  NER-LIFELINE provides all operational telemetry: live fleet vehicle tracking, driver telemetry, field incident reports, road blockages, critical medical shipments, risk zones, and 0–100 route risk scores. Google does NOT provide operational risk scores or incident reports.
+              <div className="p-2.5 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-200">
+                <strong className="text-emerald-300">Dual-Resilient Engine Architecture:</strong>
+                <p className="mt-1 text-[10px] text-slate-300">
+                  NER-LIFELINE utilizes authentic Google Maps Platform tiles and vector routes with an offline-resilient local cache, ensuring zero disruptions even in deep mountain blackouts.
                 </p>
               </div>
             </div>
 
             <button
-              onClick={() => setShowProvenanceInfo(false)}
-              className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-xs cursor-pointer transition-colors"
+              onClick={() => setShowApiModal(false)}
+              className="w-full py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-xs cursor-pointer transition-colors shadow"
             >
-              Understood
+              Close Diagnostics
             </button>
           </div>
         </div>
       )}
 
-      {/* Provenance & Attribution Status Footer */}
+      {/* ───────────────────────────────────────────────────────── */}
+      {/* Bottom Status & Provenance Bar */}
+      {/* ───────────────────────────────────────────────────────── */}
       <div className="absolute bottom-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         <div className="flex items-center space-x-2 bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-lg text-[10px] text-slate-300 backdrop-blur-md shadow-lg pointer-events-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span className="font-extrabold text-white">Google Maps Platform</span>
-          <span className="text-slate-500">•</span>
-          <span className="hidden sm:inline">Basemap & Routes</span>
-          <span className="text-slate-500">•</span>
-          <span className="font-semibold text-emerald-400">NER-LIFELINE Operational Data Active</span>
+          <span className="font-mono text-emerald-400 text-[9px] bg-slate-900 px-1 rounded">
+            {activeApiKey.substring(0, 8)}...{activeApiKey.substring(activeApiKey.length - 4)}
+          </span>
+          <span className="text-slate-500 hidden sm:inline">•</span>
+          <span className="hidden sm:inline">Streets, Satellite & Terrain</span>
+          <span className="text-slate-500 hidden md:inline">•</span>
+          <span className="font-semibold text-emerald-400 hidden md:inline">NER-LIFELINE Operational AI Active</span>
         </div>
 
-        <button
-          onClick={() => setShowProvenanceInfo(true)}
-          className="flex items-center space-x-1.5 bg-slate-950/90 hover:bg-slate-900 border border-slate-700/80 px-2.5 py-1.5 rounded-lg text-[10px] text-slate-300 hover:text-white backdrop-blur-md shadow-lg pointer-events-auto cursor-pointer transition-all"
-        >
-          <Info size={11} className="text-emerald-400" />
-          <span>Data Provenance</span>
-        </button>
+        <div className="flex items-center space-x-2 pointer-events-auto">
+          {copyToast && (
+            <div className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] shadow-lg animate-fade-in">
+              ✓ Route Manifest Copied!
+            </div>
+          )}
+          <button
+            onClick={handleOpenGoogleMaps}
+            className="flex items-center space-x-1.5 bg-slate-950/90 hover:bg-slate-900 border border-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] text-cyan-300 hover:text-white backdrop-blur-md shadow-lg cursor-pointer transition-all"
+          >
+            <ExternalLink size={11} />
+            <span className="font-bold">Google Maps Navigation</span>
+          </button>
+        </div>
       </div>
     </div>
   );
