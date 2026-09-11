@@ -122,6 +122,8 @@ export default function GoogleMapView({
   onLocalityClick = null,
   onRealRouteComputed = null,
   onMapError = null,
+  onSetOrigin = null,
+  onSetDestination = null,
   heightClass = 'h-[640px]'
 }) {
   const mapContainerRef = useRef(null);
@@ -339,9 +341,49 @@ export default function GoogleMapView({
       infoWindowRef.current = new window.google.maps.InfoWindow();
       mapInstanceRef.current = map;
 
-      // Handle map click to deselect
-      map.addListener('click', () => {
-        if (infoWindowRef.current) infoWindowRef.current.close();
+      // Handle map click for custom point routing & popups
+      map.addListener('click', (e) => {
+        if (!e.latLng) {
+          if (infoWindowRef.current) infoWindowRef.current.close();
+          return;
+        }
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+
+        let nearestHub = null;
+        let minDist = 999999;
+        if (hubs && hubs.length) {
+          hubs.forEach((h) => {
+            const d = Math.hypot(h.lat - lat, h.lng - lng);
+            if (d < minDist) {
+              minDist = d;
+              nearestHub = h;
+            }
+          });
+        }
+
+        const locationLabel = (minDist < 0.35 && nearestHub) 
+          ? `Near ${nearestHub.name} (${nearestHub.state})`
+          : `Coordinates (${lat.toFixed(3)}°N, ${lng.toFixed(3)}°E)`;
+
+        if (infoWindowRef.current) {
+          infoWindowRef.current.setPosition(e.latLng);
+          infoWindowRef.current.setContent(`
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 210px;">
+              <div style="font-weight: 800; font-size: 13px; color: #0f172a;">📍 ${locationLabel}</div>
+              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</div>
+              <div style="margin-top: 8px; display: flex; gap: 6px;">
+                <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: 'custom-loc', name: '${locationLabel}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                  📍 Start Here
+                </button>
+                <button onclick="window.__nerSetDest && window.__nerSetDest({ id: 'custom-loc', name: '${locationLabel}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                  🎯 Route Here
+                </button>
+              </div>
+            </div>
+          `);
+          infoWindowRef.current.open(map);
+        }
       });
     } catch (err) {
       console.error('Failed to instantiate Google Map:', err);
@@ -556,6 +598,36 @@ export default function GoogleMapView({
   }, [routeResult, activeRouteView, filterLayer.routes]);
 
   // ─────────────────────────────────────────────────────────────
+  // 5.5 Global Routing Window Hooks
+  // ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    window.__nerSetOrigin = (param) => {
+      if (typeof param === 'string') {
+        const hub = hubs.find((h) => h.id === param);
+        if (hub && onSetOrigin) onSetOrigin(hub);
+      } else if (param && onSetOrigin) {
+        onSetOrigin(param);
+      }
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    };
+
+    window.__nerSetDest = (param) => {
+      if (typeof param === 'string') {
+        const hub = hubs.find((h) => h.id === param);
+        if (hub && onSetDestination) onSetDestination(hub);
+      } else if (param && onSetDestination) {
+        onSetDestination(param);
+      }
+      if (infoWindowRef.current) infoWindowRef.current.close();
+    };
+
+    return () => {
+      delete window.__nerSetOrigin;
+      delete window.__nerSetDest;
+    };
+  }, [hubs, onSetOrigin, onSetDestination]);
+
+  // ─────────────────────────────────────────────────────────────
   // 6. Render Google Maps Markers (Hubs, Localities, Vehicles, Hazards)
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -586,8 +658,8 @@ export default function GoogleMapView({
     // A. HUB MARKERS
     if (filterLayer.hubs) {
       hubs.forEach((hub) => {
-        const isOrigin = routeResult?.origin?.id === hub.id;
-        const isDest = routeResult?.destination?.id === hub.id;
+        const isOrigin = routeResult?.origin?.id === hub.id || routeResult?.origin?.name === hub.name;
+        const isDest = routeResult?.destination?.id === hub.id || routeResult?.destination?.name === hub.name;
 
         const pinColor = isDest ? '#10b981' : isOrigin ? '#3b82f6' : '#64748b';
         const marker = new window.google.maps.Marker({
@@ -607,12 +679,20 @@ export default function GoogleMapView({
 
         attachPopup(
           marker,
-          hub.name,
+          `🏢 ${hub.name}`,
           `<div style="font-size: 11px; line-height: 1.4;">
             <div><strong>State:</strong> ${hub.state}</div>
-            <div><strong>Elevation:</strong> ${hub.elevation_m}m</div>
-            ${isOrigin ? '<div style="color: #2563eb; font-weight: 700; margin-top: 4px;">● ORIGIN DEPOT</div>' : ''}
-            ${isDest ? '<div style="color: #059669; font-weight: 700; margin-top: 4px;">● DESTINATION BASE</div>' : ''}
+            <div><strong>Elevation:</strong> ${hub.elevation_m}m above sea level</div>
+            ${isOrigin ? '<div style="color: #2563eb; font-weight: 700; margin-top: 4px;">● CURRENT START (ORIGIN)</div>' : ''}
+            ${isDest ? '<div style="color: #059669; font-weight: 700; margin-top: 4px;">● CURRENT DESTINATION</div>' : ''}
+            <div style="margin-top: 8px; display: flex; gap: 6px;">
+              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin('${hub.id}')" style="flex:1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                📍 Start Here
+              </button>
+              <button onclick="window.__nerSetDest && window.__nerSetDest('${hub.id}')" style="flex:1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                🎯 Route Here
+              </button>
+            </div>
           </div>`
         );
         newMarkers.push(marker);
@@ -640,13 +720,20 @@ export default function GoogleMapView({
 
         attachPopup(
           marker,
-          loc.name,
+          `📍 ${loc.name}`,
           `<div style="font-size: 11px; line-height: 1.4;">
             <div style="color: #64748b;">${loc.district ? `${loc.district}, ` : ''}${loc.state}</div>
             <div style="margin-top: 4px;"><strong>Milestone:</strong> +${loc.distance_from_origin_km} km (~${loc.eta_mins}m)</div>
-            <div><strong>Elevation:</strong> ${loc.elevation_m} meters ${isPass ? '<span style="background: #fef3c7; color: #b45309; padding: 1px 4px; border-radius: 4px; font-weight: bold; font-size: 9px;">MOUNTAIN PASS</span>' : ''}</div>
+            <div><strong>Elevation:</strong> ${loc.elevation_m}m ${isPass ? '<span style="background: #fef3c7; color: #b45309; padding: 1px 4px; border-radius: 4px; font-weight: bold; font-size: 9px;">MOUNTAIN PASS</span>' : ''}</div>
             <div><strong>Road:</strong> ${loc.road_type}</div>
-            ${loc.amenities && loc.amenities.length ? `<div style="margin-top: 6px; font-size: 10px; color: #059669;">${loc.amenities.join(' • ')}</div>` : ''}
+            <div style="margin-top: 8px; display: flex; gap: 6px;">
+              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: 'loc-${idx}', name: '${loc.name}', lat: ${loc.lat}, lng: ${loc.lng} })" style="flex:1; padding: 5px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                📍 Start Here
+              </button>
+              <button onclick="window.__nerSetDest && window.__nerSetDest({ id: 'loc-${idx}', name: '${loc.name}', lat: ${loc.lat}, lng: ${loc.lng} })" style="flex:1; padding: 5px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                🎯 Route Here
+              </button>
+            </div>
           </div>`
         );
 
@@ -680,13 +767,18 @@ export default function GoogleMapView({
 
         attachPopup(
           marker,
-          veh.name,
+          `🚚 ${veh.name}`,
           `<div style="font-size: 11px; line-height: 1.4;">
             <div><strong>Plate:</strong> ${veh.license_plate}</div>
             <div><strong>Driver:</strong> ${veh.assigned_driver}</div>
             <div><strong>Fuel:</strong> ${veh.current_fuel_litres}L (${veh.fuel_percentage}%)</div>
             <div><strong>Range:</strong> ${veh.remaining_range_km} km</div>
             <div><strong>Status:</strong> ${veh.status}</div>
+            <div style="margin-top: 8px;">
+              <button onclick="window.__nerSetOrigin && window.__nerSetOrigin({ id: '${veh.id}', name: '${veh.name} Location', lat: ${veh.lat}, lng: ${veh.lng} })" style="width: 100%; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                📍 Route From Vehicle Position
+              </button>
+            </div>
           </div>`
         );
 

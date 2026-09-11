@@ -1,351 +1,268 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Truck, Package, AlertTriangle, ShieldAlert, Network,
-  Clock, MapPin, Zap, CloudRain, Shield, Activity,
-  ArrowUpRight, Fuel, Route, Sparkles, Navigation,
-  Radio, CheckCircle2, RefreshCw, Layers, Bell, ExternalLink,
-  ChevronRight, Thermometer, Wind, Eye
+  Truck, Package, AlertTriangle, Network,
+  MapPin, Shield, Activity, ArrowUpRight,
+  Route, Sparkles, Navigation, Bell,
+  ChevronRight, Thermometer, Wind, CloudRain,
+  Clock, CheckCircle2, Radio, ExternalLink,
+  ShieldCheck, RefreshCw, Layers
 } from 'lucide-react';
 import { 
   OPERATIONAL_BLOCKED_ROADS, 
-  OPERATIONAL_ALERTS, 
   OPERATIONAL_SHIPMENT_ROUTES 
 } from '../services/googleDirectionsService';
 import { REGIONAL_HUBS } from '../services/fuelRouteService';
 
-// Real Highland Weather Telemetry Across Key Passes
+// Strategic Highway Corridors for 1-Click Interactive Routing
+const POPULAR_CORRIDORS = [
+  {
+    id: 'ghy-shl',
+    originId: 'guwahati',
+    destId: 'shillong',
+    name: 'Guwahati ➔ Shillong Expressway',
+    highway: 'NH-06',
+    distance: '98 km',
+    duration: '2h 15m',
+    status: 'Clear & Passable',
+    statusColor: 'emerald',
+    riskScore: 28,
+    desc: 'Primary lifeline connecting Assam plains to Meghalaya plateau.'
+  },
+  {
+    id: 'tzp-twg',
+    originId: 'tezpur',
+    destId: 'tawang',
+    name: 'Tezpur ➔ Tawang Highland Pass',
+    highway: 'NH-13',
+    distance: '320 km',
+    duration: '7h 45m',
+    status: 'Sela Pass Escort',
+    statusColor: 'rose',
+    riskScore: 78,
+    desc: 'High-altitude strategic pass (13,700 ft) with active BRO clearance.'
+  },
+  {
+    id: 'dmp-khm',
+    originId: 'dimapur',
+    destId: 'kohima',
+    name: 'Dimapur ➔ Kohima Hill Road',
+    highway: 'NH-29',
+    distance: '74 km',
+    duration: '2h 10m',
+    status: 'Caution (Debris)',
+    statusColor: 'amber',
+    riskScore: 46,
+    desc: 'Steep hill climb connecting Nagaland railhead to capital base.'
+  },
+  {
+    id: 'slc-imp',
+    originId: 'silchar',
+    destId: 'imphal',
+    name: 'Silchar ➔ Imphal Lifeline',
+    highway: 'NH-37',
+    distance: '258 km',
+    duration: '6h 30m',
+    status: 'Convoy Escort',
+    statusColor: 'amber',
+    riskScore: 58,
+    desc: 'Critical medical supply line through Barak Valley to Manipur.'
+  }
+];
+
+// Highland Weather Telemetry Across Key Mountain Stations
 const WEATHER_STATIONS = [
-  { city: 'Guwahati', state: 'Assam', temp: 28, condition: 'Light Rain', rainMm: 3.2, windKmh: 8, risk: 'Low', color: 'emerald' },
-  { city: 'Shillong', state: 'Meghalaya', temp: 17, condition: 'Monsoon Torrential', rainMm: 44.6, windKmh: 24, risk: 'High', color: 'amber' },
-  { city: 'Tawang', state: 'Arunachal', temp: 8, condition: 'Debris & Dense Fog', rainMm: 18.0, windKmh: 16, risk: 'Critical', color: 'rose' },
-  { city: 'Gangtok', state: 'Sikkim', temp: 13, condition: 'Silt Inundation', rainMm: 22.4, windKmh: 12, risk: 'Moderate', color: 'amber' },
-  { city: 'Imphal', state: 'Manipur', temp: 24, condition: 'Clear Corridors', rainMm: 0.0, windKmh: 6, risk: 'Low', color: 'emerald' },
-  { city: 'Kohima', state: 'Nagaland', temp: 19, condition: 'Intermittent Drizzle', rainMm: 8.5, windKmh: 10, risk: 'Moderate', color: 'amber' },
+  { city: 'Guwahati', state: 'Assam', temp: 28, condition: 'Light Rain', rainMm: 3.2, windKmh: 8, status: 'Clear', color: 'emerald' },
+  { city: 'Shillong', state: 'Meghalaya', temp: 17, condition: 'Monsoon Mist', rainMm: 44.6, windKmh: 24, status: 'Foggy', color: 'amber' },
+  { city: 'Tawang', state: 'Arunachal', temp: 8, condition: 'Dense Fog', rainMm: 18.0, windKmh: 16, status: 'Severe', color: 'rose' },
+  { city: 'Imphal', state: 'Manipur', temp: 24, condition: 'Clear Skies', rainMm: 0.0, windKmh: 6, status: 'Optimal', color: 'emerald' },
+  { city: 'Kohima', state: 'Nagaland', temp: 19, condition: 'Drizzle', rainMm: 8.5, windKmh: 10, status: 'Moderate', color: 'amber' },
+  { city: 'Gangtok', state: 'Sikkim', temp: 13, condition: 'Overcast', rainMm: 22.4, windKmh: 12, status: 'Moderate', color: 'amber' },
 ];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [selectedCity, setSelectedCity] = useState(WEATHER_STATIONS[0]);
+  const [selectedStation, setSelectedStation] = useState(WEATHER_STATIONS[0]);
 
-  // Live KPI Summary
+  // Executive KPI Cards
   const kpis = [
     {
       title: 'Active Fleet Vehicles',
       val: '14 / 16',
-      sub: '92% Active Deployment',
+      sub: '92% in service • 2 on standby',
       icon: Truck,
       color: 'blue',
       route: '/vehicles'
     },
     {
       title: 'Critical Relief Shipments',
-      val: '8 Active',
-      sub: '100% Cold-Chain Maintained',
+      val: '8 In Transit',
+      sub: '100% cold-chain preserved',
       icon: Package,
       color: 'emerald',
       route: '/shipments'
     },
     {
-      title: 'Active Road Hazards',
-      val: '3 Blockages',
-      sub: 'BRO Escort & Clear En Route',
+      title: 'Active Road Obstructions',
+      val: '3 Hazards',
+      sub: 'BRO clearance teams deployed',
       icon: AlertTriangle,
       color: 'rose',
       route: '/incidents'
     },
     {
-      title: 'Avg Highland Route Risk',
-      val: '62 / 100',
-      sub: 'Monsoon Terrain Active',
-      icon: ShieldAlert,
-      color: 'amber',
-      route: '/risk-analysis'
-    },
-    {
       title: 'LIFELINE MESH Nodes',
-      val: '18 / 18',
-      sub: '100% Signal • DTN Enabled',
+      val: '18 / 18 Online',
+      sub: '100% LoRa DTN blackout resilient',
       icon: Network,
       color: 'cyan',
       route: '/mesh'
-    },
-    {
-      title: 'Active Dispatch Alerts',
-      val: '4 Real-time',
-      sub: '2 Critical Safety Notices',
-      icon: Bell,
-      color: 'purple',
-      route: '/alerts'
     }
   ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Top Welcome & Mission Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl backdrop-blur-md flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              <span>ALL 8 NORTH EASTERN STATES MONITORED</span>
+      {/* 1. Welcome & Primary Action Header */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+        <div className="space-y-1.5">
+          <div className="flex items-center space-x-2.5">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>ALL 8 STATES ONLINE</span>
             </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 bg-slate-800 border border-slate-700">
-              STATION: GHY-HQ-01
+            <span className="text-xs text-slate-400 font-mono">
+              Central Command • Guwahati HQ
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            NER-LIFELINE Central Operations Command
+            NER-LIFELINE Smart Logistics Command
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
-            Autonomous logistics, dynamic monsoon risk routing, cold-chain temperature preservation, and blackout-resilient LoRa DTN mesh coordination.
+          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+            AI-powered highland route optimization, live vehicle telemetry, terrain risk tracking, and blackout-resilient disaster response.
           </p>
         </div>
 
-        {/* Quick Tactical Actions */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Big, Clear CTA Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => navigate('/live-map')}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-900/30 flex items-center space-x-2 transition-all cursor-pointer hover:scale-105"
+            className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-900/30 flex items-center space-x-2.5 transition-all cursor-pointer hover:scale-105"
           >
-            <Navigation size={15} />
-            <span>Launch Live Map</span>
+            <Navigation size={18} />
+            <span>Launch Live Interactive Map</span>
           </button>
           <button
             onClick={() => navigate('/alerts')}
-            className="px-3.5 py-2.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300 font-bold text-xs shadow-lg flex items-center space-x-2 transition-all cursor-pointer"
+            className="px-4 py-3 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-sm shadow-lg flex items-center space-x-2 transition-all cursor-pointer"
           >
-            <Bell size={15} className="animate-bounce text-rose-400" />
-            <span>Emergency Siren</span>
-          </button>
-          <button
-            onClick={() => navigate('/mesh')}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center space-x-2 transition-all cursor-pointer"
-          >
-            <Network size={15} className="text-cyan-400" />
-            <span>MESH Ping</span>
+            <Bell size={17} className="text-rose-400" />
+            <span>Emergency Alerts (4)</span>
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* 2. Key Metrics Overview (4 Clean Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
             <div
               key={k.title}
               onClick={() => navigate(k.route)}
-              className="bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl p-4 transition-all duration-200 cursor-pointer group shadow-lg flex flex-col justify-between"
+              className="bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition-all duration-200 cursor-pointer group shadow-xl flex flex-col justify-between"
             >
               <div className="flex items-center justify-between">
-                <div className={`p-2 rounded-lg bg-${k.color}-500/10 border border-${k.color}-500/20 text-${k.color}-400 group-hover:scale-110 transition-transform`}>
-                  <Icon size={18} />
+                <div className={`p-3 rounded-xl bg-${k.color}-500/10 border border-${k.color}-500/20 text-${k.color}-400 group-hover:scale-110 transition-transform`}>
+                  <Icon size={22} />
                 </div>
-                <ArrowUpRight size={14} className="text-slate-500 group-hover:text-white transition-colors" />
+                <div className="flex items-center space-x-1 text-slate-500 group-hover:text-white transition-colors text-xs font-semibold">
+                  <span>View</span>
+                  <ArrowUpRight size={14} />
+                </div>
               </div>
-              <div className="mt-3">
-                <div className="text-xl font-extrabold text-white tracking-tight">{k.val}</div>
-                <div className="text-xs font-semibold text-slate-300 mt-0.5">{k.title}</div>
-                <div className="text-[10px] text-slate-500 mt-1">{k.sub}</div>
+              <div className="mt-4">
+                <div className="text-2xl font-black text-white tracking-tight">{k.val}</div>
+                <div className="text-xs font-bold text-slate-300 mt-1">{k.title}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">{k.sub}</div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Interactive Regional Quick View & Live Weather */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* NER Regional Strategic Map Preview */}
-        <div className="lg:col-span-8 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
-                <Route size={16} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">North Eastern Strategic Highway Corridors</h2>
-                <p className="text-xs text-slate-400">Real-time connectivity across the 8 Sister States</p>
-              </div>
+      {/* 3. Interactive Quick Corridor Routing Bar */}
+      <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <Route size={18} />
             </div>
-            <button
-              onClick={() => navigate('/live-map')}
-              className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center space-x-1 cursor-pointer"
-            >
-              <span>Full Screen Live Map</span>
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {/* Interactive SVG Network Map */}
-          <div className="bg-slate-950 rounded-xl p-4 border border-slate-850 relative overflow-hidden">
-            <div className="absolute top-3 left-3 z-10 flex items-center space-x-2 text-[10px] text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Click any strategic hub to route from that location:</span>
-            </div>
-
-            <svg viewBox="0 0 500 240" className="w-full h-56 sm:h-64 select-none">
-              <defs>
-                <linearGradient id="corridor-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
-                </linearGradient>
-              </defs>
-
-              {/* Highway Inter-Hub Lines */}
-              <line x1="120" y1="130" x2="170" y2="170" stroke="#334155" strokeWidth="2" strokeDasharray="3,3" />
-              <line x1="120" y1="130" x2="230" y2="70" stroke="#10b981" strokeWidth="2.5" />
-              <line x1="230" y1="70" x2="340" y2="50" stroke="#ef4444" strokeWidth="2.5" strokeDasharray="4,2" />
-              <line x1="120" y1="130" x2="290" y2="140" stroke="#3b82f6" strokeWidth="2.5" />
-              <line x1="290" y1="140" x2="330" y2="155" stroke="#3b82f6" strokeWidth="2.5" />
-              <line x1="330" y1="155" x2="350" y2="195" stroke="#3b82f6" strokeWidth="2.5" />
-              <line x1="170" y1="170" x2="250" y2="210" stroke="#334155" strokeWidth="2" />
-              <line x1="250" y1="210" x2="280" y2="225" stroke="#334155" strokeWidth="2" />
-
-              {/* Hub Nodes */}
-              {[
-                { name: 'Guwahati (GHY Hub)', x: 120, y: 130, hubId: 'guwahati', isMain: true },
-                { name: 'Shillong (NH-06)', x: 170, y: 170, hubId: 'shillong' },
-                { name: 'Tezpur Base', x: 230, y: 70, hubId: 'tezpur' },
-                { name: 'Tawang (Sela Pass)', x: 340, y: 50, hubId: 'tawang', isBlocked: true },
-                { name: 'Dimapur Transshipment', x: 290, y: 140, hubId: 'dimapur' },
-                { name: 'Kohima Relief Camp', x: 330, y: 155, hubId: 'kohima' },
-                { name: 'Imphal Valley Base', x: 350, y: 195, hubId: 'imphal' },
-                { name: 'Silchar Railhead', x: 250, y: 210, hubId: 'silchar' },
-                { name: 'Aizawl Depot', x: 280, y: 225, hubId: 'aizawl' },
-              ].map((h) => (
-                <g
-                  key={h.name}
-                  className="cursor-pointer group"
-                  onClick={() => navigate(`/live-map?origin=${h.hubId}`)}
-                >
-                  <circle
-                    cx={h.x}
-                    cy={h.y}
-                    r={h.isMain ? 8 : 6}
-                    fill={h.isBlocked ? '#f43f5e' : h.isMain ? '#3b82f6' : '#10b981'}
-                    className="transition-transform group-hover:scale-125"
-                  />
-                  {h.isBlocked && (
-                    <circle cx={h.x} cy={h.y} r="12" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-ping" />
-                  )}
-                  <text
-                    x={h.x}
-                    y={h.y - 10}
-                    textAnchor="middle"
-                    fill="#cbd5e1"
-                    fontSize="9"
-                    fontWeight="bold"
-                    className="pointer-events-none drop-shadow group-hover:fill-white"
-                  >
-                    {h.name}
-                  </text>
-                </g>
-              ))}
-            </svg>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-850 text-[10px] text-slate-400">
-              <div className="flex items-center space-x-3">
-                <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span><span>Major Hub</span></span>
-                <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span><span>Operational Highway</span></span>
-                <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span><span>Blockage / Escort</span></span>
-              </div>
-              <span className="font-mono text-slate-500">Click any point to launch AI router</span>
+            <div>
+              <h2 className="text-base font-bold text-white">1-Click Strategic Corridor Routing</h2>
+              <p className="text-xs text-slate-400">Click any key highway corridor to route and inspect live conditions on the interactive map</p>
             </div>
           </div>
+          <button
+            onClick={() => navigate('/live-map')}
+            className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center space-x-1 cursor-pointer"
+          >
+            <span>Custom Route Builder</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
-        {/* Regional Monsoon & Highland Weather Telemetry */}
-        <div className="lg:col-span-4 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  <CloudRain size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Monsoon & Weather Radar</h3>
-                  <p className="text-[11px] text-slate-400">Terrain Precipitation Feeds</p>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                Live IMD
-              </span>
-            </div>
-
-            {/* Selected City Focus Card */}
-            <div className="mt-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-black text-white">{selectedCity.city}</span>
-                  <span className="text-[10px] text-slate-400 ml-1">({selectedCity.state})</span>
-                </div>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold bg-${selectedCity.color}-500/20 text-${selectedCity.color}-400 border border-${selectedCity.color}-500/40`}>
-                  {selectedCity.risk} Risk
-                </span>
-              </div>
-              <div className="flex items-baseline space-x-2">
-                <span className="text-3xl font-black text-white">{selectedCity.temp}°C</span>
-                <span className="text-xs text-slate-300 font-medium">{selectedCity.condition}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 pt-1 border-t border-slate-900 font-mono">
-                <div className="flex items-center space-x-1">
-                  <CloudRain size={11} className="text-blue-400" />
-                  <span>Rain: <strong className="text-white">{selectedCity.rainMm} mm/h</strong></span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Wind size={11} className="text-cyan-400" />
-                  <span>Wind: <strong className="text-white">{selectedCity.windKmh} km/h</strong></span>
-                </div>
-              </div>
-            </div>
-
-            {/* Station List Selector */}
-            <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
-              {WEATHER_STATIONS.map((st) => (
-                <button
-                  key={st.city}
-                  onClick={() => setSelectedCity(st)}
-                  className={`w-full px-2.5 py-1.5 rounded-lg border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
-                    selectedCity.city === st.city
-                      ? 'bg-blue-600/20 border-blue-500/60 text-white'
-                      : 'bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="font-semibold">{st.city}</span>
-                  <div className="flex items-center space-x-2 text-[10px]">
-                    <span className="text-slate-400">{st.temp}°C</span>
-                    <span className={`w-2 h-2 rounded-full bg-${st.color}-400`}></span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-            <span>Radar Refresh: 60s</span>
-            <button
-              onClick={() => navigate('/risk-analysis')}
-              className="text-blue-400 hover:text-blue-300 font-bold"
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 pt-1">
+          {POPULAR_CORRIDORS.map((corridor) => (
+            <div
+              key={corridor.id}
+              onClick={() => navigate(`/live-map?origin=${corridor.originId}&dest=${corridor.destId}&autoRoute=true`)}
+              className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/80 transition-all cursor-pointer group shadow-md flex flex-col justify-between space-y-3"
             >
-              Full Risk Matrix →
-            </button>
-          </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    {corridor.highway}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold bg-${corridor.statusColor}-500/20 text-${corridor.statusColor}-400 border border-${corridor.statusColor}-500/30`}>
+                    {corridor.status}
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm text-white group-hover:text-blue-400 transition-colors mt-2">
+                  {corridor.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                  {corridor.desc}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-850 flex items-center justify-between text-[11px] text-slate-300">
+                <div className="flex items-center space-x-2 font-mono">
+                  <span>{corridor.distance}</span>
+                  <span>•</span>
+                  <span>{corridor.duration}</span>
+                </div>
+                <div className="text-blue-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                  <span>Route</span>
+                  <ChevronRight size={13} />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Critical Relief Shipments & Live Blockages Split */}
+      {/* 4. Active Relief Shipments & Live Road Hazards Split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Active Emergency Shipments Table */}
+        {/* Left Column: Active Medical & Relief Shipments */}
         <div className="lg:col-span-7 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2.5">
               <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                <Package size={16} />
+                <Package size={18} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Active Highland Medical Shipments</h3>
-                <p className="text-xs text-slate-400">Cold-chain monitoring & live ETAs</p>
+                <h3 className="text-base font-bold text-white">Active Relief Shipments</h3>
+                <p className="text-xs text-slate-400">Live cold-chain telemetry & highway transit</p>
               </div>
             </div>
             <button
@@ -357,41 +274,49 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {OPERATIONAL_SHIPMENT_ROUTES.slice(0, 4).map((sh) => (
               <div
                 key={sh.id}
-                className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md"
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono font-extrabold text-xs text-white">{sh.id}</span>
-                    <span className="px-2 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      {sh.category}
+                    <span className="font-mono font-extrabold text-xs text-white">{sh.tracking_id || sh.id}</span>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      {sh.cargo || sh.category}
                     </span>
-                    <span className="text-[10px] text-cyan-300 font-mono flex items-center space-x-1">
-                      <Thermometer size={10} />
-                      <span>{sh.temperature}</span>
-                    </span>
+                    {sh.temperature && (
+                      <span className="text-[10px] text-cyan-300 font-mono flex items-center space-x-1 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                        <Thermometer size={10} />
+                        <span>{sh.temperature}</span>
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-slate-300 font-medium">
-                    {sh.origin} → <strong className="text-white">{sh.destination}</strong>
+                  <div className="text-xs text-slate-200 font-semibold">
+                    {sh.origin} ➔ <strong className="text-white">{sh.destination}</strong>
                   </div>
-                  <div className="text-[10px] text-slate-400">
-                    Carrier: {sh.vehicle} • Driver: {sh.driver}
+                  <div className="text-[11px] text-slate-400 flex items-center space-x-2">
+                    <span>Vehicle: <strong className="text-slate-300 font-mono">{sh.vehicle}</strong></span>
+                    <span>•</span>
+                    <span>Driver: {sh.driver}</span>
                   </div>
                 </div>
 
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
-                  <div className="text-right">
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 pt-2 sm:pt-0 border-t sm:border-0 border-slate-900">
+                  <div className="text-left sm:text-right">
                     <span className="text-xs font-bold text-white block">ETA: {sh.eta}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Status: {sh.status}</span>
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>{sh.status}</span>
+                    </span>
                   </div>
                   <button
-                    onClick={() => navigate(`/live-map?vehicle=${sh.vehicle}`)}
-                    className="px-2.5 py-1 rounded bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 text-[10px] font-bold cursor-pointer transition-all"
+                    onClick={() => navigate(`/live-map?vehicle=${sh.vehicle}&autoRoute=true`)}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-bold cursor-pointer transition-all flex items-center space-x-1"
                   >
-                    Track on Live Map
+                    <Navigation size={12} />
+                    <span>Track on Map</span>
                   </button>
                 </div>
               </div>
@@ -399,17 +324,18 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Real-time Field Incidents & Blockages Feed */}
-        <div className="lg:col-span-5 bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col justify-between">
-          <div>
+        {/* Right Column: Live Mountain Hazards & Weather Feeds */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Active Road Hazards */}
+          <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2">
                 <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                  <AlertTriangle size={16} />
+                  <AlertTriangle size={18} />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Active Road Hazards</h3>
-                  <p className="text-xs text-slate-400">Field Incident & Obstruction Feeds</p>
+                  <p className="text-xs text-slate-400">Landslide, rockfall & flood closures</p>
                 </div>
               </div>
               <button
@@ -421,41 +347,73 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <div className="mt-3 space-y-2.5">
+            <div className="space-y-2.5">
               {OPERATIONAL_BLOCKED_ROADS.map((blk) => (
                 <div
                   key={blk.id}
-                  className="p-3 rounded-xl bg-slate-950 border border-rose-900/40 space-y-1.5"
+                  className="p-3.5 rounded-xl bg-slate-950 border border-rose-900/40 space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-extrabold text-xs text-rose-400 flex items-center space-x-1">
-                      <AlertTriangle size={12} />
-                      <span>{blk.highway} • {blk.location}</span>
+                      <AlertTriangle size={13} />
+                      <span>{blk.highway} • {blk.name || blk.location}</span>
                     </span>
-                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
-                      {blk.severity}
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800">
+                      {blk.status || 'CLOSED'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300">
+                  <p className="text-xs text-slate-300 leading-relaxed">
                     {blk.reason}
                   </p>
-                  <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-900">
-                    <span>Clearing: <strong className="text-slate-300">{blk.clearingAuthority}</strong></span>
-                    <span>Est: <strong className="text-amber-400">{blk.estimatedClearance}</strong></span>
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-900 font-medium">
+                    <span>Clearing: <strong className="text-slate-200">{blk.clearing_eta || blk.estimatedClearance}</strong></span>
+                    <button
+                      onClick={() => navigate(`/live-map`)}
+                      className="text-blue-400 hover:text-blue-300 font-bold flex items-center space-x-0.5"
+                    >
+                      <span>Locate</span>
+                      <ChevronRight size={11} />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800">
-            <button
-              onClick={() => navigate('/live-map')}
-              className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-white flex items-center justify-center space-x-2 transition-colors cursor-pointer"
-            >
-              <Navigation size={14} className="text-blue-400" />
-              <span>Inspect Hazards on Live Map</span>
-            </button>
+          {/* Highland Weather Radar Summary */}
+          <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  <CloudRain size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Monsoon & Weather Radar</h4>
+                  <p className="text-[10px] text-slate-400">Highland Precipitation & Pass Visibility</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/risk-analysis')}
+                className="text-[11px] font-bold text-cyan-400 hover:text-cyan-300"
+              >
+                Risk Matrix →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {WEATHER_STATIONS.slice(0, 6).map((st) => (
+                <div
+                  key={st.city}
+                  className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-center space-y-1"
+                >
+                  <div className="text-xs font-bold text-white">{st.city}</div>
+                  <div className="text-base font-black text-cyan-300">{st.temp}°C</div>
+                  <div className={`text-[9px] font-semibold px-1.5 py-0.2 rounded inline-block bg-${st.color}-500/20 text-${st.color}-400`}>
+                    {st.condition}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -148,6 +148,8 @@ const LiveMap = () => {
   const [searchParams] = useSearchParams();
   const urlVehicle = searchParams.get('vehicle');
   const urlAutoRoute = searchParams.get('autoRoute') === 'true';
+  const urlOrigin = searchParams.get('origin');
+  const urlDest = searchParams.get('dest') || searchParams.get('destination');
 
   // Center of North East India
   const [center, setCenter] = useState({ lat: 26.2, lng: 92.8 });
@@ -187,13 +189,30 @@ const LiveMap = () => {
   // ─────────────────────────────────────────────────────────────
   const [isAiRouteOpen, setIsAiRouteOpen] = useState(urlAutoRoute || true);
   const [isZenMode, setIsZenMode] = useState(false);
-  const [originHubId, setOriginHubId] = useState('guwahati');
-  const [destHubId, setDestHubId] = useState('tawang');
+  const [originHubId, setOriginHubId] = useState(urlOrigin || 'guwahati');
+  const [destHubId, setDestHubId] = useState(urlDest || 'shillong');
+  const [customOrigin, setCustomOrigin] = useState(null);
+  const [customDest, setCustomDest] = useState(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState(urlVehicle || 'AS-01-EV-4421');
   const [simulatedFuel, setSimulatedFuel] = useState(48);
   const [activeRouteView, setActiveRouteView] = useState('both'); // 'both' | 'safest' | 'shortest'
   const [routeResult, setRouteResult] = useState(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
+
+  // Sync URL search params whenever they change
+  useEffect(() => {
+    if (urlOrigin) {
+      setOriginHubId(urlOrigin);
+      setCustomOrigin(null);
+    }
+    if (urlDest) {
+      setDestHubId(urlDest);
+      setCustomDest(null);
+    }
+    if (urlVehicle) {
+      setSelectedVehicleId(urlVehicle);
+    }
+  }, [urlOrigin, urlDest, urlVehicle]);
 
   // Load fleet vehicles on mount
   useEffect(() => {
@@ -228,9 +247,9 @@ const LiveMap = () => {
     async function runOptimization() {
       setIsOptimizing(true);
       try {
-        let result;
+        let originObj;
         if (originHubId === 'current-gps' && deviceGPS) {
-          const originObj = {
+          originObj = {
             id: 'current-gps',
             name: 'My Current Device GPS',
             lat: deviceGPS.lat,
@@ -238,23 +257,27 @@ const LiveMap = () => {
             elevation_m: Math.round(deviceGPS.altitude_m || 80),
             state: 'Live GPS Unit'
           };
-          const destObj = NER_HUBS.find((h) => h.id === destHubId) || NER_HUBS[2];
-          const { calculateRealHighwayRoute } = await import('../services/googleDirectionsService');
-          result = await calculateRealHighwayRoute({
-            origin: originObj,
-            destination: destObj,
-            vehicleId: selectedVehicleId,
-            simulatedFuel,
-            hazards: HAZARD_INCIDENTS
-          });
+        } else if (originHubId === 'custom' && customOrigin) {
+          originObj = customOrigin;
         } else {
-          result = await optimizeAIRoute(
-            originHubId,
-            destHubId,
-            selectedVehicleId,
-            simulatedFuel
-          );
+          originObj = NER_HUBS.find((h) => h.id === originHubId) || NER_HUBS[0];
         }
+
+        let destObj;
+        if (destHubId === 'custom' && customDest) {
+          destObj = customDest;
+        } else {
+          destObj = NER_HUBS.find((h) => h.id === destHubId) || NER_HUBS[1];
+        }
+
+        const { calculateRealHighwayRoute } = await import('../services/googleDirectionsService');
+        const result = await calculateRealHighwayRoute({
+          origin: originObj,
+          destination: destObj,
+          vehicleId: selectedVehicleId,
+          simulatedFuel,
+          hazards: HAZARD_INCIDENTS
+        });
 
         if (!isCancelled && result) {
           setRouteResult(result);
@@ -271,7 +294,7 @@ const LiveMap = () => {
     return () => {
       isCancelled = true;
     };
-  }, [originHubId, destHubId, selectedVehicleId, simulatedFuel, originHubId === 'current-gps' ? deviceGPS?.lat : null]);
+  }, [originHubId, destHubId, customOrigin, customDest, selectedVehicleId, simulatedFuel, originHubId === 'current-gps' ? deviceGPS?.lat : null]);
 
   // Update container dimensions dynamically
   useEffect(() => {
@@ -595,21 +618,141 @@ const LiveMap = () => {
         </div>
       </div>
 
-      {/* Quick Regional Jump Navigation Bar */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-thin">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1 flex-shrink-0">
-          <Navigation size={13} className="text-blue-400" />
-          <span>Quick Fly-To:</span>
+      {/* 1-Click Interactive Strategic Corridors Bar */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-thin">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5 flex-shrink-0 mr-1">
+          <Sparkles size={14} className="text-amber-400 animate-pulse" />
+          <span>Quick Corridors:</span>
         </span>
-        {NER_HUBS.map((hub) => (
+        {[
+          { label: '🚀 Guwahati ➔ Shillong', origin: 'guwahati', dest: 'shillong', dist: '98 km' },
+          { label: '🏔️ Tezpur ➔ Tawang', origin: 'tezpur', dest: 'tawang', dist: '320 km' },
+          { label: '🌿 Dimapur ➔ Kohima', origin: 'dimapur', dest: 'kohima', dist: '74 km' },
+          { label: '🌸 Silchar ➔ Imphal', origin: 'silchar', dest: 'imphal', dist: '258 km' },
+          { label: '⛰️ Silchar ➔ Aizawl', origin: 'silchar', dest: 'aizawl', dist: '178 km' },
+        ].map((corr) => (
           <button
-            key={hub.id}
-            onClick={() => jumpToLocation(hub.lat, hub.lng, 10)}
-            className="flex-shrink-0 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+            key={corr.label}
+            onClick={() => {
+              setOriginHubId(corr.origin);
+              setDestHubId(corr.dest);
+              setCustomOrigin(null);
+              setCustomDest(null);
+            }}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center space-x-1.5 shadow-sm ${
+              originHubId === corr.origin && destHubId === corr.dest
+                ? 'bg-blue-600 text-white border-blue-400 shadow-blue-900/50'
+                : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+            }`}
           >
-            {hub.name} ({hub.state})
+            <span>{corr.label}</span>
+            <span className="font-mono text-[10px] text-slate-400">({corr.dist})</span>
           </button>
         ))}
+      </div>
+
+      {/* Interactive Quick Route Planning Bar */}
+      <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+          {/* Origin selector */}
+          <div className="flex items-center space-x-2 bg-slate-950 border border-slate-700 px-3 py-2 rounded-xl flex-1 min-w-[190px]">
+            <span className="text-emerald-400 text-xs font-bold whitespace-nowrap">From:</span>
+            <select
+              value={originHubId}
+              onChange={(e) => {
+                setOriginHubId(e.target.value);
+                setCustomOrigin(null);
+              }}
+              className="bg-transparent text-white text-xs font-semibold focus:outline-none w-full cursor-pointer truncate"
+            >
+              {customOrigin && (
+                <option value="custom" className="bg-slate-900 text-white">📍 {customOrigin.name}</option>
+              )}
+              {deviceGPS && (
+                <option value="current-gps" className="bg-slate-900 text-white">📍 Live Device GPS</option>
+              )}
+              {NER_HUBS.map((h) => (
+                <option key={h.id} value={h.id} className="bg-slate-900 text-white">
+                  {h.name} ({h.state})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Swap Origin & Destination Button */}
+          <button
+            onClick={() => {
+              const prevOriginId = originHubId;
+              const prevCustomOrigin = customOrigin;
+              setOriginHubId(destHubId);
+              setCustomOrigin(customDest);
+              setDestHubId(prevOriginId);
+              setCustomDest(prevCustomOrigin);
+            }}
+            title="Swap Start and Destination"
+            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+          >
+            <RefreshCw size={14} />
+          </button>
+
+          {/* Destination selector */}
+          <div className="flex items-center space-x-2 bg-slate-950 border border-slate-700 px-3 py-2 rounded-xl flex-1 min-w-[190px]">
+            <span className="text-rose-400 text-xs font-bold whitespace-nowrap">To:</span>
+            <select
+              value={destHubId}
+              onChange={(e) => {
+                setDestHubId(e.target.value);
+                setCustomDest(null);
+              }}
+              className="bg-transparent text-white text-xs font-semibold focus:outline-none w-full cursor-pointer truncate"
+            >
+              {customDest && (
+                <option value="custom" className="bg-slate-900 text-white">🎯 {customDest.name}</option>
+              )}
+              {NER_HUBS.map((h) => (
+                <option key={h.id} value={h.id} className="bg-slate-900 text-white">
+                  {h.name} ({h.state})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Assigned Vehicle & Route Status */}
+        <div className="flex items-center space-x-2">
+          <select
+            value={selectedVehicleId}
+            onChange={(e) => setSelectedVehicleId(e.target.value)}
+            className="bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none hidden md:block cursor-pointer"
+          >
+            {fleet.map((v) => (
+              <option key={v.id} value={v.id} className="bg-slate-900 text-white">
+                {v.name} ({v.current_fuel_litres}L)
+              </option>
+            ))}
+          </select>
+
+          {/* Optimization State */}
+          <div className="flex items-center space-x-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold shadow-md">
+            {isOptimizing ? (
+              <>
+                <RefreshCw size={13} className="animate-spin" />
+                <span>Routing...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={13} className="text-amber-300" />
+                <span>AI Route Active</span>
+              </>
+            )}
+          </div>
+
+          {/* Click on Map Instruction Tip */}
+          <div className="hidden lg:flex items-center space-x-1 text-[11px] text-slate-400 bg-slate-950 px-2.5 py-2 rounded-xl border border-slate-800">
+            <MapPin size={12} className="text-emerald-400" />
+            <span>Click any point or hub on map to set route</span>
+          </div>
+        </div>
       </div>
       </>
     )}
@@ -807,6 +950,30 @@ const LiveMap = () => {
               }}
               onLocalityClick={(loc) => setSelectedLocality(loc)}
               onRealRouteComputed={(newRoute) => setRouteResult(newRoute)}
+              onSetOrigin={(point) => {
+                if (typeof point === 'string') {
+                  setOriginHubId(point);
+                  setCustomOrigin(null);
+                } else if (point.id && NER_HUBS.some((h) => h.id === point.id)) {
+                  setOriginHubId(point.id);
+                  setCustomOrigin(null);
+                } else {
+                  setCustomOrigin(point);
+                  setOriginHubId('custom');
+                }
+              }}
+              onSetDestination={(point) => {
+                if (typeof point === 'string') {
+                  setDestHubId(point);
+                  setCustomDest(null);
+                } else if (point.id && NER_HUBS.some((h) => h.id === point.id)) {
+                  setDestHubId(point.id);
+                  setCustomDest(null);
+                } else {
+                  setCustomDest(point);
+                  setDestHubId('custom');
+                }
+              }}
               onMapError={(reason) => {
                 if (reason === 'fallback' || reason === 'Missing API Key') {
                   console.warn('Switching to offline emergency vector map:', reason);
