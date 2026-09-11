@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Truck, Package, AlertTriangle,
   ShieldAlert, Network, Bell, BarChart3, Settings, LogOut,
-  ChevronLeft, ChevronRight, Activity, AlertOctagon, Shield, X
+  ChevronLeft, ChevronRight, Activity, AlertOctagon, Shield, X, Bot
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -30,6 +30,7 @@ const navSections = [
   {
     title: 'Intelligence & Config',
     items: [
+      { key: 'nav_ai_assistant', name: 'Universal AI Assistant', path: '/ai-assistant', icon: Bot },
       { key: 'nav_risk_analysis', name: 'Terrain Risk Matrix', path: '/risk-analysis', icon: ShieldAlert },
       { key: 'nav_analytics', name: 'Analytics', path: '/analytics', icon: BarChart3 },
       { key: 'nav_settings', name: 'Settings & Language', path: '/settings', icon: Settings },

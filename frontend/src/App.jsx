@@ -16,6 +16,7 @@ import FieldOfficer from './pages/FieldOfficer';
 import Alerts from './pages/Alerts';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import AIAssistant from './pages/AIAssistant';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             <Route path="/field-officer" element={<FieldOfficer />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/ai-assistant" element={<AIAssistant />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           

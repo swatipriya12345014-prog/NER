@@ -26,6 +26,7 @@ export const TRANSLATIONS = {
     nav_field_officer: 'Field Officer',
     nav_alerts: 'Active Alerts',
     nav_analytics: 'Logistics Analytics',
+    nav_ai_assistant: 'Universal AI Assistant',
     nav_settings: 'System Settings',
     
     // Topbar & Actions
@@ -95,8 +96,9 @@ export const TRANSLATIONS = {
     nav_driver: 'চালক সমস্যা প\'ৰ্টেল',
     nav_field_officer: 'ক্ষেত্ৰ বিষয়া',
     nav_alerts: 'সতৰ্কবাৰ্তা',
-    nav_analytics: 'পৰিবহণ পৰিসংখ্যা',
-    nav_settings: 'ব্যৱস্থাপনা ছেটিংছ',
+    nav_analytics: 'পৰিবহণ বিশ্লেষণ',
+    nav_ai_assistant: 'সাৰ্বজনীন এআই সহায়ক',
+    nav_settings: 'ব্যৱস্থা ছেটিংছ',
     
     // Topbar & Actions
     search_placeholder: 'বাহন, কেন্দ্ৰ, সামগ্ৰী বা অৱৰোধ সন্ধান কৰক... (Ctrl+K)',
@@ -166,6 +168,7 @@ export const TRANSLATIONS = {
     nav_field_officer: 'ফিল্ড অফিসার',
     nav_alerts: 'জরুরি সতর্কতা',
     nav_analytics: 'লজিস্টিক অ্যানালিটিক্স',
+    nav_ai_assistant: 'সার্বজনীন এআই সহকারী',
     nav_settings: 'সিস্টেম সেটিংস',
     
     // Topbar & Actions
@@ -235,7 +238,8 @@ export const TRANSLATIONS = {
     nav_driver: 'चालक समस्या एवं सहायता पोर्टल',
     nav_field_officer: 'फील्ड अधिकारी',
     nav_alerts: 'सक्रिय चेतावनियां',
-    nav_analytics: 'लॉजिस्टिक्स आंकड़े',
+    nav_analytics: 'लॉजिस्टिक्स विश्लेषण',
+    nav_ai_assistant: 'सार्वभौमिक एआई सहायक',
     nav_settings: 'सिस्टम सेटिंग्स',
     
     // Topbar & Actions
@@ -305,8 +309,9 @@ export const TRANSLATIONS = {
     nav_driver: 'ত্রাইভর সমস্যা পোর্তাল',
     nav_field_officer: 'ফিল্ড ওফিসার',
     nav_alerts: 'চেকশিন্না পাউ',
-    nav_analytics: 'লোজিষ্টিক পাউদম',
-    nav_settings: 'সেতিংস',
+    nav_analytics: 'লোজিস্তিক এনালিতিক্স',
+    nav_ai_assistant: 'য়ুনিভার্সেল এআই এসিষ্টেন্ত',
+    nav_settings: 'সিস্তেম সেতিংস',
     
     // Topbar & Actions
     search_placeholder: 'গারী, হব, পোৎলম থিবীবা... (Ctrl+K)',
@@ -375,8 +380,9 @@ export const TRANSLATIONS = {
     nav_driver: 'Driver Buaina & Tanpuina Portal',
     nav_field_officer: 'Field Officer',
     nav_alerts: 'Hriattirna Tharlam',
-    nav_analytics: 'Logistics Chanchin',
-    nav_settings: 'Khawl Remsiamna',
+    nav_analytics: 'Phurhchhuah Enchianna',
+    nav_ai_assistant: 'Universal AI Tanpuitu',
+    nav_settings: 'System Hmanruate',
     
     // Topbar & Actions
     search_placeholder: 'Motor, camp, bungrua zawnna... (Ctrl+K)',
@@ -445,8 +451,9 @@ export const TRANSLATIONS = {
     nav_driver: 'Portal Jingeh Nongniah',
     nav_field_officer: 'U Rangbah Shnong / Officer',
     nav_alerts: 'Ki Jingmaham Ba Im',
-    nav_analytics: 'Jingkhein Jingdiah',
-    nav_settings: 'Jingshaih / Settings',
+    nav_analytics: 'Jingpeit Bniah ia ki Kali',
+    nav_ai_assistant: 'Nongïarap AI ba Lah Ban Jubab Waroh',
+    nav_settings: 'Ki Jingbuh Ryntih',
     
     // Topbar & Actions
     search_placeholder: 'Wad ki kali, ki shnong, tiar jingiarap... (Ctrl+K)',

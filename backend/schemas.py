@@ -348,3 +348,20 @@ class SOSCallEndRequest(BaseModel):
     call_id: str
     duration_seconds: int
     resolution_notes: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    role: str = "user"  # "user" or "assistant"
+    content: str
+    timestamp: Optional[str] = None
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[ChatMessage]] = []
+    language: Optional[str] = "en"
+    context: Optional[Dict[str, str]] = None
+
+class ChatResponse(BaseModel):
+    answer: str
+    source: str  # "ai_knowledge", "math_engine", "code_engine", "ner_logistics", "conversational", "universal_reasoning"
+    suggestions: Optional[List[str]] = []
+    timestamp: str

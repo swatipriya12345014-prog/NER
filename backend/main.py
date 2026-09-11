@@ -23,8 +23,10 @@ from schemas import (
     LatLngPoint, GoogleRouteRequest, GoogleRouteResponse, RiskBreakdown,
     RoadHistory, VehicleRegistryItem, RealtimeVehicleTelemetryUpdate,
     SOSCallInitiateRequest, SOSCallSession, SOSCallEndRequest,
-    ChronicBlackspot, PastBlockageEvent
+    ChronicBlackspot, PastBlockageEvent,
+    ChatMessage, ChatRequest, ChatResponse
 )
+from chatbot import ask_ai_chatbot
 
 app = FastAPI(
     title="NER-LIFELINE Backend API",
@@ -2472,3 +2474,82 @@ def trigger_database_sync():
     """Explicit endpoint to force full database and telemetry synchronization."""
     result = sync_all_databases()
     return {"message": "Databases and telemetry synchronized successfully.", "details": result}
+
+# ==========================================
+# UNIVERSAL AI CHATBOT SYSTEM
+# ==========================================
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_ai(payload: ChatRequest):
+    """
+    Universal AI Chatbot endpoint answering literally all questions:
+    - Science, mathematics, world history, astronomy, encyclopedic knowledge
+    - Coding, software architecture, algorithm design
+    - Mountain medicine, hypothermia, acute mountain sickness, trauma first aid
+    - Realtime NER road networks, vehicle telemetry, SOS emergency dispatch
+    """
+    try:
+        history_dicts = [{"role": msg.role, "content": msg.content} for msg in payload.history] if payload.history else []
+        response = await ask_ai_chatbot(payload.message, history=history_dicts)
+        return ChatResponse(
+            answer=response["answer"],
+            source=response["source"],
+            suggestions=response.get("suggestions", []),
+            timestamp=response["timestamp"]
+        )
+    except Exception as e:
+        print(f"Error in chat_with_ai: {e}")
+        return ChatResponse(
+            answer=f"I encountered a momentary issue processing that specific query: {str(e)}. Please try rephrasing your question.",
+            source="fallback_error",
+            suggestions=["What is the status of NH-13?", "Calculate 450 * 12", "Emergency SOS contact"],
+            timestamp=datetime.now().strftime("%I:%M %p")
+        )
+
+@app.get("/api/chat/suggestions")
+def get_chat_suggestions():
+    """Returns curated starter prompts across domains for quick interaction."""
+    return {
+        "categories": [
+            {
+                "title": "Road & Logistics",
+                "prompts": [
+                    "What is the status of NH-13 and Sela Tunnel?",
+                    "What are the cold chain storage requirements for blood and vaccines?",
+                    "Who receives the emergency SOS call?"
+                ]
+            },
+            {
+                "title": "Emergency & First Aid",
+                "prompts": [
+                    "How to treat high-altitude hypothermia?",
+                    "What is the protocol for Acute Mountain Sickness (AMS)?",
+                    "What is the emergency CPR procedure?"
+                ]
+            },
+            {
+                "title": "Math & Calculations",
+                "prompts": [
+                    "Calculate (450 * 12) + 180",
+                    "Convert 25 C to Fahrenheit",
+                    "What is the square root of 144?"
+                ]
+            },
+            {
+                "title": "Universal Science & Knowledge",
+                "prompts": [
+                    "What is quantum computing?",
+                    "Explain the theory of relativity in simple terms",
+                    "Who was Albert Einstein?"
+                ]
+            },
+            {
+                "title": "Coding & Tech",
+                "prompts": [
+                    "Show binary search implementation in Python",
+                    "What are essential Git commands for relief teams?",
+                    "React component example for status display"
+                ]
+            }
+        ]
+    }

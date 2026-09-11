@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import AIChatWidget from '../AIChatWidget';
 
 const MainLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -28,7 +29,7 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100 relative">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -45,6 +46,9 @@ const MainLayout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Global Universal AI Chatbot Widget */}
+      <AIChatWidget />
     </div>
   );
 };
