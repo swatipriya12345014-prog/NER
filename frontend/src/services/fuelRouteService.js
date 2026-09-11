@@ -1,6 +1,8 @@
 // Service for Vehicle Fuel Telemetry & AI Route Optimization
 // Resilient architecture: Tries FastAPI backend first, with instant zero-lag offline fallback
 
+import { calculateRealHighwayRoute } from './googleDirectionsService';
+
 const getApiBase = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost') {
@@ -586,7 +588,6 @@ export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, 
 
   // 1. Try Google Routes API calculation via googleDirectionsService
   try {
-    const { calculateRealHighwayRoute } = await import('./googleDirectionsService');
     const googleResult = await calculateRealHighwayRoute({
       origin,
       destination: dest,

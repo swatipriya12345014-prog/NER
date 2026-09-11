@@ -52,6 +52,7 @@ import {
   REGIONAL_HUBS,
   FALLBACK_FLEET_VEHICLES
 } from '../services/fuelRouteService';
+import { calculateRealHighwayRoute } from '../services/googleDirectionsService';
 import {
   startGPSTracking,
   stopGPSTracking,
@@ -298,7 +299,6 @@ const LiveMap = () => {
         destObj = NER_HUBS.find((h) => h.id === destHubId) || NER_HUBS[1];
       }
 
-      const { calculateRealHighwayRoute } = await import('../services/googleDirectionsService');
       const result = await calculateRealHighwayRoute({
         origin: originObj,
         destination: destObj,

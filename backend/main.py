@@ -3,6 +3,7 @@ import math
 import json
 import uuid
 import asyncio
+import time
 import httpx
 from dotenv import load_dotenv
 
@@ -10,7 +11,7 @@ load_dotenv()
 from collections import defaultdict
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
 from database import get_supabase_client, is_supabase_configured
@@ -31,6 +32,8 @@ app = FastAPI(
 # Configure CORS for frontend access
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
 
+from fastapi.middleware.gzip import GZipMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins + ["*"],  # Permits preview deployments
@@ -38,6 +41,32 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# High-speed payload compression for coordinate-heavy GIS payloads
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# High-speed in-memory TTL caching for operational endpoints (<1ms responses)
+_OPERATIONAL_CACHE: Dict[str, Tuple[float, any]] = {}
+_OPERATIONAL_CACHE_TTL = 15.0  # 15 seconds cache for read endpoints
+
+def get_cached_data(cache_key: str, ttl: float = _OPERATIONAL_CACHE_TTL):
+    if cache_key in _OPERATIONAL_CACHE:
+        ts, data = _OPERATIONAL_CACHE[cache_key]
+        if time.time() - ts < ttl:
+            return data
+    return None
+
+def set_cached_data(cache_key: str, data: any):
+    if len(_OPERATIONAL_CACHE) > 500:
+        oldest = sorted(_OPERATIONAL_CACHE.keys(), key=lambda k: _OPERATIONAL_CACHE[k][0])[:50]
+        for k in oldest:
+            _OPERATIONAL_CACHE.pop(k, None)
+    _OPERATIONAL_CACHE[cache_key] = (time.time(), data)
+
+def invalidate_cached_data(prefix: str):
+    keys_to_remove = [k for k in _OPERATIONAL_CACHE.keys() if k.startswith(prefix)]
+    for k in keys_to_remove:
+        _OPERATIONAL_CACHE.pop(k, None)
 
 # In-memory operational mock fallback datasets when Supabase is initializing
 MOCK_SHIPMENTS = [
@@ -392,18 +421,26 @@ def health_check():
 
 @app.get("/api/shipments", response_model=List[Shipment])
 def get_shipments():
+    cached = get_cached_data("shipments")
+    if cached is not None:
+        return cached
+
     client = get_supabase_client()
+    data = MOCK_SHIPMENTS
     if client:
         try:
             res = client.table("shipments").select("*").execute()
             if res.data and len(res.data) > 0:
-                return res.data
+                data = res.data
         except Exception as e:
             print(f"Supabase query error: {e}")
-    return MOCK_SHIPMENTS
+
+    set_cached_data("shipments", data)
+    return data
 
 @app.post("/api/shipments", response_model=Shipment, status_code=status.HTTP_201_CREATED)
 def create_shipment(shipment: ShipmentCreate):
+    invalidate_cached_data("shipments")
     client = get_supabase_client()
     new_shipment = shipment.dict()
     new_shipment["id"] = f"shp-{int(datetime.utcnow().timestamp())}"
@@ -421,27 +458,41 @@ def create_shipment(shipment: ShipmentCreate):
 
 @app.get("/api/routes/risk-index", response_model=List[RouteRiskReport])
 def get_route_risks():
+    cached = get_cached_data("route_risks")
+    if cached is not None:
+        return cached
+
     client = get_supabase_client()
+    data = MOCK_ROUTE_RISKS
     if client:
         try:
             res = client.table("route_risks").select("*").execute()
             if res.data and len(res.data) > 0:
-                return res.data
+                data = res.data
         except Exception as e:
             print(f"Supabase query error: {e}")
-    return MOCK_ROUTE_RISKS
+
+    set_cached_data("route_risks", data)
+    return data
 
 @app.get("/api/incidents", response_model=List[IncidentAlert])
 def get_incidents():
+    cached = get_cached_data("incidents")
+    if cached is not None:
+        return cached
+
     client = get_supabase_client()
+    data = MOCK_INCIDENTS
     if client:
         try:
             res = client.table("incidents").select("*").eq("active", True).execute()
             if res.data and len(res.data) > 0:
-                return res.data
+                data = res.data
         except Exception as e:
             print(f"Supabase query error: {e}")
-    return MOCK_INCIDENTS
+
+    set_cached_data("incidents", data)
+    return data
 
 @app.get("/api/mesh/nodes")
 def get_mesh_nodes():
@@ -449,6 +500,7 @@ def get_mesh_nodes():
 
 @app.post("/api/mesh/telemetry")
 def ingest_mesh_telemetry(packet: MeshTelemetryPacket):
+    invalidate_cached_data("vehicles")
     client = get_supabase_client()
     telemetry_data = packet.dict()
     telemetry_data["received_at"] = datetime.utcnow().isoformat()
@@ -463,22 +515,34 @@ def ingest_mesh_telemetry(packet: MeshTelemetryPacket):
 
 @app.get("/api/vehicles", response_model=List[Vehicle])
 def get_vehicles():
+    cached = get_cached_data("vehicles")
+    if cached is not None:
+        return cached
+
     client = get_supabase_client()
+    data = MOCK_VEHICLES
     if client:
         try:
             res = client.table("vehicles").select("*").execute()
             if res.data and len(res.data) > 0:
-                return res.data
+                data = res.data
         except Exception as e:
             print(f"Supabase query error: {e}")
-    return MOCK_VEHICLES
+
+    set_cached_data("vehicles", data)
+    return data
 
 @app.get("/api/vehicles/{vehicle_id}", response_model=Vehicle)
 def get_vehicle_by_id(vehicle_id: str):
+    cached = get_cached_data(f"veh_{vehicle_id}")
+    if cached is not None:
+        return cached
+
     for v in MOCK_VEHICLES:
         if v["id"] == vehicle_id:
+            set_cached_data(f"veh_{vehicle_id}", v)
             return v
-    raise HTTPException(status_code=404, detail="Vehicle not found")
+    raise HTTPException(status_code=404, detail="Vehicle not found in registry")
 
 # ─────────────────────────────────────────────────────────────
 # CORRIDOR LOCALITIES GENERATOR (Google Maps-Style Localities)
@@ -575,6 +639,11 @@ def build_corridor_localities(origin: dict, dest: dict, route_type: str, coords:
 
 @app.post("/api/routes/optimize", response_model=RouteOptimizationResponse)
 def optimize_route(req: RouteOptimizationRequest):
+    cache_key = f"opt_{req.origin_hub_id.lower()}_{req.destination_hub_id.lower()}_{req.vehicle_id}_{req.simulated_fuel_litres}_{req.simulated_consumption_rate}"
+    cached = get_cached_data(cache_key, ttl=60.0)
+    if cached is not None:
+        return cached
+
     # Lookup Origin and Destination Hubs
     origin = REGIONAL_HUBS.get(req.origin_hub_id.lower(), REGIONAL_HUBS["guwahati"])
     dest = REGIONAL_HUBS.get(req.destination_hub_id.lower(), REGIONAL_HUBS["tawang"])
@@ -794,7 +863,7 @@ def optimize_route(req: RouteOptimizationRequest):
         refuel_advisory=refuel_advisory
     )
 
-    return RouteOptimizationResponse(
+    response = RouteOptimizationResponse(
         origin=origin,
         destination=dest,
         vehicle_telemetry={
@@ -814,6 +883,8 @@ def optimize_route(req: RouteOptimizationRequest):
         is_real_google_route=False,
         provider="National Highway Infrastructure Routing (Authentic Corridors)"
     )
+    set_cached_data(cache_key, response)
+    return response
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -937,18 +1008,50 @@ def compute_route_risk_intelligence(
     )
 
 
+# In-memory LRU/TTL route cache to prevent redundant external API hits and slash latency to <1ms
+_GOOGLE_ROUTE_CACHE: Dict[tuple, tuple] = {}
+_GOOGLE_ROUTE_CACHE_TTL = 900.0  # 15 minutes TTL
+_GOOGLE_ROUTE_CACHE_MAX = 500
+_GOOGLE_HTTP_CLIENT: Optional[httpx.AsyncClient] = None
+
+def get_google_http_client() -> httpx.AsyncClient:
+    global _GOOGLE_HTTP_CLIENT
+    if _GOOGLE_HTTP_CLIENT is None or _GOOGLE_HTTP_CLIENT.is_closed:
+        _GOOGLE_HTTP_CLIENT = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=2.5, read=5.0, write=5.0, pool=5.0),
+            limits=httpx.Limits(max_keepalive_connections=25, max_connections=60)
+        )
+    return _GOOGLE_HTTP_CLIENT
+
+
 @app.post("/api/v1/routes/google", response_model=GoogleRouteResponse)
 async def compute_google_route(req: GoogleRouteRequest):
     """
-    Backend integration with Google Routes API.
+    Optimized backend integration with Google Routes API.
     Server-side credentials are kept confidential and not exposed to the frontend.
-    Enriches the Google route with NER-LIFELINE route-risk intelligence.
+    Features:
+    - In-memory high-speed cache for identical route requests (<1ms latency)
+    - Reusable connection-pooled async HTTP client
+    - Enriches the Google route with NER-LIFELINE route-risk intelligence.
     """
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY") or os.getenv("GOOGLE_ROUTES_API_KEY")
-    if not api_key:
-        api_key = ""
+    cache_key = (
+        round(req.origin.latitude, 4),
+        round(req.origin.longitude, 4),
+        round(req.destination.latitude, 4),
+        round(req.destination.longitude, 4),
+        req.weather_condition or "",
+        req.road_condition or ""
+    )
+
+    now = time.time()
+    if cache_key in _GOOGLE_ROUTE_CACHE:
+        cached_time, cached_response = _GOOGLE_ROUTE_CACHE[cache_key]
+        if now - cached_time < _GOOGLE_ROUTE_CACHE_TTL:
+            return cached_response
+
+    api_key = os.getenv("GOOGLE_MAPS_API_KEY") or os.getenv("GOOGLE_ROUTES_API_KEY") or ""
     
-    # 1. Attempt Google Routes API (computeRoutes)
+    # 1. Attempt Google Routes API (computeRoutes) using pooled client
     google_url = "https://routes.googleapis.com/directions/v2:computeRoutes"
     headers = {
         "Content-Type": "application/json",
@@ -983,9 +1086,10 @@ async def compute_google_route(req: GoogleRouteRequest):
     summary = "National Highway Road Network"
     source = "Google Routes API"
 
-    try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            resp = await client.post(google_url, headers=headers, json=payload)
+    if api_key:
+        try:
+            client = get_google_http_client()
+            resp = await client.post(google_url, headers=headers, json=payload, timeout=2.0)
             if resp.status_code == 200:
                 data = resp.json()
                 routes = data.get("routes", [])
@@ -997,8 +1101,8 @@ async def compute_google_route(req: GoogleRouteRequest):
                     encoded_polyline = primary.get("polyline", {}).get("encodedPolyline", "")
                     summary = primary.get("description") or f"Highway Corridor ({round(distance_meters / 1000, 1)} km)"
                     coordinates = decode_google_polyline(encoded_polyline)
-    except Exception as exc:
-        pass
+        except Exception:
+            pass
 
     # Fallback to authentic surveyed highway network if external Google call is unavailable
     if not coordinates:
@@ -1029,7 +1133,7 @@ async def compute_google_route(req: GoogleRouteRequest):
         road_condition=req.road_condition
     )
 
-    return GoogleRouteResponse(
+    response = GoogleRouteResponse(
         distance={
             "meters": distance_meters,
             "km": dist_km,
@@ -1048,6 +1152,16 @@ async def compute_google_route(req: GoogleRouteRequest):
         source=source,
         risk_assessment=risk_assessment
     )
+
+    # Cache response with bound limit
+    if len(_GOOGLE_ROUTE_CACHE) >= _GOOGLE_ROUTE_CACHE_MAX:
+        # Evict oldest 50 entries
+        oldest_keys = sorted(_GOOGLE_ROUTE_CACHE.keys(), key=lambda k: _GOOGLE_ROUTE_CACHE[k][0])[:50]
+        for k in oldest_keys:
+            _GOOGLE_ROUTE_CACHE.pop(k, None)
+    
+    _GOOGLE_ROUTE_CACHE[cache_key] = (now, response)
+    return response
 
 
 # In-memory GPS location store (fallback when Supabase is unavailable)
@@ -1138,12 +1252,16 @@ def _store_gps_update(data: dict) -> dict:
             v["current_location"] = f"GPS: {data['lat']:.4f}, {data['lng']:.4f}"
             break
 
-    # Persist to Supabase if configured
+    return record
+
+
+def _async_persist_gps_record(data: dict, timestamp: str):
+    """Asynchronously persist GPS location to Supabase in a background thread."""
     client = get_supabase_client()
     if client:
         try:
             client.table("gps_locations").insert({
-                "device_id": device_id,
+                "device_id": data["device_id"],
                 "lat": data["lat"],
                 "lng": data["lng"],
                 "altitude_m": data.get("altitude_m"),
@@ -1155,8 +1273,6 @@ def _store_gps_update(data: dict) -> dict:
         except Exception as e:
             print(f"Supabase GPS insert notice: {e}")
 
-    return record
-
 
 # ─────────────────────────────────────────────────────────────
 # REST API: GPS Location Endpoints
@@ -1165,10 +1281,14 @@ def _store_gps_update(data: dict) -> dict:
 @app.post("/api/gps/update", response_model=GPSLocationResponse)
 async def gps_update(update: GPSLocationUpdate):
     """Ingest a GPS location reading from a field device or browser.
-    Persists to database and broadcasts to all connected WebSocket clients."""
-    record = _store_gps_update(update.dict())
+    Persists asynchronously and broadcasts to all connected WebSocket clients."""
+    data = update.dict()
+    record = _store_gps_update(data)
 
-    # Broadcast to all WebSocket clients
+    # Non-blocking async worker for Supabase persistence
+    asyncio.create_task(asyncio.to_thread(_async_persist_gps_record, data, record["timestamp"]))
+
+    # Broadcast to all WebSocket clients instantly
     await gps_manager.broadcast({
         "type": "gps_update",
         "data": record

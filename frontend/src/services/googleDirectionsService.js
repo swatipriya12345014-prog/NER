@@ -499,6 +499,10 @@ export function getAuthenticHighwayFallbackRoute(origin, dest, routeType, vehicl
   };
 }
 
+// High-speed client cache for computed multi-route responses
+const ROUTE_CLIENT_CACHE = new Map();
+const ROUTE_CLIENT_CACHE_MAX = 50;
+
 /**
  * Main function to calculate Real-Time Google Routes & 3 Alternate Corridors (Road X, Road Y, Road Z)
  * Evaluates landslide hazards, identifies the affected road, and recommends the safest route.
@@ -511,6 +515,16 @@ export async function calculateRealHighwayRoute({
   simulatedConsumption = null,
   hazards = REAL_TIME_HAZARDS
 }) {
+  const oLat = origin?.lat || origin?.latitude || 0;
+  const oLng = origin?.lng || origin?.longitude || 0;
+  const dLat = destination?.lat || destination?.latitude || 0;
+  const dLng = destination?.lng || destination?.longitude || 0;
+  const cacheKey = `${Number(oLat).toFixed(3)},${Number(oLng).toFixed(3)}->${Number(dLat).toFixed(3)},${Number(dLng).toFixed(3)}:${vehicleId}`;
+
+  if (ROUTE_CLIENT_CACHE.has(cacheKey) && simulatedFuel === null && simulatedConsumption === null) {
+    return ROUTE_CLIENT_CACHE.get(cacheKey);
+  }
+
   const veh = FALLBACK_FLEET_VEHICLES.find((v) => v.id === vehicleId) || FALLBACK_FLEET_VEHICLES[0];
   const currentFuel = simulatedFuel !== null && simulatedFuel !== undefined ? Number(simulatedFuel) : veh.current_fuel_litres;
   const baseEconomy = simulatedConsumption !== null && simulatedConsumption !== undefined ? Number(simulatedConsumption) : veh.fuel_consumption_km_per_l;
@@ -541,7 +555,7 @@ export async function calculateRealHighwayRoute({
   const fuelBuffer = routeX.fuel_margin_litres;
   const routes = [routeX, routeY, routeZ];
 
-  return {
+  const result = {
     origin,
     destination,
     vehicle_telemetry: {
@@ -573,4 +587,12 @@ export async function calculateRealHighwayRoute({
       safety_verdict: `Road X: 96% Safe • Road Y: 28% Safe (Landslide Warning) • Road Z: 82% Safe`
     }
   };
+
+  if (ROUTE_CLIENT_CACHE.size >= ROUTE_CLIENT_CACHE_MAX) {
+    const firstKey = ROUTE_CLIENT_CACHE.keys().next().value;
+    ROUTE_CLIENT_CACHE.delete(firstKey);
+  }
+  ROUTE_CLIENT_CACHE.set(cacheKey, result);
+
+  return result;
 }

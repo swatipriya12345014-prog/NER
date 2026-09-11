@@ -86,56 +86,85 @@ const TACTICAL_DARK_STYLE = [
   }
 ];
 
-// Helper SVG marker creators
+// High-speed LRU/Map memoization cache for map marker SVG data URIs
+const SVG_ICON_CACHE = new Map();
+const MAX_SVG_CACHE = 150;
+
+function getCachedSvg(cacheKey, generatorFn) {
+  if (SVG_ICON_CACHE.has(cacheKey)) {
+    return SVG_ICON_CACHE.get(cacheKey);
+  }
+  const svg = generatorFn();
+  if (SVG_ICON_CACHE.size >= MAX_SVG_CACHE) {
+    const firstKey = SVG_ICON_CACHE.keys().next().value;
+    SVG_ICON_CACHE.delete(firstKey);
+  }
+  SVG_ICON_CACHE.set(cacheKey, svg);
+  return svg;
+}
+
+// Helper SVG marker creators with memoization
 function createNavPointerSvg(heading = 0) {
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-      <g transform="rotate(${heading}, 20, 20)">
-        <polygon points="20,4 29,32 20,26 11,32" fill="#2563eb" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />
-        <circle cx="20" cy="20" r="4" fill="#ffffff" />
-      </g>
-    </svg>
-  `)}`;
+  const roundedHeading = Math.round((heading || 0) / 2) * 2;
+  return getCachedSvg(`nav_${roundedHeading}`, () => {
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <g transform="rotate(${roundedHeading}, 20, 20)">
+          <polygon points="20,4 29,32 20,26 11,32" fill="#2563eb" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />
+          <circle cx="20" cy="20" r="4" fill="#ffffff" />
+        </g>
+      </svg>
+    `)}`;
+  });
 }
 
 function createVehicleSvg(type = 'truck', status = 'ACTIVE', heading = 0) {
-  let bgColor = '#10b981'; // ACTIVE
-  if (status === 'DELAYED') bgColor = '#f59e0b';
-  if (status === 'STOPPED') bgColor = '#64748b';
-  if (status === 'EMERGENCY') bgColor = '#ef4444';
-  if (status === 'OFFLINE') bgColor = '#334155';
+  const roundedHeading = heading != null ? Math.round(heading / 5) * 5 : null;
+  const cacheKey = `veh_${type}_${status}_${roundedHeading}`;
+  
+  return getCachedSvg(cacheKey, () => {
+    let bgColor = '#10b981'; // ACTIVE
+    if (status === 'DELAYED') bgColor = '#f59e0b';
+    if (status === 'STOPPED') bgColor = '#64748b';
+    if (status === 'EMERGENCY') bgColor = '#ef4444';
+    if (status === 'OFFLINE') bgColor = '#334155';
 
-  const isMedic = type.toLowerCase().includes('medic') || type.toLowerCase().includes('ambulance');
-  const iconSymbol = isMedic ? '➕' : '🚚';
+    const isMedic = (type || '').toLowerCase().includes('medic') || (type || '').toLowerCase().includes('ambulance');
+    const iconSymbol = isMedic ? '➕' : '🚚';
 
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
-      <circle cx="19" cy="19" r="16" fill="${bgColor}" stroke="#ffffff" stroke-width="2.5" />
-      <text x="19" y="23" font-size="14" text-anchor="middle" dominant-baseline="middle">${iconSymbol}</text>
-      ${heading != null ? `
-        <polygon points="19,1 23,6 15,6" fill="${bgColor}" stroke="#ffffff" stroke-width="1" transform="rotate(${heading}, 19, 19)" />
-      ` : ''}
-    </svg>
-  `)}`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 38 38">
+        <circle cx="19" cy="19" r="16" fill="${bgColor}" stroke="#ffffff" stroke-width="2.5" />
+        <text x="19" y="23" font-size="14" text-anchor="middle" dominant-baseline="middle">${iconSymbol}</text>
+        ${roundedHeading != null ? `
+          <polygon points="19,1 23,6 15,6" fill="${bgColor}" stroke="#ffffff" stroke-width="1" transform="rotate(${roundedHeading}, 19, 19)" />
+        ` : ''}
+      </svg>
+    `)}`;
+  });
 }
 
 function createIncidentSvg(type = 'LANDSLIDE', severity = 'Critical') {
-  let symbol = '⚠️';
-  let color = '#ef4444';
-  const tUpper = (type || '').toUpperCase();
-  if (tUpper.includes('LANDSLIDE')) { symbol = '⛰️'; color = '#dc2626'; }
-  else if (tUpper.includes('FLOOD')) { symbol = '🌊'; color = '#2563eb'; }
-  else if (tUpper.includes('ROAD_DAMAGE') || tUpper.includes('DAMAGE')) { symbol = '🚧'; color = '#ea580c'; }
-  else if (tUpper.includes('BRIDGE')) { symbol = '🌉'; color = '#b91c1c'; }
-  else if (tUpper.includes('RAIN')) { symbol = '🌧️'; color = '#0284c7'; }
-  else if (tUpper.includes('TRAFFIC')) { symbol = '🚗'; color = '#eab308'; }
+  const cacheKey = `inc_${type}_${severity}`;
 
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
-      <polygon points="18,3 33,31 3,31" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />
-      <text x="18" y="24" font-size="12" text-anchor="middle" dominant-baseline="middle">${symbol}</text>
-    </svg>
-  `)}`;
+  return getCachedSvg(cacheKey, () => {
+    let symbol = '⚠️';
+    let color = '#ef4444';
+    const tUpper = (type || '').toUpperCase();
+    if (tUpper.includes('LANDSLIDE')) { symbol = '⛰️'; color = '#dc2626'; }
+    else if (tUpper.includes('FLOOD')) { symbol = '🌊'; color = '#2563eb'; }
+    else if (tUpper.includes('ROAD_DAMAGE') || tUpper.includes('DAMAGE')) { symbol = '🚧'; color = '#ea580c'; }
+    else if (tUpper.includes('BRIDGE')) { symbol = '🌉'; color = '#b91c1c'; }
+    else if (tUpper.includes('RAIN')) { symbol = '🌧️'; color = '#0284c7'; }
+    else if (tUpper.includes('TRAFFIC')) { symbol = '🚗'; color = '#eab308'; }
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+        <polygon points="18,3 33,31 3,31" fill="${color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round" />
+        <text x="18" y="24" font-size="12" text-anchor="middle" dominant-baseline="middle">${symbol}</text>
+      </svg>
+    `)}`;
+  });
 }
 
 export default function GoogleMapView({
@@ -185,14 +214,15 @@ export default function GoogleMapView({
   const trafficLayerRef = useRef(null);
   const infoWindowRef = useRef(null);
 
-  // Markers & Layers References
-  const vehicleMarkersRef = useRef([]);
-  const incidentMarkersRef = useRef([]);
-  const hubMarkersRef = useRef([]);
+  // Markers & Layers References (Using Map for zero-flicker diffing and memory optimization)
+  const vehicleMarkersMapRef = useRef(new Map());
+  const incidentMarkersMapRef = useRef(new Map());
   const roadPolylinesRef = useRef({ safest: null, shortest: null, bypass: null, flowInterval: null });
   const operationalOverlaysRef = useRef({ blocked: [], risky: [], riskZones: [] });
   const locationMarkerRef = useRef(null);
   const locationAccuracyCircleRef = useRef(null);
+  const watchIdRef = useRef(null);
+  const lastFittedRouteKeyRef = useRef('');
 
   // Compass & Heading Smoothing References
   const smoothHeadingRef = useRef(0);
@@ -216,6 +246,20 @@ export default function GoogleMapView({
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const activeApiKey = apiKey || DEFAULT_GOOGLE_MAPS_API_KEY;
+
+  // Cleanup geolocation watcher on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      vehicleMarkersMapRef.current.forEach((m) => m.setMap(null));
+      vehicleMarkersMapRef.current.clear();
+      incidentMarkersMapRef.current.forEach((m) => m.setMap(null));
+      incidentMarkersMapRef.current.clear();
+    };
+  }, []);
 
   // ─────────────────────────────────────────────────────────────
   // 1. Load Official Google Maps JavaScript API
@@ -360,6 +404,51 @@ export default function GoogleMapView({
   // ─────────────────────────────────────────────────────────────
   // 3. Current Location Feature (GPS Watcher & Navigation Marker)
   // ─────────────────────────────────────────────────────────────
+  const updateLocationMarker = useCallback((pos) => {
+    const { latitude, longitude, accuracy, heading } = pos.coords;
+    const latLng = new window.google.maps.LatLng(latitude, longitude);
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.panTo(latLng);
+    }
+
+    if (!locationAccuracyCircleRef.current && window.google && mapInstanceRef.current) {
+      locationAccuracyCircleRef.current = new window.google.maps.Circle({
+        map: mapInstanceRef.current,
+        center: latLng,
+        radius: accuracy || 40,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        strokeColor: '#2563eb',
+        strokeWeight: 1,
+        zIndex: 10
+      });
+    } else if (locationAccuracyCircleRef.current) {
+      locationAccuracyCircleRef.current.setCenter(latLng);
+      locationAccuracyCircleRef.current.setRadius(accuracy || 40);
+    }
+
+    const effectiveH = heading != null ? heading : smoothHeadingRef.current;
+    const markerIcon = {
+      url: createNavPointerSvg(effectiveH),
+      scaledSize: new window.google.maps.Size(40, 40),
+      anchor: new window.google.maps.Point(20, 20)
+    };
+
+    if (!locationMarkerRef.current && window.google && mapInstanceRef.current) {
+      locationMarkerRef.current = new window.google.maps.Marker({
+        position: latLng,
+        map: mapInstanceRef.current,
+        icon: markerIcon,
+        title: 'Your Current Location',
+        zIndex: 100
+      });
+    } else if (locationMarkerRef.current) {
+      locationMarkerRef.current.setPosition(latLng);
+      locationMarkerRef.current.setIcon(markerIcon);
+    }
+  }, []);
+
   const handleCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser.');
@@ -369,56 +458,11 @@ export default function GoogleMapView({
     setIsLocating(true);
     setLocationError(null);
 
+    // Initial position for fast pan
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setIsLocating(false);
-        const { latitude, longitude, accuracy, heading } = pos.coords;
-        const latLng = new window.google.maps.LatLng(latitude, longitude);
-
-        if (mapInstanceRef.current) {
-          mapInstanceRef.current.panTo(latLng);
-          if (mapInstanceRef.current.getZoom() < 12) {
-            mapInstanceRef.current.setZoom(13);
-          }
-        }
-
-        // Location accuracy circle
-        if (!locationAccuracyCircleRef.current && window.google) {
-          locationAccuracyCircleRef.current = new window.google.maps.Circle({
-            map: mapInstanceRef.current,
-            center: latLng,
-            radius: accuracy || 50,
-            fillColor: '#3b82f6',
-            fillOpacity: 0.15,
-            strokeColor: '#2563eb',
-            strokeWeight: 1,
-            zIndex: 10
-          });
-        } else if (locationAccuracyCircleRef.current) {
-          locationAccuracyCircleRef.current.setCenter(latLng);
-          locationAccuracyCircleRef.current.setRadius(accuracy || 50);
-        }
-
-        // Navigation pointer / location marker
-        const effectiveH = heading != null ? heading : smoothHeadingRef.current;
-        const markerIcon = {
-          url: createNavPointerSvg(effectiveH),
-          scaledSize: new window.google.maps.Size(40, 40),
-          anchor: new window.google.maps.Point(20, 20)
-        };
-
-        if (!locationMarkerRef.current && window.google) {
-          locationMarkerRef.current = new window.google.maps.Marker({
-            position: latLng,
-            map: mapInstanceRef.current,
-            icon: markerIcon,
-            title: 'Your Current Location',
-            zIndex: 100
-          });
-        } else if (locationMarkerRef.current) {
-          locationMarkerRef.current.setPosition(latLng);
-          locationMarkerRef.current.setIcon(markerIcon);
-        }
+        updateLocationMarker(pos);
       },
       (err) => {
         setIsLocating(false);
@@ -426,15 +470,23 @@ export default function GoogleMapView({
         setLocationError('Location permission denied or unavailable. Map remains fully functional.');
         setTimeout(() => setLocationError(null), 5000);
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
     );
-  }, []);
+
+    // Setup active continuous watcher if not already active
+    if (watchIdRef.current === null) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => updateLocationMarker(pos),
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 2000 }
+      );
+    }
+  }, [updateLocationMarker]);
 
   // ─────────────────────────────────────────────────────────────
-  // 4. Smooth Heading & Heading-Up Compass Mode
+  // 4. Smooth Heading & Heading-Up Compass Mode (CPU Throttled)
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    // Sensor tracking
     const tracker = startCompassTracking((deg) => {
       if (deg != null && !isNaN(deg)) {
         rawHeadingRef.current = deg;
@@ -442,158 +494,226 @@ export default function GoogleMapView({
     });
     compassTrackerRef.current = tracker;
 
-    // Smooth interpolation loop (60 FPS without React re-renders)
+    let isRunning = true;
+
     const animateHeading = () => {
-      let raw = rawHeadingRef.current;
-      if (raw != null) {
+      if (!isRunning) return;
+
+      if (isHeadingUp) {
+        let raw = rawHeadingRef.current;
         let diff = raw - smoothHeadingRef.current;
-        // Take shortest angle on circle
         if (diff < -180) diff += 360;
         if (diff > 180) diff -= 360;
-        smoothHeadingRef.current = (smoothHeadingRef.current + diff * 0.15 + 360) % 360;
 
-        // If Heading-Up mode is active, smoothly rotate the map view
-        if (isHeadingUp && mapContainerRef.current) {
-          mapContainerRef.current.style.transform = `rotate(${-smoothHeadingRef.current}deg)`;
-          mapContainerRef.current.style.transition = 'transform 0.1s linear';
-        } else if (mapContainerRef.current) {
-          mapContainerRef.current.style.transform = 'none';
-        }
+        if (Math.abs(diff) > 0.05) {
+          smoothHeadingRef.current = (smoothHeadingRef.current + diff * 0.18 + 360) % 360;
 
-        // Update location pointer heading
-        if (locationMarkerRef.current) {
-          locationMarkerRef.current.setIcon({
-            url: createNavPointerSvg(smoothHeadingRef.current),
-            scaledSize: new window.google.maps.Size(40, 40),
-            anchor: new window.google.maps.Point(20, 20)
-          });
+          if (mapContainerRef.current) {
+            mapContainerRef.current.style.transform = `rotate(${-smoothHeadingRef.current}deg)`;
+            mapContainerRef.current.style.transition = 'transform 0.08s linear';
+          }
+
+          if (locationMarkerRef.current) {
+            locationMarkerRef.current.setIcon({
+              url: createNavPointerSvg(smoothHeadingRef.current),
+              scaledSize: new window.google.maps.Size(40, 40),
+              anchor: new window.google.maps.Point(20, 20)
+            });
+          }
         }
+      } else if (mapContainerRef.current && mapContainerRef.current.style.transform !== 'none') {
+        mapContainerRef.current.style.transform = 'none';
       }
-      animFrameIdRef.current = requestAnimationFrame(animateHeading);
+
+      // Only schedule next frame if Heading-Up is active to conserve CPU/battery
+      if (isHeadingUp) {
+        animFrameIdRef.current = requestAnimationFrame(animateHeading);
+      }
     };
 
-    animFrameIdRef.current = requestAnimationFrame(animateHeading);
+    if (isHeadingUp) {
+      animFrameIdRef.current = requestAnimationFrame(animateHeading);
+    } else if (mapContainerRef.current) {
+      mapContainerRef.current.style.transform = 'none';
+    }
 
     return () => {
+      isRunning = false;
       if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
       if (compassTrackerRef.current?.stop) compassTrackerRef.current.stop();
     };
   }, [isHeadingUp]);
 
   // ─────────────────────────────────────────────────────────────
-  // 5. Render NER-LIFELINE Fleet Vehicles Layer
+  // 5. Render NER-LIFELINE Fleet Vehicles Layer (Optimized Diffing)
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.google) return;
 
-    // Clear old vehicle markers
-    vehicleMarkersRef.current.forEach((m) => m.setMap(null));
-    vehicleMarkersRef.current = [];
+    if (!filterLayer.vehicles || !fleet || !fleet.length) {
+      vehicleMarkersMapRef.current.forEach((m) => m.setMap(null));
+      vehicleMarkersMapRef.current.clear();
+      return;
+    }
 
-    if (!filterLayer.vehicles || !fleet || !fleet.length) return;
+    const seenIds = new Set();
 
     fleet.forEach((veh) => {
       const lat = veh.location?.lat || veh.lat;
       const lng = veh.location?.lng || veh.lng;
       if (!lat || !lng) return;
 
-      const marker = new window.google.maps.Marker({
-        position: { lat, lng },
-        map: map,
-        title: `${veh.name || veh.id} (${veh.status || 'ACTIVE'})`,
-        icon: {
-          url: createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', veh.heading_deg || 0),
-          scaledSize: new window.google.maps.Size(36, 36),
-          anchor: new window.google.maps.Point(18, 18)
-        },
-        zIndex: 50
-      });
+      seenIds.add(veh.id);
+      const roundedH = veh.heading_deg != null ? Math.round(veh.heading_deg / 5) * 5 : 0;
 
-      marker.addListener('click', () => {
-        if (onSelectEntity) onSelectEntity(veh);
-        setSelectedVehicle(veh);
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setPosition({ lat, lng });
-          infoWindowRef.current.setContent(`
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 210px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 13px; color: #0f172a;">${veh.name || veh.callsign || veh.id}</strong>
-                <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">${veh.status || 'ACTIVE'}</span>
-              </div>
-              <div style="margin-top: 4px; font-size: 11px; color: #475569;">
-                <div>Type: <strong>${veh.type || 'Fleet Transport'}</strong></div>
-                <div>Speed: <strong>${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : 'Stationary'}</strong></div>
-                <div>Driver: <strong>${veh.driver_name || 'Assigned Officer'}</strong></div>
-                <div>Fuel: <strong>${veh.fuel_percent ?? 88}%</strong></div>
-              </div>
-              <div style="margin-top: 6px; padding: 4px 6px; background: #f1f5f9; border-radius: 4px; font-size: 9px; color: #64748b; font-weight: bold;">
-                📡 SIMULATED GPS • NER-LIFELINE TELEMETRY
-              </div>
-            </div>
-          `);
-          infoWindowRef.current.open(map);
+      if (vehicleMarkersMapRef.current.has(veh.id)) {
+        // Fast marker position update without DOM thrashing
+        const marker = vehicleMarkersMapRef.current.get(veh.id);
+        marker.setPosition({ lat, lng });
+        marker.setTitle(`${veh.name || veh.id} (${veh.status || 'ACTIVE'})`);
+
+        // Only update icon if heading or status changed
+        if (marker.__lastStatus !== veh.status || marker.__lastHeading !== roundedH) {
+          marker.setIcon({
+            url: createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH),
+            scaledSize: new window.google.maps.Size(36, 36),
+            anchor: new window.google.maps.Point(18, 18)
+          });
+          marker.__lastStatus = veh.status;
+          marker.__lastHeading = roundedH;
         }
-      });
+      } else {
+        const marker = new window.google.maps.Marker({
+          position: { lat, lng },
+          map: map,
+          title: `${veh.name || veh.id} (${veh.status || 'ACTIVE'})`,
+          icon: {
+            url: createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH),
+            scaledSize: new window.google.maps.Size(36, 36),
+            anchor: new window.google.maps.Point(18, 18)
+          },
+          zIndex: 50
+        });
+        marker.__lastStatus = veh.status;
+        marker.__lastHeading = roundedH;
 
-      vehicleMarkersRef.current.push(marker);
+        marker.addListener('click', () => {
+          if (onSelectEntity) onSelectEntity(veh);
+          setSelectedVehicle(veh);
+          if (infoWindowRef.current) {
+            infoWindowRef.current.setPosition({ lat, lng });
+            infoWindowRef.current.setContent(`
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 210px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 13px; color: #0f172a;">${veh.name || veh.callsign || veh.id}</strong>
+                  <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">${veh.status || 'ACTIVE'}</span>
+                </div>
+                <div style="margin-top: 4px; font-size: 11px; color: #475569;">
+                  <div>Type: <strong>${veh.type || 'Fleet Transport'}</strong></div>
+                  <div>Speed: <strong>${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : 'Stationary'}</strong></div>
+                  <div>Driver: <strong>${veh.driver_name || 'Assigned Officer'}</strong></div>
+                  <div>Fuel: <strong>${veh.fuel_percent ?? 88}%</strong></div>
+                </div>
+                <div style="margin-top: 6px; padding: 4px 6px; background: #f1f5f9; border-radius: 4px; font-size: 9px; color: #64748b; font-weight: bold;">
+                  📡 SIMULATED GPS • NER-LIFELINE TELEMETRY
+                </div>
+              </div>
+            `);
+            infoWindowRef.current.open(map);
+          }
+        });
+
+        vehicleMarkersMapRef.current.set(veh.id, marker);
+      }
+    });
+
+    // Remove departed vehicles with listener cleanup to prevent memory leaks
+    vehicleMarkersMapRef.current.forEach((marker, id) => {
+      if (!seenIds.has(id)) {
+        if (window.google?.maps?.event?.clearInstanceListeners) {
+          window.google.maps.event.clearInstanceListeners(marker);
+        }
+        marker.setMap(null);
+        vehicleMarkersMapRef.current.delete(id);
+      }
     });
   }, [fleet, filterLayer.vehicles, onSelectEntity]);
 
   // ─────────────────────────────────────────────────────────────
-  // 6. Render NER-LIFELINE Incidents Layer
+  // 6. Render NER-LIFELINE Incidents Layer (Optimized Diffing)
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.google) return;
 
-    incidentMarkersRef.current.forEach((m) => m.setMap(null));
-    incidentMarkersRef.current = [];
+    if (!filterLayer.hazards || !hazards || !hazards.length) {
+      incidentMarkersMapRef.current.forEach((m) => m.setMap(null));
+      incidentMarkersMapRef.current.clear();
+      return;
+    }
 
-    if (!filterLayer.hazards || !hazards || !hazards.length) return;
+    const seenIds = new Set();
 
     hazards.forEach((hz) => {
       const lat = hz.lat || hz.latitude;
       const lng = hz.lng || hz.longitude;
       if (!lat || !lng) return;
 
-      const marker = new window.google.maps.Marker({
-        position: { lat, lng },
-        map: map,
-        title: hz.title || hz.type || 'Field Incident',
-        icon: {
-          url: createIncidentSvg(hz.type || 'LANDSLIDE', hz.severity || 'Critical'),
-          scaledSize: new window.google.maps.Size(34, 34),
-          anchor: new window.google.maps.Point(17, 17)
-        },
-        zIndex: 60
-      });
+      seenIds.add(hz.id);
 
-      marker.addListener('click', () => {
-        setSelectedIncident(hz);
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setPosition({ lat, lng });
-          infoWindowRef.current.setContent(`
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 220px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 13px; color: #b91c1c;">⚠️ ${hz.type || 'LANDSLIDE'}</strong>
-                <span style="background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${hz.severity || 'Critical'}</span>
+      if (incidentMarkersMapRef.current.has(hz.id)) {
+        const marker = incidentMarkersMapRef.current.get(hz.id);
+        marker.setPosition({ lat, lng });
+      } else {
+        const marker = new window.google.maps.Marker({
+          position: { lat, lng },
+          map: map,
+          title: hz.title || hz.type || 'Field Incident',
+          icon: {
+            url: createIncidentSvg(hz.type || 'LANDSLIDE', hz.severity || 'Critical'),
+            scaledSize: new window.google.maps.Size(34, 34),
+            anchor: new window.google.maps.Point(17, 17)
+          },
+          zIndex: 60
+        });
+
+        marker.addListener('click', () => {
+          setSelectedIncident(hz);
+          if (infoWindowRef.current) {
+            infoWindowRef.current.setPosition({ lat, lng });
+            infoWindowRef.current.setContent(`
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 220px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 13px; color: #b91c1c;">⚠️ ${hz.type || 'LANDSLIDE'}</strong>
+                  <span style="background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">${hz.severity || 'Critical'}</span>
+                </div>
+                <div style="margin-top: 4px; font-size: 11px; color: #334155;">
+                  <p style="margin: 0 0 4px 0;">${hz.description || hz.title || 'Reported obstruction along mountain corridor.'}</p>
+                  <div>Confidence: <strong>${hz.confidence ? `${hz.confidence}%` : '95% (Multi-Sensor)'}</strong></div>
+                  <div>Coordinates: <strong>${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</strong></div>
+                </div>
+                <div style="margin-top: 6px; padding: 4px 6px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; font-size: 9px; color: #991b1b; font-weight: bold;">
+                  🛡️ NER-LIFELINE Incident Report (Not Google Data)
+                </div>
               </div>
-              <div style="margin-top: 4px; font-size: 11px; color: #334155;">
-                <p style="margin: 0 0 4px 0;">${hz.description || hz.title || 'Reported obstruction along mountain corridor.'}</p>
-                <div>Confidence: <strong>${hz.confidence ? `${hz.confidence}%` : '95% (Multi-Sensor)'}</strong></div>
-                <div>Coordinates: <strong>${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</strong></div>
-              </div>
-              <div style="margin-top: 6px; padding: 4px 6px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; font-size: 9px; color: #991b1b; font-weight: bold;">
-                🛡️ NER-LIFELINE Incident Report (Not Google Data)
-              </div>
-            </div>
-          `);
-          infoWindowRef.current.open(map);
+            `);
+            infoWindowRef.current.open(map);
+          }
+        });
+
+        incidentMarkersMapRef.current.set(hz.id, marker);
+      }
+    });
+
+    incidentMarkersMapRef.current.forEach((marker, id) => {
+      if (!seenIds.has(id)) {
+        if (window.google?.maps?.event?.clearInstanceListeners) {
+          window.google.maps.event.clearInstanceListeners(marker);
         }
-      });
-
-      incidentMarkersRef.current.push(marker);
+        marker.setMap(null);
+        incidentMarkersMapRef.current.delete(id);
+      }
     });
   }, [hazards, filterLayer.hazards]);
 
@@ -695,13 +815,14 @@ export default function GoogleMapView({
 
       let count = 0;
       const interval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         count = (count + 1) % 200;
         const icons = poly.get('icons');
         if (icons && icons[0]) {
           icons[0].offset = `${(count / 2) % 100}%`;
           poly.set('icons', icons);
         }
-      }, 50);
+      }, 80);
 
       roadPolylinesRef.current.safest = poly;
       roadPolylinesRef.current.flowInterval = interval;
@@ -770,7 +891,16 @@ export default function GoogleMapView({
     }
 
     if (!bounds.isEmpty()) {
-      map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+      const oLat = routeResult?.origin?.lat || routeResult?.origin?.latitude;
+      const oLng = routeResult?.origin?.lng || routeResult?.origin?.longitude;
+      const dLat = routeResult?.destination?.lat || routeResult?.destination?.latitude;
+      const dLng = routeResult?.destination?.lng || routeResult?.destination?.longitude;
+      const routeKey = `${Number(oLat || 0).toFixed(3)},${Number(oLng || 0).toFixed(3)}->${Number(dLat || 0).toFixed(3)},${Number(dLng || 0).toFixed(3)}`;
+
+      if (lastFittedRouteKeyRef.current !== routeKey) {
+        map.fitBounds(bounds, { top: 60, right: 60, bottom: 60, left: 60 });
+        lastFittedRouteKeyRef.current = routeKey;
+      }
     }
 
     return () => {
