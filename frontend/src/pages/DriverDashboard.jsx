@@ -46,7 +46,14 @@ import { getRoadHistories, getRealtimeVehicles, syncDatabase } from '../services
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
-  const { t, speakText, playAlertChime, isSpeaking } = useLanguage();
+  const { t, speakText, stopSpeech, playAlertChime, isSpeaking } = useLanguage();
+
+  // Cancel any running speech when component unmounts
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, [stopSpeech]);
 
   // State
   const [sosActive, setSosActive] = useState(false);
@@ -204,6 +211,7 @@ export default function DriverDashboard() {
   };
 
   const handleEndSosCall = async () => {
+    stopSpeech();
     if (sosCallSession) {
       await endSosCall(sosCallSession.call_id, sosCallDuration, 'Call ended by pilot. Escort units acknowledged.');
     }
@@ -244,6 +252,11 @@ export default function DriverDashboard() {
   };
 
   const handleVoiceReadout = () => {
+    if (isSpeaking) {
+      // Directly and immediately turn off the voice speech synthesis
+      stopSpeech();
+      return;
+    }
     const text = `High priority driver advisory: Active landslide reported 4.2 kilometers ahead on National Highway 13 near Bhalukpong Pass. Road Y is completely blocked. Recommended AI action: Divert immediately to Road X via the NH-27 southern contour. Road X is fortified and clear of all hazards. Sela Pass BRO Camp 142 is 6.2 kilometers away with emergency diesel, recovery crane, and mechanic assistance.`;
     speakText(text);
   };
@@ -663,13 +676,19 @@ SDRF Dispatch Status: Connected`;
                 </button>
 
                 <button
-                  onClick={() => setSosCallSpeaker(!sosCallSpeaker)}
+                  onClick={() => {
+                    const next = !sosCallSpeaker;
+                    setSosCallSpeaker(next);
+                    if (!next) {
+                      stopSpeech();
+                    }
+                  }}
                   className={`p-3 rounded-full border cursor-pointer transition-colors ${
                     sosCallSpeaker
                       ? 'bg-blue-600 text-white border-blue-400'
                       : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                   }`}
-                  title="Toggle speaker audio"
+                  title={sosCallSpeaker ? 'Directly turn off speaker voice' : 'Enable speaker voice'}
                 >
                   {sosCallSpeaker ? <Volume2 size={18} /> : <VolumeX size={18} />}
                 </button>
@@ -991,15 +1010,15 @@ SDRF Dispatch Status: Connected`;
           {/* Voice Readout Button */}
           <button
             onClick={handleVoiceReadout}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors ${
+            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-all ${
               isSpeaking
-                ? 'bg-blue-600 text-white border-blue-400 animate-pulse'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-400 shadow-lg shadow-rose-950/60 animate-pulse'
                 : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
             }`}
-            title="Listen to emergency road advisory aloud"
+            title={isSpeaking ? "Click to directly turn off and silence voice advisory" : "Listen to emergency road advisory aloud"}
           >
-            <Volume2 size={15} />
-            <span>{isSpeaking ? 'Speaking Advisory...' : 'Audio Advisory'}</span>
+            {isSpeaking ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            <span>{isSpeaking ? 'Stop Voice' : 'Audio Advisory'}</span>
           </button>
 
           {/* Road Histories DB Button */}

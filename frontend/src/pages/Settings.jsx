@@ -18,12 +18,13 @@ import {
   Lock,
   Globe,
   Languages,
-  Mic
+  Mic,
+  VolumeX
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Settings() {
-  const { language, setLanguage, t, languagesList, speakText, playAlertChime } = useLanguage();
+  const { language, setLanguage, t, languagesList, speakText, stopSpeech, isSpeaking, playAlertChime } = useLanguage();
 
   const [mapEngine, setMapEngine] = useState('google');
   const [defaultBasemap, setDefaultBasemap] = useState('dark');
@@ -44,6 +45,10 @@ export default function Settings() {
   };
 
   const testVoiceSample = () => {
+    if (isSpeaking) {
+      stopSpeech();
+      return;
+    }
     speakText(`NER-LIFELINE Emergency Logistics System initialized. Selected language: ${languagesList.find(l => l.id === language)?.name || 'English'}. Real-time monitoring active across North East India.`);
   };
 
@@ -91,11 +96,15 @@ export default function Settings() {
             </div>
             <button
               onClick={testVoiceSample}
-              className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-              title="Test offline Web Speech Voice Announcement in selected language"
+              className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center space-x-1.5 cursor-pointer transition-colors ${
+                isSpeaking
+                  ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
+                  : 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-500/30'
+              }`}
+              title={isSpeaking ? "Directly stop and turn off voice" : "Test offline Web Speech Voice Announcement in selected language"}
             >
-              <Mic size={13} />
-              <span>Test Voice Readout</span>
+              {isSpeaking ? <VolumeX size={13} /> : <Mic size={13} />}
+              <span>{isSpeaking ? 'Stop Voice' : 'Test Voice Readout'}</span>
             </button>
           </div>
 

@@ -1754,13 +1754,19 @@ const LiveMap = () => {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
-                  if (window.speechSynthesis) {
+                  if (typeof window !== 'undefined' && window.speechSynthesis) {
+                    if (window.speechSynthesis.speaking) {
+                      window.speechSynthesis.cancel();
+                      return;
+                    }
+                    window.speechSynthesis.cancel();
                     const text = `NER AI Route Assessment from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Caution: Road Y is affected by active landslides and rockfall hazards. Road X is recommended as the safest all-weather route, spanning ${routeResult.safest_route?.distance_km} kilometers with estimated travel time of ${routeResult.safest_route?.duration_text}. Road Z is also available as a valley bypass corridor.`;
                     const utter = new SpeechSynthesisUtterance(text);
                     window.speechSynthesis.speak(utter);
                   }
                 }}
                 className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-cyan-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer"
+                title="Voice guide (click while speaking to immediately turn off)"
               >
                 <Volume2 size={13} />
                 <span>Voice Guide</span>

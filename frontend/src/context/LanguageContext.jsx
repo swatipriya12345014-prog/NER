@@ -510,6 +510,7 @@ const LanguageContext = createContext({
   t: (key, fallback) => fallback || key,
   languagesList: SUPPORTED_LANGUAGES,
   speakText: () => {},
+  stopSpeech: () => {},
   playAlertChime: () => {},
   isSpeaking: false,
   soundAlertsEnabled: true,
@@ -567,6 +568,18 @@ export function LanguageProvider({ children }) {
     }
     return fallback !== undefined ? fallback : key;
   }, [language]);
+
+  // Audio Accessibility: Stop/Cancel speech synthesis immediately
+  const stopSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {
+        console.warn('Speech cancellation error:', err);
+      }
+    }
+    setIsSpeaking(false);
+  }, []);
 
   // Audio Accessibility: Web Speech API for Turn-by-Turn & Emergency Announcements
   const speakText = useCallback((text) => {
@@ -660,6 +673,7 @@ export function LanguageProvider({ children }) {
         t,
         languagesList: SUPPORTED_LANGUAGES,
         speakText,
+        stopSpeech,
         playAlertChime,
         isSpeaking,
         soundAlertsEnabled,

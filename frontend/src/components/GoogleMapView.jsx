@@ -3,7 +3,7 @@ import {
   Navigation, AlertTriangle, Fuel, MapPin, Radio, 
   Compass, Eye, Check, RefreshCw, AlertOctagon, CircleDot, Bell, 
   X, Info, Sliders, CloudRain, Truck, Route as RouteIcon,
-  Volume2, Copy, Crosshair, ExternalLink, Shield, ArrowRight
+  Volume2, VolumeX, Copy, Crosshair, ExternalLink, Shield, ArrowRight
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { 
@@ -230,7 +230,7 @@ export default function GoogleMapView({
   const compassTrackerRef = useRef(null);
   const animFrameIdRef = useRef(null);
 
-  const { t, speakText, isSpeaking, playAlertChime } = useLanguage();
+  const { t, speakText, stopSpeech, isSpeaking, playAlertChime } = useLanguage();
   const [copyToast, setCopyToast] = useState(false);
   const [isApiLoaded, setIsApiLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState(null);
@@ -971,6 +971,10 @@ export default function GoogleMapView({
 
   // Voice Readout
   const handleVoiceReadout = () => {
+    if (isSpeaking) {
+      stopSpeech();
+      return;
+    }
     if (!routeResult) return;
     const destName = routeResult.destination?.name || 'Destination';
     const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km || 140} km`;
@@ -1170,12 +1174,12 @@ export default function GoogleMapView({
               </button>
               <button
                 onClick={handleVoiceReadout}
-                title="Voice Route Guidance"
+                title={isSpeaking ? "Directly stop and silence voice guidance" : "Voice Route Guidance"}
                 className={`p-1 rounded cursor-pointer transition-colors ${
-                  isSpeaking ? 'bg-emerald-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  isSpeaking ? 'bg-rose-600 text-white animate-pulse' : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <Volume2 size={13} />
+                {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
               </button>
             </div>
           </div>
