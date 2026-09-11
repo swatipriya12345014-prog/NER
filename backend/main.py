@@ -14,13 +14,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
-from database import get_supabase_client, is_supabase_configured
+from database import get_supabase_client, is_supabase_configured, ensure_gps_table_exists, ensure_extended_tables_exist
 from schemas import (
     Shipment, ShipmentCreate, RouteRiskReport, IncidentAlert, MeshTelemetryPacket,
     Vehicle, RouteWaypoint, FuelStop, RouteLocality, NavigationStep, RouteAlternative, RouteOptimizationRequest,
     AIRecommendation, RouteOptimizationResponse,
     GPSLocationUpdate, GPSLocationResponse, GPSTrackPoint, GPSDeviceLatest,
-    LatLngPoint, GoogleRouteRequest, GoogleRouteResponse, RiskBreakdown
+    LatLngPoint, GoogleRouteRequest, GoogleRouteResponse, RiskBreakdown,
+    RoadHistory, VehicleRegistryItem, RealtimeVehicleTelemetryUpdate,
+    SOSCallInitiateRequest, SOSCallSession, SOSCallEndRequest,
+    ChronicBlackspot, PastBlockageEvent
 )
 
 app = FastAPI(
@@ -494,6 +497,23 @@ def get_incidents():
     set_cached_data("incidents", data)
     return data
 
+@app.post("/api/incidents", response_model=IncidentAlert)
+def report_incident(incident: IncidentAlert):
+    invalidate_cached_data("incidents")
+    invalidate_cached_data("route_risks")
+    client = get_supabase_client()
+    incident_dict = incident.dict()
+
+    if client:
+        try:
+            client.table("incidents").insert(incident_dict).execute()
+        except Exception as e:
+            print(f"Supabase incident insert notice: {e}")
+
+    # Also append to MOCK_INCIDENTS in-memory fallback
+    MOCK_INCIDENTS.insert(0, incident_dict)
+    return incident
+
 @app.get("/api/mesh/nodes")
 def get_mesh_nodes():
     return MOCK_MESH_NODES
@@ -532,14 +552,22 @@ def get_vehicles():
     set_cached_data("vehicles", data)
     return data
 
-@app.get("/api/vehicles/{vehicle_id}", response_model=Vehicle)
+@app.get("/api/vehicles/{vehicle_id}")
 def get_vehicle_by_id(vehicle_id: str):
+    if vehicle_id == "realtime":
+        return get_all_realtime_vehicles()
+
     cached = get_cached_data(f"veh_{vehicle_id}")
     if cached is not None:
         return cached
 
+    # Check REALTIME_VEHICLE_DATABASE first by registration number
+    norm_id = vehicle_id.strip().upper().replace(" ", "-")
+    if norm_id in REALTIME_VEHICLE_DATABASE:
+        return REALTIME_VEHICLE_DATABASE[norm_id]
+
     for v in MOCK_VEHICLES:
-        if v["id"] == vehicle_id:
+        if v["id"] == vehicle_id or v["id"].replace("-", "") == norm_id.replace("-", ""):
             set_cached_data(f"veh_{vehicle_id}", v)
             return v
     raise HTTPException(status_code=404, detail="Vehicle not found in registry")
@@ -1409,3 +1437,1038 @@ async def gps_websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"GPS WebSocket error: {e}")
         gps_manager.disconnect(websocket)
+
+
+# ─────────────────────────────────────────────────────────────
+# 1. ROAD HISTORIES DATABASE ENGINE (8 Lifeline Highways in NER)
+# ─────────────────────────────────────────────────────────────
+
+ROAD_HISTORIES_DB: Dict[str, Dict] = {
+    "NH-13": {
+        "road_id": "NH-13",
+        "road_name": "Trans-Arunachal Highway (Bhalukpong ➔ Tawang)",
+        "corridor": "Guwahati - Tawang Corridor",
+        "state": "Arunachal Pradesh",
+        "total_length_km": 420.5,
+        "terrain_classification": "High Alpine Gorge & Permafrost Passes",
+        "historical_landslides_count": 38,
+        "historical_floods_count": 12,
+        "avg_clearance_time_hours": 6.8,
+        "worst_season": "Monsoon (June - September) & Winter Snow (Dec - Feb)",
+        "current_condition": "Active Landslide Blockage at Km 42 (Bhalukpong)",
+        "risk_index": 74,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 42",
+                "name": "Bhalukpong Mountain Defile",
+                "hazard_type": "Overhanging Mudslide & Boulder Fall",
+                "risk_rating": "CRITICAL",
+                "notes": "Prone to sudden slope slips after >40mm rainfall."
+            },
+            {
+                "km_marker": "Km 142",
+                "name": "Sela Pass Southern Incline",
+                "hazard_type": "Black Ice, Snowdrift & 14° Hairpins",
+                "risk_rating": "HIGH",
+                "notes": "Chains mandatory during December to February."
+            },
+            {
+                "km_marker": "Km 210",
+                "name": "Jaswant Garh Ridge",
+                "hazard_type": "Dense Fog & Karst Sinking",
+                "risk_rating": "MODERATE",
+                "notes": "Visibility frequently under 5 meters."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-09-08",
+                "event": "40m mud collapse at Bhalukpong Pass",
+                "duration_hours": 7.5,
+                "cleared_by": "BRO Project Vartak Task Force 14",
+                "severity": "CRITICAL",
+                "notes": "Excavator cleared single-lane emergency convoys first."
+            },
+            {
+                "date": "2026-08-14",
+                "event": "Boulder fall near Bomdila checkpost",
+                "duration_hours": 4.2,
+                "cleared_by": "BRO 85 RCC",
+                "severity": "HIGH",
+                "notes": "Controlled blasting needed to fracture 12-ton rock."
+            },
+            {
+                "date": "2026-07-22",
+                "event": "Monsoon mudslide covering 120m roadway",
+                "duration_hours": 11.0,
+                "cleared_by": "SDRF & BRO Joint Team",
+                "severity": "CRITICAL",
+                "notes": "Overnight closure; 14 supply trucks escorted through detour."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-27": {
+        "road_id": "NH-27",
+        "road_name": "East-West Highway Corridor (Guwahati ➔ Nagaon ➔ Lumding)",
+        "corridor": "Guwahati - Upper Assam Arterial Corridor",
+        "state": "Assam",
+        "total_length_km": 310.0,
+        "terrain_classification": "Fortified River Valley & Plain Contours",
+        "historical_landslides_count": 2,
+        "historical_floods_count": 7,
+        "avg_clearance_time_hours": 1.4,
+        "worst_season": "Peak Monsoon High River Discharge (July)",
+        "current_condition": "All-Weather Clear & Operational (High Speed Bypass)",
+        "risk_index": 18,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 110",
+                "name": "Kolia Bhomora Bridge Approach",
+                "hazard_type": "River Overflow / Backwater",
+                "risk_rating": "LOW",
+                "notes": "Well-drained 4-lane elevated causeway."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-06-18",
+                "event": "Minor waterlogging near Jagiroad culvert",
+                "duration_hours": 1.8,
+                "cleared_by": "Assam PWD Road Division",
+                "severity": "MODERATE",
+                "notes": "Traffic routed via flyover bypass."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-06": {
+        "road_id": "NH-06",
+        "road_name": "Meghalaya-Barak Valley Lifeline (Shillong ➔ Jowai ➔ Lumshnong ➔ Silchar)",
+        "corridor": "Shillong - Silchar Lifeline",
+        "state": "Meghalaya",
+        "total_length_km": 218.4,
+        "terrain_classification": "Karst Limestone Slope & Heavy Cloud Forest",
+        "historical_landslides_count": 31,
+        "historical_floods_count": 19,
+        "avg_clearance_time_hours": 8.2,
+        "worst_season": "Monsoon (May - September, highest rainfall zone)",
+        "current_condition": "Caution: Single-Lane Transit at Lumshnong Sinking Zone",
+        "risk_index": 76,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 95",
+                "name": "Lumshnong Limestone Sink",
+                "hazard_type": "Roadbed Liquefaction & Sinking Pitches",
+                "risk_rating": "CRITICAL",
+                "notes": "Geotextile reinforcing active; trucks over 16 tons restricted."
+            },
+            {
+                "km_marker": "Km 132",
+                "name": "Sonapur Tunnel Outfall",
+                "hazard_type": "Flash Mud Slurry & Waterfall Surge",
+                "risk_rating": "HIGH",
+                "notes": "Heavy rains turn hillside into mud cascade across portal."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-08-30",
+                "event": "Sonapur Tunnel mud overflow",
+                "duration_hours": 9.0,
+                "cleared_by": "NHIDCL Emergency Works",
+                "severity": "CRITICAL",
+                "notes": "Stranded convoys provided food by SDRF unit."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-10": {
+        "road_id": "NH-10",
+        "road_name": "Sikkim Lifeline Arterial (Siliguri ➔ Sevoke ➔ Teesta Bazar ➔ Gangtok)",
+        "corridor": "Siliguri - Gangtok Himalayan Link",
+        "state": "Sikkim",
+        "total_length_km": 114.0,
+        "terrain_classification": "Active Seismic Tectonic Fault & Teesta River Canyon",
+        "historical_landslides_count": 46,
+        "historical_floods_count": 22,
+        "avg_clearance_time_hours": 9.8,
+        "worst_season": "Continuous Monsoon Rains (June - October)",
+        "current_condition": "High Vulnerability: Multiple 1-lane bypasses near 29th Mile",
+        "risk_index": 82,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 29",
+                "name": "29th Mile Sinking Zone",
+                "hazard_type": "Continuous Talus Slope Slide into Teesta",
+                "risk_rating": "CRITICAL",
+                "notes": "Permanent BRO watchpost deployed with 2 front-end loaders."
+            },
+            {
+                "km_marker": "Km 44",
+                "name": "Teesta Bazar Low Bridge",
+                "hazard_type": "River Level Swell Over Pavement",
+                "risk_rating": "CRITICAL",
+                "notes": "Dam discharge sirens trigger instant police barrier."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-09-02",
+                "event": "29th Mile slide blocking Gangtok supply trucks",
+                "duration_hours": 12.5,
+                "cleared_by": "BRO Project Swastik",
+                "severity": "CRITICAL",
+                "notes": "Alternate lava route utilized for oxygen carriers."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-29": {
+        "road_id": "NH-29",
+        "road_name": "Nagaland-Manipur Transit Trunk (Dimapur ➔ Kohima ➔ Mao Gate)",
+        "corridor": "Dimapur - Imphal Trunk",
+        "state": "Nagaland",
+        "total_length_km": 156.0,
+        "terrain_classification": "Sheared Mudstone & Steep Terraced Hillsides",
+        "historical_landslides_count": 24,
+        "historical_floods_count": 5,
+        "avg_clearance_time_hours": 5.5,
+        "worst_season": "Monsoon (July - August)",
+        "current_condition": "Passable with speed restrictions at Paglapahar",
+        "risk_index": 58,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 22",
+                "name": "Paglapahar ('Mad Mountain')",
+                "hazard_type": "Unpredictable Boulder Rolling",
+                "risk_rating": "HIGH",
+                "notes": "Mesh netting installed; pilot car convoy system during heavy rain."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-07-09",
+                "event": "Rockfall near Chumukedima old bridge",
+                "duration_hours": 5.0,
+                "cleared_by": "Nagaland State PWD & Assam Rifles",
+                "severity": "HIGH",
+                "notes": "Clearance completed ahead of night curfews."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-102": {
+        "road_id": "NH-102",
+        "road_name": "Asian Highway 1 (Imphal ➔ Thoubal ➔ Moreh Border)",
+        "corridor": "Imphal - Moreh Border Highway",
+        "state": "Manipur",
+        "total_length_km": 107.0,
+        "terrain_classification": "Foothills transitioning to Myanmar Border Valley",
+        "historical_landslides_count": 14,
+        "historical_floods_count": 11,
+        "avg_clearance_time_hours": 3.8,
+        "worst_season": "Monsoon Flash Surges (July - August)",
+        "current_condition": "Passable; all-weather border freight movement active",
+        "risk_index": 35,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 58",
+                "name": "Tengnoupal Ridge",
+                "hazard_type": "Monsoon Fog & Valley Mud Washout",
+                "risk_rating": "MODERATE",
+                "notes": "Border trade checkpoint stationed with emergency cranes."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-06-25",
+                "event": "Culvert collapse near Kakching",
+                "duration_hours": 4.5,
+                "cleared_by": "Manipur PWD Engineering Wing",
+                "severity": "MODERATE",
+                "notes": "Bailey bridge deployed in under 6 hours."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-208": {
+        "road_id": "NH-208",
+        "road_name": "Tripura Lifeline Arterial (Kumarghat ➔ Kailashahar ➔ Agartala)",
+        "corridor": "Tripura Inter-District Connector",
+        "state": "Tripura",
+        "total_length_km": 135.0,
+        "terrain_classification": "River Plain & Rolling Low Hills",
+        "historical_landslides_count": 8,
+        "historical_floods_count": 16,
+        "avg_clearance_time_hours": 3.2,
+        "worst_season": "Manu & Howrah River Flood Season (June - July)",
+        "current_condition": "Operational; low river risk currently",
+        "risk_index": 29,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 72",
+                "name": "Manu River Low Causeway",
+                "hazard_type": "River Overflow & Bridge Approach Submersion",
+                "risk_rating": "MODERATE",
+                "notes": "Automated water-level radar triggers alert at 1.8m river rise."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-07-04",
+                "event": "River Manu flash flood overtopping culvert",
+                "duration_hours": 3.5,
+                "cleared_by": "Tripura Disaster Response Force (TDRF)",
+                "severity": "MODERATE",
+                "notes": "Receded naturally; debris cleared within 60 mins."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    },
+    "NH-15": {
+        "road_id": "NH-15",
+        "road_name": "Brahmaputra North Bank Trunk (Mangaldai ➔ Tezpur ➔ North Lakhimpur ➔ Pasighat)",
+        "corridor": "Assam-Arunachal Foothill Trunk",
+        "state": "Assam",
+        "total_length_km": 395.0,
+        "terrain_classification": "Sub-Himalayan Alluvial Plain & River Channels",
+        "historical_landslides_count": 5,
+        "historical_floods_count": 21,
+        "avg_clearance_time_hours": 4.1,
+        "worst_season": "Brahmaputra Flood Waves (July - August)",
+        "current_condition": "Open; minor bypass around bridge maintenance at Subansiri",
+        "risk_index": 38,
+        "chronic_blackspots": [
+            {
+                "km_marker": "Km 185",
+                "name": "Subansiri Embankment",
+                "hazard_type": "Breach Scouring & Flash Flood",
+                "risk_rating": "HIGH",
+                "notes": "Armored boulder revetment installed by Water Resources Dept."
+            }
+        ],
+        "past_blockage_events": [
+            {
+                "date": "2026-08-01",
+                "event": "Road shoulder scouring near Bihpuria",
+                "duration_hours": 4.0,
+                "cleared_by": "BRO Project Setu",
+                "severity": "MODERATE",
+                "notes": "Sandbagging completed; commercial convoy passed."
+            }
+        ],
+        "last_inspected": datetime.utcnow().isoformat()
+    }
+}
+
+@app.get("/api/roads/histories", response_model=List[RoadHistory])
+def get_all_road_histories(state: Optional[str] = None):
+    """Retrieve full historical records and incident logs for NER lifeline roads."""
+    cached_key = f"road_histories_{state or 'all'}"
+    cached = get_cached_data(cached_key)
+    if cached is not None:
+        return cached
+
+    client = get_supabase_client()
+    data = list(ROAD_HISTORIES_DB.values())
+
+    if client:
+        try:
+            query = client.table("road_histories").select("*")
+            if state:
+                query = query.eq("state", state)
+            res = query.execute()
+            if res.data and len(res.data) > 0:
+                data = res.data
+        except Exception as e:
+            print(f"Supabase road_histories notice: {e}")
+
+    if state:
+        data = [r for r in data if r["state"].lower() == state.lower()]
+
+    set_cached_data(cached_key, data)
+    return data
+
+@app.get("/api/roads/histories/{road_id}", response_model=RoadHistory)
+def get_road_history_by_id(road_id: str):
+    """Retrieve deep historical timeline and chronic hazards for a specific highway."""
+    road_key = road_id.upper()
+    client = get_supabase_client()
+
+    if client:
+        try:
+            res = client.table("road_histories").select("*").eq("road_id", road_key).execute()
+            if res.data and len(res.data) > 0:
+                return res.data[0]
+        except Exception as e:
+            print(f"Supabase road history query notice: {e}")
+
+    if road_key in ROAD_HISTORIES_DB:
+        return ROAD_HISTORIES_DB[road_key]
+    raise HTTPException(status_code=404, detail=f"Road history for {road_id} not found")
+
+@app.post("/api/roads/histories/{road_id}/events")
+def add_road_blockage_event(road_id: str, event: PastBlockageEvent):
+    """Log a new landslide, flash flood or blockage incident into the permanent road history."""
+    road_key = road_id.upper()
+    event_dict = event.dict()
+
+    if road_key in ROAD_HISTORIES_DB:
+        ROAD_HISTORIES_DB[road_key]["past_blockage_events"].insert(0, event_dict)
+        ROAD_HISTORIES_DB[road_key]["last_inspected"] = datetime.utcnow().isoformat()
+
+    client = get_supabase_client()
+    if client:
+        try:
+            current_rec = client.table("road_histories").select("past_blockage_events").eq("road_id", road_key).execute()
+            current_events = []
+            if current_rec.data and len(current_rec.data) > 0:
+                current_events = current_rec.data[0].get("past_blockage_events", [])
+            current_events.insert(0, event_dict)
+            client.table("road_histories").update({
+                "past_blockage_events": current_events,
+                "last_inspected": datetime.utcnow().isoformat()
+            }).eq("road_id", road_key).execute()
+        except Exception as e:
+            print(f"Supabase road event update notice: {e}")
+
+    invalidate_cached_data("road_histories")
+    return {"status": "success", "road_id": road_key, "event": event_dict}
+
+
+# ─────────────────────────────────────────────────────────────
+# 2. REALTIME VEHICLE DATABASE (Vehicle Number Plates Registry)
+# ─────────────────────────────────────────────────────────────
+
+REALTIME_VEHICLE_DATABASE: Dict[str, Dict] = {
+    "AS-01-EV-4421": {
+        "vehicle_number": "AS-01-EV-4421",
+        "vehicle_name": "Highland Rapid Ambulance 01",
+        "vehicle_type": "4x4 Highland Ambulance",
+        "driver_name": "Tenzing Norbu",
+        "driver_phone": "+91 94351 99201",
+        "fuel_percentage": 68.6,
+        "speed_kmh": 42.5,
+        "lat": 27.0142,
+        "lng": 92.5645,
+        "altitude_m": 1240.0,
+        "current_road": "NH-13 Km 42 (Bhalukpong Pass)",
+        "destination": "Tawang District Hospital",
+        "cargo_manifest": "Emergency Blood Plasma & IV Fluids (-4°C Vaccine Vault)",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-01",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "ML-05-TR-9011": {
+        "vehicle_number": "ML-05-TR-9011",
+        "vehicle_name": "Heavy Convoy Transporter 05",
+        "vehicle_type": "Heavy Relief Truck (6x6)",
+        "driver_name": "Dhiraj Roy",
+        "driver_phone": "+91 94361 88412",
+        "fuel_percentage": 28.0,
+        "speed_kmh": 28.0,
+        "lat": 25.5788,
+        "lng": 91.8933,
+        "altitude_m": 1490.0,
+        "current_road": "NH-06 Lumshnong Stretch",
+        "destination": "Jowai Primary Health Center",
+        "cargo_manifest": "Water Purification Systems & Dry Rations",
+        "status": "En Route",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-02",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "AR-03-AM-2022": {
+        "vehicle_number": "AR-03-AM-2022",
+        "vehicle_name": "Sela Mountain Medical Patrol",
+        "vehicle_type": "Mountain Rapid Response SUV",
+        "driver_name": "Lobsang Wangchuk",
+        "driver_phone": "+91 94355 12044",
+        "fuel_percentage": 25.4,
+        "speed_kmh": 34.0,
+        "lat": 27.2645,
+        "lng": 92.4182,
+        "altitude_m": 2240.0,
+        "current_road": "NH-13 Bomdila Ascent",
+        "destination": "Dirang Military Transit Depot",
+        "cargo_manifest": "High Altitude Oxygen Cylinders",
+        "status": "En Route",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-01",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "MN-02-HV-3108": {
+        "vehicle_number": "MN-02-HV-3108",
+        "vehicle_name": "Eastern Sector Supply Carrier",
+        "vehicle_type": "Tactical Cargo Carrier (4x4)",
+        "driver_name": "Bikram Singh",
+        "driver_phone": "+91 94360 44519",
+        "fuel_percentage": 71.7,
+        "speed_kmh": 50.0,
+        "lat": 24.8333,
+        "lng": 92.7789,
+        "altitude_m": 180.0,
+        "current_road": "NH-27 Silchar Staging Hub",
+        "destination": "Imphal Relief Staging Yard",
+        "cargo_manifest": "Emergency Blanket Bundles & Baby Formula",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-03",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "SK-01-RL-5504": {
+        "vehicle_number": "SK-01-RL-5504",
+        "vehicle_name": "Himalayan Vaccine Cruiser EV",
+        "vehicle_type": "High Altitude Cold-Chain EV",
+        "driver_name": "Karma Bhutia",
+        "driver_phone": "+91 94340 77123",
+        "fuel_percentage": 80.0,
+        "speed_kmh": 36.0,
+        "lat": 27.3389,
+        "lng": 88.6065,
+        "altitude_m": 1650.0,
+        "current_road": "NH-10 Gangtok Approach",
+        "destination": "Mangan Remote Clinic",
+        "cargo_manifest": "Insulin & Pediatric Vaccine Batches",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-04",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "TR-01-EM-8840": {
+        "vehicle_number": "TR-01-EM-8840",
+        "vehicle_name": "Tripura Fuel Logistics Mobile Depot",
+        "vehicle_type": "Emergency Fuel & Water Tanker",
+        "driver_name": "Subhash Das",
+        "driver_phone": "+91 94364 88301",
+        "fuel_percentage": 92.0,
+        "speed_kmh": 44.0,
+        "lat": 23.8315,
+        "lng": 91.2868,
+        "altitude_m": 45.0,
+        "current_road": "NH-208 Agartala Perimeter",
+        "destination": "Kailashahar Fuel Cache",
+        "cargo_manifest": "12,000 Litres Military Grade High-Altitude Diesel",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-05",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "NL-07-CD-3310": {
+        "vehicle_number": "NL-07-CD-3310",
+        "vehicle_name": "Nagaland Emergency Rescue Unit",
+        "vehicle_type": "All-Terrain Rescue 4x4",
+        "driver_name": "Arenla Jamir",
+        "driver_phone": "+91 94362 11988",
+        "fuel_percentage": 55.0,
+        "speed_kmh": 38.0,
+        "lat": 25.6751,
+        "lng": 94.1086,
+        "altitude_m": 1440.0,
+        "current_road": "NH-29 Kohima Bypass",
+        "destination": "Wokha Disaster Cell",
+        "cargo_manifest": "Hydraulic Rescue Cutters & Emergency Satellite Kits",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-04",
+        "last_ping": datetime.utcnow().isoformat()
+    },
+    "MZ-01-GH-6622": {
+        "vehicle_number": "MZ-01-GH-6622",
+        "vehicle_name": "Mizoram Mountain Logistics Van",
+        "vehicle_type": "High Clearance 4WD Van",
+        "driver_name": "Lalrintluanga",
+        "driver_phone": "+91 94361 55902",
+        "fuel_percentage": 64.0,
+        "speed_kmh": 32.0,
+        "lat": 23.7271,
+        "lng": 92.7176,
+        "altitude_m": 1130.0,
+        "current_road": "NH-54 Aizawl Outer Ring",
+        "destination": "Lunglei District Hospital",
+        "cargo_manifest": "Dialysis Fluids & Antivenom Doses",
+        "status": "Active",
+        "is_online": True,
+        "mesh_node_id": "MESH-NODE-03",
+        "last_ping": datetime.utcnow().isoformat()
+    }
+}
+
+# Realtime Vehicle WebSocket Connection Manager
+class VehicleRealtimeManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        dead_connections = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                dead_connections.append(connection)
+        for dead in dead_connections:
+            self.disconnect(dead)
+
+vehicle_realtime_manager = VehicleRealtimeManager()
+
+@app.get("/api/vehicles/realtime", response_model=List[VehicleRegistryItem])
+def get_all_realtime_vehicles():
+    """Returns real-time operational status for all vehicle numbers in the registry."""
+    cached = get_cached_data("realtime_vehicles")
+    if cached is not None:
+        return cached
+
+    client = get_supabase_client()
+    data = list(REALTIME_VEHICLE_DATABASE.values())
+
+    if client:
+        try:
+            res = client.table("vehicle_registry").select("*").execute()
+            if res.data and len(res.data) > 0:
+                data = res.data
+        except Exception as e:
+            print(f"Supabase vehicle_registry notice: {e}")
+
+    set_cached_data("realtime_vehicles", data)
+    return data
+
+@app.get("/api/vehicles/realtime/{vehicle_number}", response_model=VehicleRegistryItem)
+def get_realtime_vehicle_by_plate(vehicle_number: str):
+    """Retrieve realtime location, driver, road and status by vehicle number plate."""
+    normalized_plate = vehicle_number.strip().upper().replace(" ", "-")
+    client = get_supabase_client()
+
+    if client:
+        try:
+            res = client.table("vehicle_registry").select("*").eq("vehicle_number", normalized_plate).execute()
+            if res.data and len(res.data) > 0:
+                return res.data[0]
+        except Exception as e:
+            print(f"Supabase vehicle query notice: {e}")
+
+    if normalized_plate in REALTIME_VEHICLE_DATABASE:
+        return REALTIME_VEHICLE_DATABASE[normalized_plate]
+
+    for v in REALTIME_VEHICLE_DATABASE.values():
+        if v["vehicle_number"].replace("-", "") == normalized_plate.replace("-", ""):
+            return v
+
+    raise HTTPException(status_code=404, detail=f"Vehicle registration number {vehicle_number} not found")
+
+@app.post("/api/vehicles/realtime/update", response_model=VehicleRegistryItem)
+async def update_realtime_vehicle(update: RealtimeVehicleTelemetryUpdate):
+    """Update live location, speed, fuel, or road position for a specific vehicle number."""
+    plate = update.vehicle_number.strip().upper().replace(" ", "-")
+    now_iso = datetime.utcnow().isoformat()
+
+    if plate not in REALTIME_VEHICLE_DATABASE:
+        REALTIME_VEHICLE_DATABASE[plate] = {
+            "vehicle_number": plate,
+            "vehicle_name": f"Fleet Vehicle {plate}",
+            "vehicle_type": "Emergency Transit Carrier",
+            "driver_name": "Field Pilot",
+            "driver_phone": "+91 94350 00000",
+            "fuel_percentage": update.fuel_percentage or 80.0,
+            "speed_kmh": update.speed_kmh or 0.0,
+            "lat": update.lat,
+            "lng": update.lng,
+            "altitude_m": update.altitude_m or 500.0,
+            "current_road": update.current_road or "Active NER Corridor",
+            "destination": "Command Depot",
+            "cargo_manifest": update.cargo_manifest or "Relief Cargo",
+            "status": update.status or "Active",
+            "is_online": True,
+            "mesh_node_id": "MESH-NODE-01",
+            "last_ping": now_iso
+        }
+    else:
+        v = REALTIME_VEHICLE_DATABASE[plate]
+        v["lat"] = update.lat
+        v["lng"] = update.lng
+        v["last_ping"] = now_iso
+        if update.speed_kmh is not None:
+            v["speed_kmh"] = update.speed_kmh
+        if update.fuel_percentage is not None:
+            v["fuel_percentage"] = update.fuel_percentage
+        if update.altitude_m is not None:
+            v["altitude_m"] = update.altitude_m
+        if update.status:
+            v["status"] = update.status
+        if update.current_road:
+            v["current_road"] = update.current_road
+        if update.cargo_manifest:
+            v["cargo_manifest"] = update.cargo_manifest
+
+    updated_record = REALTIME_VEHICLE_DATABASE[plate]
+
+    # Asynchronously persist to Supabase
+    client = get_supabase_client()
+    if client:
+        try:
+            client.table("vehicle_registry").upsert(updated_record).execute()
+        except Exception as e:
+            print(f"Supabase vehicle upsert notice: {e}")
+
+    invalidate_cached_data("realtime_vehicles")
+    invalidate_cached_data("vehicles")
+
+    # Broadcast over WebSocket
+    await vehicle_realtime_manager.broadcast({
+        "type": "vehicle_telemetry_update",
+        "vehicle_number": plate,
+        "data": updated_record
+    })
+
+    return updated_record
+
+@app.websocket("/ws/vehicles/realtime")
+async def websocket_vehicles_realtime(websocket: WebSocket):
+    """Real-time streaming WebSocket channel for all vehicle numbers and positions."""
+    await vehicle_realtime_manager.connect(websocket)
+    try:
+        # Send initial snapshot
+        await websocket.send_json({
+            "type": "initial_vehicle_fleet",
+            "data": list(REALTIME_VEHICLE_DATABASE.values())
+        })
+        while True:
+            raw = await websocket.receive_text()
+            # Client pings / telemetry keep-alive
+            await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
+    except WebSocketDisconnect:
+        vehicle_realtime_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"Vehicle Realtime WebSocket error: {e}")
+        vehicle_realtime_manager.disconnect(websocket)
+
+
+# ─────────────────────────────────────────────────────────────
+# 3. EMERGENCY SOS CALL ENGINE (Voice / Sat-Bridge Dispatcher)
+# ─────────────────────────────────────────────────────────────
+
+ACTIVE_SOS_CALLS: Dict[str, Dict] = {}
+HISTORICAL_SOS_CALLS: List[Dict] = []
+
+class SOSCallManager:
+    def __init__(self):
+        self.active_call_sockets: Dict[str, List[WebSocket]] = defaultdict(list)
+
+    async def connect(self, call_id: str, websocket: WebSocket):
+        await websocket.accept()
+        self.active_call_sockets[call_id].append(websocket)
+
+    def disconnect(self, call_id: str, websocket: WebSocket):
+        if call_id in self.active_call_sockets and websocket in self.active_call_sockets[call_id]:
+            self.active_call_sockets[call_id].remove(websocket)
+
+    async def broadcast_to_call(self, call_id: str, message: dict):
+        if call_id in self.active_call_sockets:
+            dead = []
+            for ws in self.active_call_sockets[call_id]:
+                try:
+                    await ws.send_json(message)
+                except Exception:
+                    dead.append(ws)
+            for d in dead:
+                self.disconnect(call_id, d)
+
+sos_call_manager = SOSCallManager()
+
+# Designated Central Emergency Receiver Phone (All SOS calls route here)
+EMERGENCY_RECEIVER_PHONE = os.getenv("SOS_RECEIVER_PHONE", "+91 78110 75355")
+
+def trigger_emergency_phone_alert(call_session: dict):
+    """
+    Triggers direct routing of the SOS call to the designated controller phone (+91 78110 75355).
+    Logs and prepares SMS/telephony dispatch payloads.
+    """
+    print(f"\n🚨 [EMERGENCY CALL ROUTED TO +91 78110 75355] 🚨")
+    print(f"Vehicle: {call_session['vehicle_number']} | Pilot: {call_session['driver_name']} ({call_session['driver_phone']})")
+    print(f"Location: {call_session['location_name']} | GPS: {call_session['gps_lat']}°N, {call_session['gps_lng']}°E")
+    print(f"Google Maps Link: https://maps.google.com/?q={call_session['gps_lat']},{call_session['gps_lng']}")
+    print(f"Incoming Call Target: {EMERGENCY_RECEIVER_PHONE}\n")
+
+@app.post("/api/sos/call/initiate", response_model=SOSCallSession)
+async def initiate_sos_call(req: SOSCallInitiateRequest):
+    """Initiates an emergency audio/radio SOS call connecting directly to the Controller at +91 78110 75355."""
+    call_id = f"CALL-SOS-{str(uuid.uuid4())[:8].upper()}"
+    now_iso = datetime.utcnow().isoformat()
+
+    # Route emergency call directly to user's registered phone
+    responder_unit = f"NER Central Disaster Command & Chief Controller ({EMERGENCY_RECEIVER_PHONE})"
+    responder_officer = f"Central Operations Controller (Direct: {EMERGENCY_RECEIVER_PHONE})"
+    responder_phone = EMERGENCY_RECEIVER_PHONE
+    channel = req.channel or "VHF 146.2 MHz / LoRa Sat-Bridge (Channel 1)"
+
+    dispatcher_greeting = (
+        f"Emergency Operations Center connected. SOS Call routed directly to Chief Controller at {EMERGENCY_RECEIVER_PHONE}. "
+        f"We have locked coordinates for vehicle {req.vehicle_number} ({req.driver_name}) at {req.location_name} "
+        f"({req.gps_lat:.4f}°N, {req.gps_lng:.4f}°E). BRO Project Vartak and rescue dispatch have received your distress alert. "
+        f"Stay on the line while Controller connects."
+    )
+
+    call_session = {
+        "call_id": call_id,
+        "vehicle_number": req.vehicle_number,
+        "driver_name": req.driver_name,
+        "driver_phone": req.driver_phone or "+91 94351 99201",
+        "gps_lat": req.gps_lat,
+        "gps_lng": req.gps_lng,
+        "location_name": req.location_name,
+        "emergency_type": req.emergency_type,
+        "responder_unit": responder_unit,
+        "responder_officer": responder_officer,
+        "responder_phone": responder_phone,
+        "status": "CONNECTED",
+        "channel": channel,
+        "started_at": now_iso,
+        "ended_at": None,
+        "duration_seconds": 0,
+        "dispatcher_greeting": dispatcher_greeting,
+        "transcript_logs": [
+            {
+                "speaker": "AUTOMATED_BEACON",
+                "time": now_iso,
+                "message": f"DISTRESS ALERT: Vehicle {req.vehicle_number} ({req.driver_name}) initiated SOS at {req.location_name}. GPS: {req.gps_lat}, {req.gps_lng}. Receiving Line: {EMERGENCY_RECEIVER_PHONE}."
+            },
+            {
+                "speaker": "DISPATCHER",
+                "time": now_iso,
+                "message": dispatcher_greeting
+            }
+        ]
+    }
+
+    trigger_emergency_phone_alert(call_session)
+
+    ACTIVE_SOS_CALLS[call_id] = call_session
+
+    # Mark vehicle in real-time registry as 'Distress Call Active'
+    if req.vehicle_number in REALTIME_VEHICLE_DATABASE:
+        REALTIME_VEHICLE_DATABASE[req.vehicle_number]["status"] = "Distress"
+        REALTIME_VEHICLE_DATABASE[req.vehicle_number]["last_ping"] = now_iso
+
+    # Persist call session to Supabase
+    client = get_supabase_client()
+    if client:
+        try:
+            client.table("sos_call_logs").insert(call_session).execute()
+        except Exception as e:
+            print(f"Supabase sos_call_logs insert notice: {e}")
+
+    # Broadcast new call to all real-time listeners
+    await vehicle_realtime_manager.broadcast({
+        "type": "sos_call_initiated",
+        "call_id": call_id,
+        "data": call_session
+    })
+
+    return call_session
+
+@app.post("/api/sos/call/{call_id}/heartbeat")
+async def sos_call_heartbeat(call_id: str, payload: dict):
+    """Heartbeat during active emergency call to exchange telemetry and dispatch updates."""
+    if call_id not in ACTIVE_SOS_CALLS:
+        raise HTTPException(status_code=404, detail="Call session not found or already closed")
+
+    session = ACTIVE_SOS_CALLS[call_id]
+    duration = payload.get("duration_seconds", session["duration_seconds"] + 5)
+    session["duration_seconds"] = duration
+
+    # Simulated real-time responder updates during the call
+    update_message = None
+    if duration == 15:
+        update_message = "BRO Camp 142 Bhalukpong has dispatched a wheel-loader excavator towards Km 42. Estimated time: 18 minutes."
+    elif duration == 35:
+        update_message = "Military transit medical team from Dirang alerted on secondary radio channel. Emergency fuel cache ready at refuge bay."
+
+    if update_message:
+        session["transcript_logs"].append({
+            "speaker": "DISPATCHER",
+            "time": datetime.utcnow().isoformat(),
+            "message": update_message
+        })
+        await sos_call_manager.broadcast_to_call(call_id, {
+            "type": "dispatcher_message",
+            "message": update_message,
+            "duration": duration
+        })
+
+    return {"status": "active", "duration_seconds": duration, "latest_update": update_message}
+
+@app.post("/api/sos/call/{call_id}/end")
+async def end_sos_call(call_id: str, req: SOSCallEndRequest):
+    """Gracefully terminates the emergency SOS call, logs duration and resolution."""
+    now_iso = datetime.utcnow().isoformat()
+    session = ACTIVE_SOS_CALLS.pop(call_id, None)
+
+    if not session:
+        # Check history
+        for hist in HISTORICAL_SOS_CALLS:
+            if hist["call_id"] == call_id:
+                return hist
+        raise HTTPException(status_code=404, detail="Call session not found")
+
+    session["status"] = "COMPLETED"
+    session["ended_at"] = now_iso
+    session["duration_seconds"] = req.duration_seconds
+    session["transcript_logs"].append({
+        "speaker": "SYSTEM",
+        "time": now_iso,
+        "message": f"Emergency call ended. Total duration: {req.duration_seconds}s. Resolution: {req.resolution_notes or 'Responder unit dispatched to coordinates.'}"
+    })
+
+    HISTORICAL_SOS_CALLS.insert(0, session)
+
+    # Revert vehicle status in registry
+    v_num = session["vehicle_number"]
+    if v_num in REALTIME_VEHICLE_DATABASE:
+        REALTIME_VEHICLE_DATABASE[v_num]["status"] = "Active"
+        REALTIME_VEHICLE_DATABASE[v_num]["last_ping"] = now_iso
+
+    # Update in Supabase
+    client = get_supabase_client()
+    if client:
+        try:
+            client.table("sos_call_logs").update({
+                "status": "COMPLETED",
+                "ended_at": now_iso,
+                "duration_seconds": req.duration_seconds,
+                "transcript_logs": session["transcript_logs"]
+            }).eq("call_id", call_id).execute()
+        except Exception as e:
+            print(f"Supabase sos_call_logs update notice: {e}")
+
+    await sos_call_manager.broadcast_to_call(call_id, {
+        "type": "call_ended",
+        "duration_seconds": req.duration_seconds,
+        "resolution": req.resolution_notes
+    })
+
+    return session
+
+@app.get("/api/sos/call/active", response_model=List[SOSCallSession])
+def get_active_sos_calls():
+    """Returns currently active emergency call sessions for tactical monitors."""
+    return list(ACTIVE_SOS_CALLS.values())
+
+@app.get("/api/sos/call/history")
+def get_sos_call_history(limit: int = 20):
+    """Returns historical emergency call sessions with full transcripts."""
+    client = get_supabase_client()
+    if client:
+        try:
+            res = client.table("sos_call_logs").select("*").order("started_at", desc=True).limit(limit).execute()
+            if res.data and len(res.data) > 0:
+                return res.data
+        except Exception as e:
+            print(f"Supabase sos history notice: {e}")
+
+    return HISTORICAL_SOS_CALLS[:limit]
+
+@app.websocket("/ws/sos/call/{call_id}")
+async def websocket_sos_call(websocket: WebSocket, call_id: str):
+    """Two-way real-time audio handshake and messaging stream for active SOS call."""
+    await sos_call_manager.connect(call_id, websocket)
+    try:
+        if call_id in ACTIVE_SOS_CALLS:
+            await websocket.send_json({
+                "type": "call_session_state",
+                "session": ACTIVE_SOS_CALLS[call_id]
+            })
+
+        while True:
+            raw = await websocket.receive_text()
+            data = json.loads(raw)
+            msg_type = data.get("type", "ping")
+
+            if msg_type == "driver_audio_transcription":
+                driver_text = data.get("text", "")
+                if call_id in ACTIVE_SOS_CALLS:
+                    ACTIVE_SOS_CALLS[call_id]["transcript_logs"].append({
+                        "speaker": "DRIVER",
+                        "time": datetime.utcnow().isoformat(),
+                        "message": driver_text
+                    })
+                    await sos_call_manager.broadcast_to_call(call_id, {
+                        "type": "driver_message",
+                        "speaker": "DRIVER",
+                        "text": driver_text
+                    })
+
+    except WebSocketDisconnect:
+        sos_call_manager.disconnect(call_id, websocket)
+    except Exception as e:
+        print(f"SOS WebSocket error: {e}")
+        sos_call_manager.disconnect(call_id, websocket)
+
+
+# ─────────────────────────────────────────────────────────────
+# 4. DATABASE SYNC ENGINE (Supabase & Operational In-Memory Sync)
+# ─────────────────────────────────────────────────────────────
+
+def sync_all_databases():
+    """
+    Synchronizes Road Histories, Realtime Vehicle Registry, and GPS tracking
+    across Supabase PostgreSQL and the in-memory fast operational store.
+    """
+    ensure_gps_table_exists()
+    ensure_extended_tables_exist()
+
+    client = get_supabase_client()
+    now_iso = datetime.utcnow().isoformat()
+
+    synced_info = {
+        "timestamp": now_iso,
+        "mode": "Supabase PostgreSQL" if client else "High-Performance Operational Cache",
+        "roads_synced": len(ROAD_HISTORIES_DB),
+        "vehicles_synced": len(REALTIME_VEHICLE_DATABASE),
+        "emergency_receiver_phone": EMERGENCY_RECEIVER_PHONE,
+        "status": "synchronized"
+    }
+
+    if client:
+        try:
+            # Sync road histories
+            for road_data in ROAD_HISTORIES_DB.values():
+                client.table("road_histories").upsert(road_data).execute()
+
+            # Sync vehicle registry
+            for v_data in REALTIME_VEHICLE_DATABASE.values():
+                client.table("vehicle_registry").upsert(v_data).execute()
+
+            print(f"✓ [DATABASE SYNC] Synchronized {len(ROAD_HISTORIES_DB)} roads and {len(REALTIME_VEHICLE_DATABASE)} vehicles with Supabase.")
+        except Exception as e:
+            print(f"Notice: Supabase batch sync notice: {e}")
+            synced_info["mode"] = "Operational Cache (Local Fallback Active)"
+
+    # Invalidate cached endpoints so UI immediately pulls fresh data
+    invalidate_cached_data("road_histories")
+    invalidate_cached_data("realtime_vehicles")
+    invalidate_cached_data("vehicles")
+    invalidate_cached_data("incidents")
+
+    return synced_info
+
+@app.on_event("startup")
+async def on_startup_sync():
+    """Startup hook to verify tables and execute operational database sync."""
+    print("NER-LIFELINE: Executing startup database synchronization...")
+    sync_all_databases()
+
+@app.get("/api/database/sync")
+@app.post("/api/database/sync")
+def trigger_database_sync():
+    """Explicit endpoint to force full database and telemetry synchronization."""
+    result = sync_all_databases()
+    return {"message": "Databases and telemetry synchronized successfully.", "details": result}

@@ -158,7 +158,7 @@ const LiveMap = () => {
   const [center, setCenter] = useState({ lat: 26.2, lng: 92.8 });
   const [zoom, setZoom] = useState(7);
   const [basemap, setBasemap] = useState('streets');
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDP02pC9K1QL7p69lae940OyX1iKcbhAoA';
   const [mapEngine, setMapEngine] = useState('google'); // 'google' | 'offline'
   
   // Real-time vehicle fleet state
@@ -216,6 +216,16 @@ const LiveMap = () => {
       setSelectedVehicleId(urlVehicle);
     }
   }, [urlOrigin, urlDest, urlVehicle]);
+
+  // Expose global helper for seamless map engine switching
+  useEffect(() => {
+    window.__nerSwitchOffline = () => setMapEngine('offline');
+    window.__nerSwitchGoogle = () => setMapEngine('google');
+    return () => {
+      delete window.__nerSwitchOffline;
+      delete window.__nerSwitchGoogle;
+    };
+  }, []);
 
   // Load fleet vehicles on mount
   useEffect(() => {
@@ -1060,12 +1070,7 @@ const LiveMap = () => {
                 }
               }}
               onMapError={(reason) => {
-                if (reason === 'fallback' || reason === 'Missing API Key') {
-                  console.warn('Switching to offline emergency vector map:', reason);
-                  setMapEngine('offline');
-                } else {
-                  console.warn('Google Map notice:', reason);
-                }
+                console.warn('Google Map notice:', reason);
               }}
             />
           ) : (

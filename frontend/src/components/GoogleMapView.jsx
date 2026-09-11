@@ -233,6 +233,8 @@ export default function GoogleMapView({
   const { t, speakText, isSpeaking, playAlertChime } = useLanguage();
   const [copyToast, setCopyToast] = useState(false);
   const [isApiLoaded, setIsApiLoaded] = useState(false);
+  const [mapInstance, setMapInstance] = useState(null);
+  const [authFailed, setAuthFailed] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -283,23 +285,49 @@ export default function GoogleMapView({
     const scriptId = 'google-maps-js-sdk';
     let script = document.getElementById(scriptId);
 
-    if (!script) {
-      window.__initGoogleMapsSdk = () => {
-        setIsApiLoaded(true);
-      };
+    window.gm_authFailure = () => {
+      console.warn('Google Maps API authentication failed for key:', activeApiKey);
+      setAuthFailed(true);
+    };
 
+    window.__initGoogleMapsSdk = () => {
+      if (typeof window.google?.maps?.Map === 'function') {
+        setIsApiLoaded(true);
+      } else if (window.google?.maps?.importLibrary) {
+        window.google.maps.importLibrary("maps").then(() => {
+          setIsApiLoaded(true);
+        }).catch(() => {
+          setIsApiLoaded(true);
+        });
+      } else {
+        const checkInterval = setInterval(() => {
+          if (typeof window.google?.maps?.Map === 'function') {
+            clearInterval(checkInterval);
+            setIsApiLoaded(true);
+          }
+        }, 50);
+        setTimeout(() => clearInterval(checkInterval), 4000);
+      }
+    };
+
+    if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&callback=__initGoogleMapsSdk&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&callback=__initGoogleMapsSdk`;
       script.async = true;
       script.defer = true;
+      script.onload = () => {
+        if (typeof window.google?.maps?.Map === 'function') {
+          setIsApiLoaded(true);
+        }
+      };
       script.onerror = (err) => {
-        console.error('Failed to load Google Maps SDK:', err);
-        setLoadError('Google Maps SDK could not be loaded. Check network or key settings.');
+        console.warn('Google Maps SDK network error:', err);
         if (onMapError) onMapError(err);
       };
       document.head.appendChild(script);
     } else {
+      if (verifyApi()) return;
       const timer = setInterval(() => {
         if (verifyApi()) clearInterval(timer);
       }, 50);
@@ -317,16 +345,23 @@ export default function GoogleMapView({
 
     if (mapInstanceRef.current) {
       try {
-        window.google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        const map = mapInstanceRef.current;
+        window.google.maps.event.trigger(map, 'resize');
+        const targetType = currentMapStyle === 'dark' ? 'roadmap' : currentMapStyle;
+        map.setMapTypeId(targetType);
+        map.setOptions({
+          styles: currentMapStyle === 'dark' ? TACTICAL_DARK_STYLE : null
+        });
       } catch (e) {}
       return;
     }
 
     try {
+      const targetType = currentMapStyle === 'dark' ? 'roadmap' : currentMapStyle;
       const map = new window.google.maps.Map(mapContainerRef.current, {
         center: { lat: center.lat, lng: center.lng },
         zoom: zoom,
-        mapTypeId: currentMapStyle === 'dark' ? 'roadmap' : currentMapStyle,
+        mapTypeId: targetType,
         styles: currentMapStyle === 'dark' ? TACTICAL_DARK_STYLE : null,
         // Official Google Maps Native Controls
         mapTypeControl: true,
@@ -353,6 +388,15 @@ export default function GoogleMapView({
 
       infoWindowRef.current = new window.google.maps.InfoWindow();
       mapInstanceRef.current = map;
+      setMapInstance(map);
+
+      // Trigger resize after mounting to ensure official Google Maps tiles and geometry settle cleanly
+      setTimeout(() => {
+        if (mapInstanceRef.current && window.google?.maps?.event) {
+          window.google.maps.event.trigger(mapInstanceRef.current, 'resize');
+          mapInstanceRef.current.setCenter({ lat: center.lat, lng: center.lng });
+        }
+      }, 100);
 
       // Handle map click to drop routing pins
       map.addListener('click', (e) => {
@@ -638,7 +682,7 @@ export default function GoogleMapView({
         vehicleMarkersMapRef.current.delete(id);
       }
     });
-  }, [fleet, filterLayer.vehicles, onSelectEntity]);
+  }, [mapInstance, fleet, filterLayer.vehicles, onSelectEntity]);
 
   // ─────────────────────────────────────────────────────────────
   // 6. Render NER-LIFELINE Incidents Layer (Optimized Diffing)
@@ -715,7 +759,7 @@ export default function GoogleMapView({
         incidentMarkersMapRef.current.delete(id);
       }
     });
-  }, [hazards, filterLayer.hazards]);
+  }, [mapInstance, hazards, filterLayer.hazards]);
 
   // ─────────────────────────────────────────────────────────────
   // 7. Render Road Operational Status Layer (Blocked & Risky Roads)
@@ -765,7 +809,7 @@ export default function GoogleMapView({
         operationalOverlaysRef.current.risky.push(poly);
       });
     }
-  }, [blockedRoads, riskyRoads, filterLayer.blockedRoads, filterLayer.riskyRoads]);
+  }, [mapInstance, blockedRoads, riskyRoads, filterLayer.blockedRoads, filterLayer.riskyRoads]);
 
   // ─────────────────────────────────────────────────────────────
   // 8. Render AI Routes on Google Map (Road X, Road Y, Road Z)
@@ -908,7 +952,7 @@ export default function GoogleMapView({
         clearInterval(roadPolylinesRef.current.flowInterval);
       }
     };
-  }, [routeResult, activeRoadFilter, filterLayer.routes]);
+  }, [mapInstance, routeResult, activeRoadFilter, filterLayer.routes]);
 
   // Handle Traffic layer toggle
   useEffect(() => {
@@ -923,7 +967,7 @@ export default function GoogleMapView({
     } else if (trafficLayerRef.current) {
       trafficLayerRef.current.setMap(null);
     }
-  }, [showTraffic]);
+  }, [mapInstance, showTraffic]);
 
   // Voice Readout
   const handleVoiceReadout = () => {
@@ -957,6 +1001,7 @@ export default function GoogleMapView({
       <div 
         ref={mapContainerRef} 
         className="w-full h-full"
+        style={{ width: '100%', height: '100%', minHeight: '640px', position: 'relative' }}
       />
 
       {/* Suppress SDK Billing Error Modal & Watermarks */}
@@ -974,6 +1019,45 @@ export default function GoogleMapView({
           <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           <span className="text-sm font-bold text-slate-200">Loading Google Maps Platform...</span>
           <span className="text-xs text-slate-400">Initializing Roads, Satellite & Geographic Context</span>
+        </div>
+      )}
+
+      {/* Load Error Card */}
+      {loadError && (
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30">
+          <AlertTriangle size={36} className="text-amber-500 mb-3" />
+          <h3 className="text-white font-bold text-base mb-1">Google Maps Initialization Notice</h3>
+          <p className="text-slate-400 text-xs max-w-md mb-4">{loadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all cursor-pointer"
+          >
+            Reload Map Session
+          </button>
+        </div>
+      )}
+
+      {/* Google Maps API Key Authentication Notice */}
+      {authFailed && (
+        <div className="absolute top-16 left-4 right-4 max-w-xl mx-auto p-3 rounded-xl bg-amber-950/95 border border-amber-500 text-amber-200 z-40 text-xs flex items-center justify-between shadow-2xl backdrop-blur-md animate-in fade-in duration-200">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
+            <div>
+              <div className="font-bold text-white">Google Maps API Notice</div>
+              <div className="text-[11px] text-amber-300">
+                Key <code>{activeApiKey.slice(0, 10)}...</code> connected. Ensure <strong>Maps JavaScript API</strong> is enabled in Google Cloud Console.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (window.__nerSwitchOffline) window.__nerSwitchOffline();
+            }}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs cursor-pointer shadow transition-all flex items-center space-x-1 flex-shrink-0 ml-2"
+          >
+            <Shield size={12} />
+            <span>Sovereign GIS</span>
+          </button>
         </div>
       )}
 
@@ -996,7 +1080,7 @@ export default function GoogleMapView({
       {/* ───────────────────────────────────────────────────────── */}
       {/* Top Floating Controls Bar (Heading-Up, Traffic, Quick Styles) */}
       {/* ───────────────────────────────────────────────────────── */}
-      <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 bg-slate-950/90 border border-slate-700/80 p-1.5 rounded-xl shadow-2xl backdrop-blur-md text-[11px]">
+      <div className="absolute top-14 left-3 z-20 flex flex-wrap items-center gap-1.5 bg-slate-950/90 border border-slate-700/80 p-1.5 rounded-xl shadow-2xl backdrop-blur-md text-[11px]">
         {/* Heading-Up Mode Switcher */}
         <button
           onClick={() => setIsHeadingUp(!isHeadingUp)}

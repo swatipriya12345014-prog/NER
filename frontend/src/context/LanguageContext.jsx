@@ -22,7 +22,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'Incidents & Blocks',
     nav_risk_analysis: 'Terrain Risk AI',
     nav_mesh: 'LIFELINE MESH',
-    nav_driver: 'Driver Cockpit',
+    nav_driver: 'Driver Problem Portal',
     nav_field_officer: 'Field Officer',
     nav_alerts: 'Active Alerts',
     nav_analytics: 'Logistics Analytics',
@@ -75,7 +75,7 @@ export const TRANSLATIONS = {
     status_delivered: 'Delivered',
     
     // Driver HUD
-    driver_cockpit_title: 'Driver Real-Time Navigation Cockpit',
+    driver_cockpit_title: 'Driver Emergency & Problem Resolution Portal',
     driver_next_maneuver: 'Next Highway Maneuver',
     driver_emergency_sos: 'Emergency SOS Broadcast',
     driver_sos_sent: 'SOS Sent over LoRa Mesh!',
@@ -92,7 +92,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'দুৰ্যোগ আৰু পথ অৱৰোধ',
     nav_risk_analysis: 'ভূমি স্খলন আশংকা বিশ্লেষণ',
     nav_mesh: 'লাইফলাইন ল’ৰা জাল',
-    nav_driver: 'চালকৰ ককবক্স',
+    nav_driver: 'চালক সমস্যা প\'ৰ্টেল',
     nav_field_officer: 'ক্ষেত্ৰ বিষয়া',
     nav_alerts: 'সতৰ্কবাৰ্তা',
     nav_analytics: 'পৰিবহণ পৰিসংখ্যা',
@@ -145,7 +145,7 @@ export const TRANSLATIONS = {
     status_delivered: 'গন্তব্যত পাইছে',
     
     // Driver HUD
-    driver_cockpit_title: 'চালকৰ জৰুৰীকালীন পথ প্ৰদৰ্শন',
+    driver_cockpit_title: 'চালকৰ জৰুৰীকালীন সমস্যা সমাধান প\'ৰ্টেল',
     driver_next_maneuver: 'পৰৱৰ্তী ঘাইপথ নিৰ্দেশনা',
     driver_emergency_sos: 'জৰুৰীকালীন বিপদ ঘণ্টা (SOS)',
     driver_sos_sent: 'ল’ৰা জাল যোগে সংকেত প্ৰেৰণ কৰা হ’ল!',
@@ -162,7 +162,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'দুর্যোগ ও সড়ক পথ অবরোধ',
     nav_risk_analysis: 'ভূমিধস ঝুঁকি বিশ্লেষণ',
     nav_mesh: 'লাইফলাইন লরা মেশ',
-    nav_driver: 'ড্রাইভার ককপিট',
+    nav_driver: 'চালক সমস্যা সমাধান পোর্টাল',
     nav_field_officer: 'ফিল্ড অফিসার',
     nav_alerts: 'জরুরি সতর্কতা',
     nav_analytics: 'লজিস্টিক অ্যানালিটিক্স',
@@ -215,7 +215,7 @@ export const TRANSLATIONS = {
     status_delivered: 'পৌঁছেছে',
     
     // Driver HUD
-    driver_cockpit_title: 'চালক নেভিগেশন ককপিট',
+    driver_cockpit_title: 'চালক সমস্যা ও জরুরি সমাধান পোর্টাল',
     driver_next_maneuver: 'পরবর্তী হাইওয়ে মোড়',
     driver_emergency_sos: 'জরুরি এসওএস ব্রডকাস্ট (SOS)',
     driver_sos_sent: 'লরা মেশে জরুরি সংকেত পাঠানো হয়েছে!',
@@ -232,7 +232,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'आपदा एवं सड़क अवरोध',
     nav_risk_analysis: 'भूस्खलन जोखिम विश्लेषण',
     nav_mesh: 'लाइफलाइन लोरा मेश',
-    nav_driver: 'चालक कॉकपिट',
+    nav_driver: 'चालक समस्या एवं सहायता पोर्टल',
     nav_field_officer: 'फील्ड अधिकारी',
     nav_alerts: 'सक्रिय चेतावनियां',
     nav_analytics: 'लॉजिस्टिक्स आंकड़े',
@@ -285,7 +285,7 @@ export const TRANSLATIONS = {
     status_delivered: 'पहुंच चुका है',
     
     // Driver HUD
-    driver_cockpit_title: 'चालक नेविगेशन डैशबोर्ड',
+    driver_cockpit_title: 'चालक समस्या एवं आपातकालीन सहायता पोर्टल',
     driver_next_maneuver: 'अगला दिशा निर्देश',
     driver_emergency_sos: 'आपातकालीन एसओएस (SOS) भेजें',
     driver_sos_sent: 'लोरा मेश द्वारा एसओएस संदेश प्रसारित!',
@@ -302,7 +302,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'লমবায় খুদোংথিবা',
     nav_risk_analysis: 'চিং কায়বা ৱাখল্লোন',
     nav_mesh: 'লোরা মেস',
-    nav_driver: 'ত্রাইভর ককপিট',
+    nav_driver: 'ত্রাইভর সমস্যা পোর্তাল',
     nav_field_officer: 'ফিল্ড ওফিসার',
     nav_alerts: 'চেকশিন্না পাউ',
     nav_analytics: 'লোজিষ্টিক পাউদম',
@@ -355,7 +355,7 @@ export const TRANSLATIONS = {
     status_delivered: 'য়ৌখ্রে',
     
     // Driver HUD
-    driver_cockpit_title: 'ত্রাইভর ককপিট',
+    driver_cockpit_title: 'ত্রাইভরগী সমস্যা অমসুং মতেং পোর্তাল',
     driver_next_maneuver: 'তুংদা খোঙজেল',
     driver_emergency_sos: 'জরুরী এস.ও.এস (SOS)',
     driver_sos_sent: 'এস.ও.এস পাউজেল থাখ্রে!',
@@ -372,7 +372,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'Chhiatrupna & Kawng Ping',
     nav_risk_analysis: 'Leimin Hlauhawm Endikna',
     nav_mesh: 'LIFELINE MESH',
-    nav_driver: 'Driver Cockpit',
+    nav_driver: 'Driver Buaina & Tanpuina Portal',
     nav_field_officer: 'Field Officer',
     nav_alerts: 'Hriattirna Tharlam',
     nav_analytics: 'Logistics Chanchin',
@@ -425,7 +425,7 @@ export const TRANSLATIONS = {
     status_delivered: 'Thleng tawh',
     
     // Driver HUD
-    driver_cockpit_title: 'Driver Navigation Khawl',
+    driver_cockpit_title: 'Driver Buaina Chinfelna Portal',
     driver_next_maneuver: 'Peng dawtleh',
     driver_emergency_sos: 'Hmanhmawh Thawm (SOS)',
     driver_sos_sent: 'SOS thawn liam tawh!',
@@ -442,7 +442,7 @@ export const TRANSLATIONS = {
     nav_incidents: 'Ki Jingjia & Ka Lad Ba Khang',
     nav_risk_analysis: 'Jingpeit Bniah Twr-khyndew',
     nav_mesh: 'LIFELINE MESH',
-    nav_driver: 'U Niah Kali (Cockpit)',
+    nav_driver: 'Portal Jingeh Nongniah',
     nav_field_officer: 'U Rangbah Shnong / Officer',
     nav_alerts: 'Ki Jingmaham Ba Im',
     nav_analytics: 'Jingkhein Jingdiah',
@@ -495,7 +495,7 @@ export const TRANSLATIONS = {
     status_delivered: 'La Poi Sha Ka Thmu',
     
     // Driver HUD
-    driver_cockpit_title: 'Ka Komputer U Niah Kali',
+    driver_cockpit_title: 'Portal Ban Pynbeit Jingeh U Nongniah',
     driver_next_maneuver: 'Ka Jingphai Ba Bud',
     driver_emergency_sos: 'Jingiarap Kyrkieh (SOS)',
     driver_sos_sent: 'La phah ia ka SOS lyngba LoRa!',

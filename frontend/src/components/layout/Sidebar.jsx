@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Truck, Package, AlertTriangle,
   ShieldAlert, Network, Bell, BarChart3, Settings, LogOut,
-  ChevronLeft, ChevronRight, Activity, Gauge, Shield, X
+  ChevronLeft, ChevronRight, Activity, AlertOctagon, Shield, X
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -22,7 +22,7 @@ const navSections = [
   {
     title: 'Field & Mesh Roles',
     items: [
-      { key: 'nav_driver', name: 'Driver Cockpit', path: '/driver-dashboard', icon: Gauge },
+      { key: 'nav_driver', name: 'Driver Problem Portal', path: '/driver-dashboard', icon: AlertOctagon },
       { key: 'nav_field_officer', name: 'Field Officer', path: '/field-officer', icon: Shield },
       { key: 'nav_mesh', name: 'LoRa Mesh Network', path: '/mesh', icon: Network },
     ]

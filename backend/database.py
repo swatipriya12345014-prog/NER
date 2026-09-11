@@ -77,11 +77,89 @@ def ensure_gps_table_exists():
         return False
 
     try:
-        # Try a lightweight query to verify the table exists
         client.table("gps_locations").select("id").limit(1).execute()
         print("GPS: gps_locations table verified in Supabase.")
         return True
     except Exception as e:
-        print(f"GPS: gps_locations table not found or not accessible: {e}")
-        print("GPS: Please create the table using the SQL schema in database.py comments.")
+        print(f"GPS: gps_locations table notice: {e}")
+        return False
+
+
+# ─────────────────────────────────────────────────────────────
+# ROAD HISTORIES & REALTIME VEHICLE REGISTRY SCHEMAS
+# ─────────────────────────────────────────────────────────────
+# CREATE TABLE IF NOT EXISTS road_histories (
+#     road_id TEXT PRIMARY KEY,
+#     road_name TEXT NOT NULL,
+#     corridor TEXT NOT NULL,
+#     state TEXT NOT NULL,
+#     total_length_km DOUBLE PRECISION NOT NULL,
+#     terrain_classification TEXT NOT NULL,
+#     historical_landslides_count INT DEFAULT 0,
+#     historical_floods_count INT DEFAULT 0,
+#     avg_clearance_time_hours DOUBLE PRECISION DEFAULT 6.0,
+#     worst_season TEXT,
+#     current_condition TEXT NOT NULL,
+#     risk_index INT DEFAULT 20,
+#     chronic_blackspots JSONB DEFAULT '[]'::jsonb,
+#     past_blockage_events JSONB DEFAULT '[]'::jsonb,
+#     last_inspected TIMESTAMPTZ DEFAULT NOW(),
+#     created_at TIMESTAMPTZ DEFAULT NOW()
+# );
+#
+# CREATE TABLE IF NOT EXISTS vehicle_registry (
+#     vehicle_number TEXT PRIMARY KEY,
+#     vehicle_name TEXT NOT NULL,
+#     vehicle_type TEXT NOT NULL,
+#     driver_name TEXT NOT NULL,
+#     driver_phone TEXT,
+#     fuel_percentage DOUBLE PRECISION DEFAULT 100.0,
+#     speed_kmh DOUBLE PRECISION DEFAULT 0.0,
+#     lat DOUBLE PRECISION NOT NULL,
+#     lng DOUBLE PRECISION NOT NULL,
+#     altitude_m DOUBLE PRECISION,
+#     current_road TEXT,
+#     destination TEXT,
+#     cargo_manifest TEXT,
+#     status TEXT DEFAULT 'Active',
+#     is_online BOOLEAN DEFAULT true,
+#     mesh_node_id TEXT,
+#     last_ping TIMESTAMPTZ DEFAULT NOW(),
+#     updated_at TIMESTAMPTZ DEFAULT NOW()
+# );
+#
+# CREATE TABLE IF NOT EXISTS sos_call_logs (
+#     call_id TEXT PRIMARY KEY,
+#     vehicle_number TEXT NOT NULL,
+#     driver_name TEXT NOT NULL,
+#     driver_phone TEXT,
+#     gps_lat DOUBLE PRECISION NOT NULL,
+#     gps_lng DOUBLE PRECISION NOT NULL,
+#     location_name TEXT NOT NULL,
+#     emergency_type TEXT NOT NULL,
+#     responder_unit TEXT NOT NULL,
+#     responder_officer TEXT,
+#     status TEXT NOT NULL,
+#     channel TEXT NOT NULL,
+#     started_at TIMESTAMPTZ NOT NULL,
+#     ended_at TIMESTAMPTZ,
+#     duration_seconds INT DEFAULT 0,
+#     transcript_logs JSONB DEFAULT '[]'::jsonb,
+#     created_at TIMESTAMPTZ DEFAULT NOW()
+# );
+# ─────────────────────────────────────────────────────────────
+
+def ensure_extended_tables_exist():
+    """Verify road_histories, vehicle_registry, and sos_call_logs in Supabase."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table("road_histories").select("road_id").limit(1).execute()
+        client.table("vehicle_registry").select("vehicle_number").limit(1).execute()
+        client.table("sos_call_logs").select("call_id").limit(1).execute()
+        print("Database: Extended tables (road_histories, vehicle_registry, sos_call_logs) verified.")
+        return True
+    except Exception as e:
+        print(f"Database: Extended tables notice: {e}")
         return False

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 class ShipmentBase(BaseModel):
@@ -246,3 +246,105 @@ class GoogleRouteResponse(BaseModel):
     route: dict = Field(..., description="Coordinates array [[lat, lng], ...], polyline string, and summary")
     source: str = Field(default="Google Routes API")
     risk_assessment: Optional[RiskBreakdown] = None
+
+
+# ─────────────────────────────────────────────────────────────
+# ROAD HISTORIES, REALTIME VEHICLE REGISTRY & SOS CALL SCHEMAS
+# ─────────────────────────────────────────────────────────────
+
+class ChronicBlackspot(BaseModel):
+    km_marker: str
+    name: str
+    hazard_type: str
+    risk_rating: str
+    notes: Optional[str] = None
+
+class PastBlockageEvent(BaseModel):
+    date: str
+    event: str
+    duration_hours: float
+    cleared_by: str
+    severity: str
+    notes: Optional[str] = None
+
+class RoadHistory(BaseModel):
+    road_id: str
+    road_name: str
+    corridor: str
+    state: str
+    total_length_km: float
+    terrain_classification: str
+    historical_landslides_count: int
+    historical_floods_count: int
+    avg_clearance_time_hours: float
+    worst_season: str
+    current_condition: str
+    risk_index: int
+    chronic_blackspots: List[ChronicBlackspot] = []
+    past_blockage_events: List[PastBlockageEvent] = []
+    last_inspected: str
+
+class VehicleRegistryItem(BaseModel):
+    vehicle_number: str
+    vehicle_name: str
+    vehicle_type: str
+    driver_name: str
+    driver_phone: Optional[str] = None
+    fuel_percentage: float = 100.0
+    speed_kmh: float = 0.0
+    lat: float
+    lng: float
+    altitude_m: Optional[float] = None
+    current_road: Optional[str] = None
+    destination: Optional[str] = None
+    cargo_manifest: Optional[str] = None
+    status: str = "Active"  # Active, Distress, En Route, Diverted, Maintenance
+    is_online: bool = True
+    mesh_node_id: Optional[str] = None
+    last_ping: str
+
+class RealtimeVehicleTelemetryUpdate(BaseModel):
+    vehicle_number: str
+    lat: float
+    lng: float
+    altitude_m: Optional[float] = None
+    speed_kmh: Optional[float] = None
+    fuel_percentage: Optional[float] = None
+    status: Optional[str] = None
+    current_road: Optional[str] = None
+    cargo_manifest: Optional[str] = None
+
+class SOSCallInitiateRequest(BaseModel):
+    vehicle_number: str
+    driver_name: str
+    driver_phone: Optional[str] = None
+    gps_lat: float
+    gps_lng: float
+    location_name: str
+    emergency_type: str = "GENERAL_SOS"
+    channel: Optional[str] = "VHF 146.2 MHz / LoRa Sat-Bridge"
+
+class SOSCallSession(BaseModel):
+    call_id: str
+    vehicle_number: str
+    driver_name: str
+    driver_phone: Optional[str] = None
+    gps_lat: float
+    gps_lng: float
+    location_name: str
+    emergency_type: str
+    responder_unit: str
+    responder_officer: str
+    responder_phone: Optional[str] = "+91 78110 75355"
+    status: str  # CONNECTING, CONNECTED, DISPATCHED, COMPLETED
+    channel: str
+    started_at: str
+    ended_at: Optional[str] = None
+    duration_seconds: int = 0
+    dispatcher_greeting: str
+    transcript_logs: List[Dict[str, str]] = []
+
+class SOSCallEndRequest(BaseModel):
+    call_id: str
+    duration_seconds: int
+    resolution_notes: Optional[str] = None
