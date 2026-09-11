@@ -144,6 +144,30 @@ function createVehicleSvg(type = 'truck', status = 'ACTIVE', heading = 0) {
   });
 }
 
+function createTransitTruckSvg(callsign = 'AS-01-EV', speed = 54) {
+  const cacheKey = `transit_truck_marker_${callsign}_${speed}`;
+  return getCachedSvg(cacheKey, () => {
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <filter id="truck-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#10b981" flood-opacity="0.9" />
+          </filter>
+        </defs>
+        <!-- Telemetry Radar Wave -->
+        <circle cx="32" cy="28" r="26" fill="rgba(16, 185, 129, 0.22)" stroke="#10b981" stroke-width="1.5" />
+        <!-- Vehicle Disc -->
+        <circle cx="32" cy="28" r="20" fill="#020617" stroke="#34d399" stroke-width="2.5" filter="url(#truck-glow)" />
+        <!-- Truck Logo -->
+        <text x="32" y="33" font-size="19" text-anchor="middle" dominant-baseline="middle">🚚</text>
+        <!-- In Transit Pill Badge -->
+        <rect x="7" y="48" width="50" height="13" rx="6.5" fill="#065f46" stroke="#6ee7b7" stroke-width="1" />
+        <text x="32" y="57" font-size="7.5" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">IN TRANSIT</text>
+      </svg>
+    `)}`;
+  });
+}
+
 function createIncidentSvg(type = 'LANDSLIDE', severity = 'Critical') {
   const cacheKey = `inc_${type}_${severity}`;
 
@@ -818,17 +842,25 @@ export default function GoogleMapView({
     const map = mapInstanceRef.current;
     if (!map || !window.google) return;
 
-    // Clear old polylines
+    // Clear old polylines and transit markers
     if (roadPolylinesRef.current.safest) roadPolylinesRef.current.safest.setMap(null);
     if (roadPolylinesRef.current.shortest) roadPolylinesRef.current.shortest.setMap(null);
     if (roadPolylinesRef.current.bypass) roadPolylinesRef.current.bypass.setMap(null);
     if (roadPolylinesRef.current.flowInterval) clearInterval(roadPolylinesRef.current.flowInterval);
+    if (roadPolylinesRef.current.transitMarker) {
+      roadPolylinesRef.current.transitMarker.setMap(null);
+      roadPolylinesRef.current.transitMarker = null;
+    }
+    if (roadPolylinesRef.current.transitInterval) {
+      clearInterval(roadPolylinesRef.current.transitInterval);
+      roadPolylinesRef.current.transitInterval = null;
+    }
 
     if (!filterLayer.routes || !routeResult) return;
 
     const bounds = new window.google.maps.LatLngBounds();
 
-    // Road X: Safest Route (Emerald with animated arrows)
+    // Road X: Safest Route (Emerald with animated arrows & moving transit truck)
     const showSafest = activeRoadFilter === 'both' || activeRoadFilter === 'all' || activeRoadFilter === 'safest' || activeRoadFilter === 'road-x';
     if (showSafest && routeResult.safest_route?.coordinates) {
       const path = routeResult.safest_route.coordinates.map(([lat, lng]) => {
@@ -867,6 +899,57 @@ export default function GoogleMapView({
           poly.set('icons', icons);
         }
       }, 80);
+
+      // Moving Relief Truck Marker traveling through the road in transit
+      const coords = routeResult.safest_route.coordinates;
+      if (coords && coords.length > 1) {
+        let stepIdx = 0;
+        const truckCallsign = selectedVehicleId || 'AS-01-EV-4421';
+        const transitMarker = new window.google.maps.Marker({
+          position: { lat: coords[0][0], lng: coords[0][1] },
+          map: map,
+          title: `🚚 ${truckCallsign} • IN TRANSIT (Road X)`,
+          icon: {
+            url: createTransitTruckSvg(truckCallsign, 54),
+            scaledSize: new window.google.maps.Size(46, 46),
+            anchor: new window.google.maps.Point(23, 23)
+          },
+          zIndex: 85
+        });
+
+        transitMarker.addListener('click', () => {
+          if (infoWindowRef.current) {
+            infoWindowRef.current.setPosition(transitMarker.getPosition());
+            infoWindowRef.current.setContent(`
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 220px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 13px; color: #0f172a;">🚚 ${truckCallsign}</strong>
+                  <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">IN TRANSIT</span>
+                </div>
+                <div style="margin-top: 6px; font-size: 11px; color: #475569;">
+                  <div>Corridor: <strong>Road X (Safest Highway)</strong></div>
+                  <div>Live Speed: <strong>54 km/h (In Transit)</strong></div>
+                  <div>ETA: <strong>${routeResult.safest_route?.duration_text || '3.5 hours'}</strong></div>
+                  <div>Cargo: <strong>Essential Disaster Relief & Medical Supplies</strong></div>
+                </div>
+                <div style="margin-top: 6px; padding: 4px 6px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; font-size: 9px; color: #065f46; font-weight: bold;">
+                  📡 ACTIVE GPS SATELLITE TELEMETRY
+                </div>
+              </div>
+            `);
+            infoWindowRef.current.open(map);
+          }
+        });
+
+        const transitInterval = setInterval(() => {
+          if (typeof document !== 'undefined' && document.hidden) return;
+          stepIdx = (stepIdx + 1) % coords.length;
+          transitMarker.setPosition({ lat: coords[stepIdx][0], lng: coords[stepIdx][1] });
+        }, 1200);
+
+        roadPolylinesRef.current.transitMarker = transitMarker;
+        roadPolylinesRef.current.transitInterval = transitInterval;
+      }
 
       roadPolylinesRef.current.safest = poly;
       roadPolylinesRef.current.flowInterval = interval;

@@ -1201,9 +1201,29 @@ const LiveMap = () => {
                   <filter id="glow-rose" x="-20%" y="-20%" width="140%" height="140%">
                     <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f43f5e" floodOpacity="0.7" />
                   </filter>
+                  {/* Glow filter for Bypass Route */}
+                  <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#06b6d4" floodOpacity="0.7" />
+                  </filter>
+                  {/* Forward Headlight Beams */}
+                  <linearGradient id="headlight-beam-emerald" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fef08a" stopOpacity="0.85" />
+                    <stop offset="50%" stopColor="#a7f3d0" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="headlight-beam-rose" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fef08a" stopOpacity="0.85" />
+                    <stop offset="50%" stopColor="#fecdd3" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="headlight-beam-cyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#fef08a" stopOpacity="0.85" />
+                    <stop offset="50%" stopColor="#cffafe" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                  </linearGradient>
                 </defs>
 
-                {/* 1. Road X: Safest Route (Emerald Green Multi-layered Highlight with Flow & Photon Animation) */}
+                {/* 1. Road X: Safest Route (Emerald Green Multi-layered Highlight with Moving Transit Truck) */}
                 {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'safest') && safestSvgPath && (
                   <g>
                     {/* Outer Pulsating Halo */}
@@ -1252,31 +1272,86 @@ const LiveMap = () => {
                     >
                       <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2.5s" repeatCount="indefinite" />
                     </path>
-                    {/* High-speed Photon Pulse Particle Group */}
-                    <g>
-                      {/* Primary Leading Photon */}
-                      <circle r="7" fill="#6ee7b7" fillOpacity="0.5" filter="url(#glow-emerald)">
-                        <animateMotion dur="5.5s" repeatCount="indefinite" path={safestSvgPath} />
-                      </circle>
-                      <circle r="3.5" fill="#34d399">
-                        <animateMotion dur="5.5s" repeatCount="indefinite" path={safestSvgPath} />
-                      </circle>
-                      <circle r="1.5" fill="#ffffff">
-                        <animateMotion dur="5.5s" repeatCount="indefinite" path={safestSvgPath} />
+
+                    {/* Staggered Secondary Follower Beacons */}
+                    <circle r="4.5" fill="#34d399" fillOpacity="0.5" filter="url(#glow-emerald)">
+                      <animateMotion dur="8.5s" begin="4.25s" repeatCount="indefinite" path={safestSvgPath} />
+                    </circle>
+                    <circle r="2.5" fill="#a7f3d0">
+                      <animateMotion dur="8.5s" begin="4.25s" repeatCount="indefinite" path={safestSvgPath} />
+                    </circle>
+
+                    {/* ─── MOVING RELIEF TRUCK (Auto-rotates along road bends) ─── */}
+                    <g id="road-x-moving-truck">
+                      <animateMotion dur="8.5s" repeatCount="indefinite" rotate="auto" path={safestSvgPath} />
+                      
+                      {/* Headlights Forward Illuminator Cone */}
+                      <path d="M 14 -5 L 46 -15 A 22 22 0 0 1 46 15 L 14 5 Z" fill="url(#headlight-beam-emerald)" />
+
+                      {/* Radar Telemetry Signal Ring */}
+                      <circle cx="0" cy="0" r="16" fill="none" stroke="#10b981" strokeWidth="1.2">
+                        <animate attributeName="r" values="10;26;10" dur="1.8s" repeatCount="indefinite" />
+                        <animate attributeName="strokeOpacity" values="0.8;0;0.8" dur="1.8s" repeatCount="indefinite" />
                       </circle>
 
-                      {/* Staggered Secondary Follower Beacon */}
-                      <circle r="5" fill="#34d399" fillOpacity="0.4" filter="url(#glow-emerald)">
-                        <animateMotion dur="5.5s" begin="2.75s" repeatCount="indefinite" path={safestSvgPath} />
+                      {/* Heavy Duty Tires (4 terrain wheels) */}
+                      <rect x="5" y="-9" width="6" height="3" rx="1.2" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="5" y="6" width="6" height="3" rx="1.2" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-13" y="-9" width="7" height="3" rx="1.2" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-13" y="6" width="7" height="3" rx="1.2" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+
+                      {/* Main Cargo Box Container */}
+                      <rect x="-14" y="-7" width="18" height="14" rx="2" fill="#064e3b" stroke="#34d399" strokeWidth="1.4" filter="url(#glow-emerald)" />
+                      {/* Container roof ridges */}
+                      <line x1="-9" y1="-5.5" x2="-9" y2="5.5" stroke="#047857" strokeWidth="0.9" />
+                      <line x1="-4" y1="-5.5" x2="-4" y2="5.5" stroke="#047857" strokeWidth="0.9" />
+                      <line x1="1" y1="-5.5" x2="1" y2="5.5" stroke="#047857" strokeWidth="0.9" />
+                      {/* Relief Medical Cross Emblem */}
+                      <path d="M -6 -1.8 H -4 V -3.8 H -2 V -1.8 H 0 V 0.2 H -2 V 2.2 H -4 V 0.2 H -6 Z" fill="#ffffff" />
+
+                      {/* Front Driver Cab */}
+                      <path d="M 4 -7 H 11 Q 14 -7 14 -3 V 3 Q 14 7 11 7 H 4 Z" fill="#10b981" stroke="#a7f3d0" strokeWidth="1" />
+                      {/* Windshield */}
+                      <path d="M 7 -5 H 10 Q 12 -5 12 -2 V 2 Q 12 5 10 5 H 7 Z" fill="#38bdf8" fillOpacity="0.92" />
+                      {/* Emergency Roof Light Beacon */}
+                      <circle cx="7" cy="0" r="2.2" fill="#ef4444">
+                        <animate attributeName="fill" values="#ef4444;#38bdf8;#ef4444" dur="0.6s" repeatCount="indefinite" />
+                        <animate attributeName="r" values="2.2;2.8;2.2" dur="0.6s" repeatCount="indefinite" />
                       </circle>
-                      <circle r="2.5" fill="#a7f3d0">
-                        <animateMotion dur="5.5s" begin="2.75s" repeatCount="indefinite" path={safestSvgPath} />
-                      </circle>
+                      {/* Front Headlight Bulbs */}
+                      <circle cx="13.5" cy="-3.5" r="1.3" fill="#fef08a" />
+                      <circle cx="13.5" cy="3.5" r="1.3" fill="#fef08a" />
+                      {/* Rear Red Brake Lights */}
+                      <rect x="-14.5" y="-5.5" width="1" height="2" fill="#ef4444" />
+                      <rect x="-14.5" y="3.5" width="1" height="2" fill="#ef4444" />
+                    </g>
+
+                    {/* ─── UPRIGHT IN-TRANSIT TRUCK LOGO BADGE (Always horizontal & legible) ─── */}
+                    <g id="road-x-transit-badge">
+                      <animateMotion dur="8.5s" repeatCount="indefinite" path={safestSvgPath} />
+                      <g transform="translate(0, -26)">
+                        {/* Shadow / Glow Pill */}
+                        <rect x="-48" y="-12" width="96" height="24" rx="12" fill="#020617" fillOpacity="0.95" stroke="#10b981" strokeWidth="1.6" filter="url(#glow-emerald)" />
+                        {/* Truck Logo Icon */}
+                        <text x="-36" y="4" fontSize="13" dominantBaseline="middle" textAnchor="middle">🚚</text>
+                        {/* Vehicle Callsign */}
+                        <text x="-24" y="-1" fill="#34d399" fontSize="8.5" fontWeight="900" fontFamily="system-ui, sans-serif">
+                          {selectedVehicleId ? selectedVehicleId.slice(0, 10) : 'AS-01-EV'}
+                        </text>
+                        {/* In Transit Live Subtitle */}
+                        <text x="-24" y="8" fill="#a7f3d0" fontSize="7" fontWeight="bold" fontFamily="system-ui, sans-serif">
+                          IN TRANSIT • 54 km/h
+                        </text>
+                        {/* Glowing Green Radar Dot */}
+                        <circle cx="38" cy="-1" r="2.8" fill="#10b981">
+                          <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite" />
+                        </circle>
+                      </g>
                     </g>
                   </g>
                 )}
 
-                {/* 2. Road Y: Direct Route (Amber/Rose Dashed Line - Landslide Hazard) */}
+                {/* 2. Road Y: Direct Route (Amber/Rose Dashed Line with Landslide Hazard & Moving Convoy Truck) */}
                 {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'shortest') && shortestSvgPath && (
                   <g>
                     {/* Outer Glow Halo */}
@@ -1300,10 +1375,40 @@ const LiveMap = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+
+                    {/* ─── ROAD Y MOVING TRUCK (Rose/Amber Hazard Transport) ─── */}
+                    <g id="road-y-moving-truck">
+                      <animateMotion dur="7.5s" repeatCount="indefinite" rotate="auto" path={shortestSvgPath} />
+                      <path d="M 14 -5 L 42 -14 A 20 20 0 0 1 42 14 L 14 5 Z" fill="url(#headlight-beam-rose)" />
+                      <circle cx="0" cy="0" r="14" fill="none" stroke="#f43f5e" strokeWidth="1">
+                        <animate attributeName="r" values="9;22;9" dur="1.5s" repeatCount="indefinite" />
+                        <animate attributeName="strokeOpacity" values="0.8;0;0.8" dur="1.5s" repeatCount="indefinite" />
+                      </circle>
+                      <rect x="4" y="-8.5" width="5" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="4" y="6" width="5" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-12" y="-8.5" width="6" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-12" y="6" width="6" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-13" y="-6.5" width="17" height="13" rx="2" fill="#881337" stroke="#fb7185" strokeWidth="1.2" filter="url(#glow-rose)" />
+                      <path d="M 4 -6.5 H 10 Q 13 -6.5 13 -3 V 3 Q 13 6.5 10 6.5 H 4 Z" fill="#e11d48" stroke="#fda4af" strokeWidth="1" />
+                      <circle cx="6.5" cy="0" r="1.8" fill="#f59e0b">
+                        <animate attributeName="fill" values="#f59e0b;#ffffff;#f59e0b" dur="0.4s" repeatCount="indefinite" />
+                      </circle>
+                    </g>
+
+                    {/* Road Y Upright Badge */}
+                    <g id="road-y-transit-badge">
+                      <animateMotion dur="7.5s" repeatCount="indefinite" path={shortestSvgPath} />
+                      <g transform="translate(0, -24)">
+                        <rect x="-46" y="-11" width="92" height="22" rx="11" fill="#020617" fillOpacity="0.95" stroke="#f43f5e" strokeWidth="1.4" filter="url(#glow-rose)" />
+                        <text x="-35" y="3" fontSize="12" dominantBaseline="middle" textAnchor="middle">🚚</text>
+                        <text x="-24" y="-1" fill="#fda4af" fontSize="8" fontWeight="bold" fontFamily="system-ui, sans-serif">ML-05-TR-9011</text>
+                        <text x="-24" y="7" fill="#fca5a5" fontSize="6.5" fontWeight="bold" fontFamily="system-ui, sans-serif">IN TRANSIT • CAUTION</text>
+                      </g>
+                    </g>
                   </g>
                 )}
 
-                {/* 3. Road Z: Valley Ridge Strategic Bypass (Cyan Dotted Line) */}
+                {/* 3. Road Z: Valley Ridge Strategic Bypass (Cyan Dotted Line with Moving Bypass Truck) */}
                 {(activeRouteView === 'all' || activeRouteView === 'both' || activeRouteView === 'bypass') && bypassSvgPath && (
                   <g>
                     {/* Outer Glow Halo */}
@@ -1326,6 +1431,36 @@ const LiveMap = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+
+                    {/* ─── ROAD Z MOVING TRUCK (Cyan Strategic Bypass Transporter) ─── */}
+                    <g id="road-z-moving-truck">
+                      <animateMotion dur="10s" repeatCount="indefinite" rotate="auto" path={bypassSvgPath} />
+                      <path d="M 14 -5 L 42 -14 A 20 20 0 0 1 42 14 L 14 5 Z" fill="url(#headlight-beam-cyan)" />
+                      <circle cx="0" cy="0" r="14" fill="none" stroke="#06b6d4" strokeWidth="1">
+                        <animate attributeName="r" values="9;22;9" dur="1.6s" repeatCount="indefinite" />
+                        <animate attributeName="strokeOpacity" values="0.8;0;0.8" dur="1.6s" repeatCount="indefinite" />
+                      </circle>
+                      <rect x="4" y="-8.5" width="5" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="4" y="6" width="5" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-12" y="-8.5" width="6" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-12" y="6" width="6" height="2.5" rx="1" fill="#0f172a" stroke="#475569" strokeWidth="0.6" />
+                      <rect x="-13" y="-6.5" width="17" height="13" rx="2" fill="#164e63" stroke="#22d3ee" strokeWidth="1.2" filter="url(#glow-cyan)" />
+                      <path d="M 4 -6.5 H 10 Q 13 -6.5 13 -3 V 3 Q 13 6.5 10 6.5 H 4 Z" fill="#0891b2" stroke="#67e8f9" strokeWidth="1" />
+                      <circle cx="6.5" cy="0" r="1.8" fill="#38bdf8">
+                        <animate attributeName="fill" values="#38bdf8;#ffffff;#38bdf8" dur="0.5s" repeatCount="indefinite" />
+                      </circle>
+                    </g>
+
+                    {/* Road Z Upright Badge */}
+                    <g id="road-z-transit-badge">
+                      <animateMotion dur="10s" repeatCount="indefinite" path={bypassSvgPath} />
+                      <g transform="translate(0, -24)">
+                        <rect x="-46" y="-11" width="92" height="22" rx="11" fill="#020617" fillOpacity="0.95" stroke="#06b6d4" strokeWidth="1.4" filter="url(#glow-cyan)" />
+                        <text x="-35" y="3" fontSize="12" dominantBaseline="middle" textAnchor="middle">🚚</text>
+                        <text x="-24" y="-1" fill="#67e8f9" fontSize="8" fontWeight="bold" fontFamily="system-ui, sans-serif">TR-01-AX-1002</text>
+                        <text x="-24" y="7" fill="#a5f3fc" fontSize="6.5" fontWeight="bold" fontFamily="system-ui, sans-serif">IN TRANSIT • BYPASS</text>
+                      </g>
+                    </g>
                   </g>
                 )}
               </svg>
@@ -1562,9 +1697,16 @@ const LiveMap = () => {
                     >
                       <Truck size={15} />
                     </div>
-                    <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-slate-950/95 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded shadow-lg whitespace-nowrap border border-emerald-800 pointer-events-none flex items-center space-x-1">
-                      <span>{vehicle.id}</span>
-                      <span className="text-amber-400">({vehicle.current_fuel_litres}L)</span>
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-slate-950/95 text-emerald-300 text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap border border-emerald-800 pointer-events-none flex flex-col items-center space-y-0.5">
+                      <div className="flex items-center space-x-1">
+                        <span>{vehicle.id}</span>
+                        <span className="text-amber-400">({vehicle.current_fuel_litres}L)</span>
+                      </div>
+                      <div className="flex items-center space-x-1 text-[8px] text-cyan-300 border-t border-slate-800/80 pt-0.5 w-full justify-center">
+                        <span className="text-[10px]">🚚</span>
+                        <span className="font-black text-emerald-400">IN TRANSIT</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      </div>
                     </div>
                   </div>
                 );
