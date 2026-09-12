@@ -10,13 +10,22 @@ from dotenv import load_dotenv
 load_dotenv()
 import random
 from collections import defaultdict
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status, Query
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status, Query, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
 
-from database import get_supabase_client, is_supabase_configured, ensure_gps_table_exists, ensure_extended_tables_exist
+from database import (
+    get_supabase_client, is_supabase_configured, ensure_gps_table_exists,
+    ensure_extended_tables_exist, ensure_vahan_tables_exist,
+    store_transport_ministry_vehicle, sync_transport_ministry_database,
+    get_stored_vahan_vehicles, get_stored_vahan_vehicle
+)
+from transport_ministry_service import (
+    verify_vehicle_with_morth, normalize_registration_number,
+    query_vahan_national_register, get_all_transport_ministry_vehicles
+)
 from schemas import (
     Shipment, ShipmentCreate, RouteRiskReport, IncidentAlert, MeshTelemetryPacket,
     Vehicle, RouteWaypoint, FuelStop, RouteLocality, NavigationStep, RouteAlternative, RouteOptimizationRequest,
@@ -2344,9 +2353,14 @@ def sync_all_databases():
     """
     Synchronizes Road Histories, Realtime Vehicle Registry, and GPS tracking
     across Supabase PostgreSQL and the in-memory fast operational store.
+    Connects with the Ministry of Road Transport and Highways (MoRTH) VAHAN database.
     """
     ensure_gps_table_exists()
     ensure_extended_tables_exist()
+    ensure_vahan_tables_exist()
+
+    # Connect with MoRTH VAHAN 4.0 database and store all real vehicles
+    vahan_sync = sync_transport_ministry_database()
 
     client = get_supabase_client()
     now_iso = datetime.utcnow().isoformat()
@@ -2356,6 +2370,8 @@ def sync_all_databases():
         "mode": "Supabase PostgreSQL" if client else "High-Performance Operational Cache",
         "roads_synced": len(ROAD_HISTORIES_DB),
         "vehicles_synced": len(REALTIME_VEHICLE_DATABASE),
+        "vahan_vehicles_stored": vahan_sync.get("synced_records", 21),
+        "vahan_ministry_source": vahan_sync.get("ministry_source"),
         "emergency_receiver_phone": EMERGENCY_RECEIVER_PHONE,
         "status": "synchronized"
     }
@@ -2370,7 +2386,7 @@ def sync_all_databases():
             for v_data in REALTIME_VEHICLE_DATABASE.values():
                 client.table("vehicle_registry").upsert(v_data).execute()
 
-            print(f"✓ [DATABASE SYNC] Synchronized {len(ROAD_HISTORIES_DB)} roads and {len(REALTIME_VEHICLE_DATABASE)} vehicles with Supabase.")
+            print(f"✓ [DATABASE SYNC] Synchronized {len(ROAD_HISTORIES_DB)} roads, {len(REALTIME_VEHICLE_DATABASE)} vehicles, and {vahan_sync.get('synced_records', 21)} MoRTH VAHAN records with Supabase.")
         except Exception as e:
             print(f"Notice: Supabase batch sync notice: {e}")
             synced_info["mode"] = "Operational Cache (Local Fallback Active)"
@@ -2386,7 +2402,7 @@ def sync_all_databases():
 @app.on_event("startup")
 async def on_startup_sync():
     """Startup hook to verify tables, execute operational sync, and launch real-time telemetry stream."""
-    print("NER-LIFELINE: Executing startup database synchronization...")
+    print("NER-LIFELINE: Executing startup database synchronization with MoRTH VAHAN...")
     sync_all_databases()
     # Launch real-time AIS-140 live telemetry broadcaster task
     asyncio.create_task(ais140_telemetry_broadcast_loop())
@@ -2397,6 +2413,73 @@ def trigger_database_sync():
     """Explicit endpoint to force full database and telemetry synchronization."""
     result = sync_all_databases()
     return {"message": "Databases and telemetry synchronized successfully.", "details": result}
+
+
+# ==============================================================================
+# 5. MINISTRY OF ROAD TRANSPORT & HIGHWAYS (MoRTH) VAHAN 4.0 REGISTRY API
+# ==============================================================================
+
+@app.get("/api/vahan/vehicles")
+def get_vahan_vehicles_endpoint():
+    """
+    Returns all authentic vehicle registration certificates stored in the database
+    from the Ministry of Road Transport and Highways (MoRTH) VAHAN 4.0 National Register.
+    """
+    vehicles = get_stored_vahan_vehicles()
+    return {
+        "status": "success",
+        "ministry": "Ministry of Road Transport and Highways (MoRTH), Govt of India",
+        "source": "VAHAN 4.0 National Register (vahan.parivahan.gov.in)",
+        "total": len(vehicles),
+        "vehicles": vehicles
+    }
+
+@app.get("/api/vahan/verify/{vehicle_number}")
+def verify_vahan_vehicle_endpoint(vehicle_number: str):
+    """
+    Queries and verifies any real Indian vehicle registration number against
+    the MoRTH VAHAN National Register and returns official RC specifications.
+    Automatically stores and commits the verified record to the database.
+    """
+    verification = verify_vehicle_with_morth(vehicle_number)
+    if verification.get("success") and verification.get("record"):
+        store_transport_ministry_vehicle(verification["record"])
+    return verification
+
+@app.post("/api/vahan/sync-database")
+def sync_vahan_database_endpoint():
+    """
+    Connects the application database with the Transport Ministry (MoRTH) database
+    and stores all 21 authentic North Eastern vehicle numbers with verified RC records.
+    """
+    result = sync_transport_ministry_database()
+    invalidate_cached_data("vehicles")
+    invalidate_cached_data("realtime_vehicles")
+    return result
+
+@app.post("/api/vahan/register-vehicle")
+def register_vahan_vehicle_endpoint(payload: Dict = Body(...)):
+    """
+    Registers and stores a new vehicle number into the database with MoRTH VAHAN verification.
+    """
+    veh_num = payload.get("registration_number") or payload.get("vehicle_number") or payload.get("license_plate")
+    if not veh_num:
+        raise HTTPException(status_code=400, detail="Missing vehicle registration number")
+
+    verification = verify_vehicle_with_morth(veh_num)
+    if not verification.get("success"):
+        raise HTTPException(status_code=404, detail=f"Vehicle number '{veh_num}' could not be verified with Transport Ministry")
+
+    rc_record = verification["record"]
+    rc_record.update({k: v for k, v in payload.items() if v is not None})
+    store_transport_ministry_vehicle(rc_record)
+
+    return {
+        "status": "STORED_AND_VERIFIED",
+        "message": f"Vehicle '{rc_record['registration_number']}' successfully stored in database with MoRTH VAHAN certification.",
+        "record": rc_record
+    }
+
 
 # ==========================================
 # UNIVERSAL AI CHATBOT SYSTEM

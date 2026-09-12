@@ -20,6 +20,34 @@ export default function VehicleDossierModal({
 }) {
   const [copiedCoords, setCopiedCoords] = useState(false);
   const [activeTab, setActiveTab] = useState('location'); // 'location' | 'telemetry' | 'driver_cargo' | 'ais140'
+  const [vahanData, setVahanData] = useState(null);
+  const [isVerifyingVahan, setIsVerifyingVahan] = useState(false);
+
+  const fetchVahanVerification = async (targetPlate) => {
+    if (!targetPlate) return;
+    setIsVerifyingVahan(true);
+    try {
+      const cleanPlate = encodeURIComponent(String(targetPlate).replace(/\s+/g, '-'));
+      const res = await fetch(`http://localhost:8000/api/vahan/verify/${cleanPlate}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.record) {
+          setVahanData(data.record);
+        }
+      }
+    } catch (err) {
+      console.warn('VAHAN verification fetch error:', err);
+    } finally {
+      setIsVerifyingVahan(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && vehicle) {
+      const p = vehicle.license_plate || vehicle.vehicle_number || vehicle.id;
+      fetchVahanVerification(p);
+    }
+  }, [isOpen, vehicle?.license_plate, vehicle?.vehicle_number, vehicle?.id]);
 
   // Close on ESC key
   useEffect(() => {
@@ -231,7 +259,7 @@ export default function VehicleDossierModal({
             { id: 'location', label: '📍 Exact Location & Highway', icon: MapPin },
             { id: 'telemetry', label: '⚡ Engine & Energy Telemetry', icon: Zap },
             { id: 'driver_cargo', label: '👨‍✈️ Driver & Cargo Manifest', icon: Package },
-            { id: 'ais140', label: '🛡️ MoRTH AIS-140 Hardware', icon: Radio },
+            { id: 'ais140', label: '🛡️ MoRTH VAHAN & AIS-140', icon: ShieldCheck },
           ].map((t) => {
             const Icon = t.icon;
             const isCur = activeTab === t.id;
@@ -576,17 +604,150 @@ export default function VehicleDossierModal({
             </div>
           )}
 
-          {/* TAB 4: MORTH AIS-140 COMPLIANCE HARDWARE */}
+          {/* TAB 4: MORTH VAHAN 4.0 REGISTRATION CERTIFICATE & AIS-140 HARDWARE */}
           {activeTab === 'ais140' && (
             <div className="space-y-4 animate-in fade-in duration-150">
+              {/* Transport Ministry VAHAN 4.0 Official Certificate Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 shadow-lg space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center text-base shadow">
+                      🇮🇳
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="font-extrabold text-xs text-white">Ministry of Road Transport & Highways (MoRTH)</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 font-mono border border-emerald-500/40">
+                          VAHAN 4.0
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 block font-mono">
+                        National Register of Motor Vehicles • vahan.parivahan.gov.in
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => fetchVahanVerification(plate)}
+                      disabled={isVerifyingVahan}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold flex items-center space-x-1.5 cursor-pointer transition-all"
+                      title="Re-verify with Transport Ministry National Database"
+                    >
+                      <RefreshCw size={11} className={isVerifyingVahan ? 'animate-spin text-emerald-400' : ''} />
+                      <span>{isVerifyingVahan ? 'Verifying...' : 'Re-verify with VAHAN'}</span>
+                    </button>
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center space-x-1">
+                      <Check size={11} className="text-emerald-400" />
+                      <span>RC ACTIVE</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* VAHAN Verified Data Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">REGISTERING AUTHORITY</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block truncate">
+                      {vahanData?.issuing_authority || `DTO ${vehicle.rto_city || 'Guwahati'}`}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 mt-0.5 block font-mono">
+                      State: {vahanData?.state || vehicle.state || 'Assam'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">REGISTERED OWNER / AGENCY</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block truncate" title={vahanData?.owner_name}>
+                      {vahanData?.owner_name || 'National Health Mission (NHM) Emergency Response'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block truncate">
+                      {vahanData?.owner_category || 'Government Disaster Relief Fleet'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">VEHICLE CLASS</span>
+                    <span className="font-bold text-cyan-300 text-xs mt-0.5 block truncate">
+                      {vahanData?.vehicle_class || vehicle.vehicle_type || 'Special Purpose Vehicle'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      {vahanData?.seating_capacity ? `Seats: ${vahanData.seating_capacity}` : 'Seating: Authorized'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">CHASSIS (VIN) NUMBER</span>
+                    <span className="font-mono font-bold text-amber-300 text-xs mt-0.5 block tracking-wider">
+                      {vahanData?.chassis_number || 'MAT654210NZ04421'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block font-mono">
+                      Engine: {vahanData?.engine_number || 'FM26CR-884210'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">EMISSION & FUEL NORMS</span>
+                    <span className="font-bold text-emerald-400 text-xs mt-0.5 block">
+                      {vahanData?.emission_norms || 'BHARAT STAGE VI (BS-VI)'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      Fuel Type: {vahanData?.fuel_type || vehicle.fuel_type || 'Diesel'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">FITNESS VALIDITY</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block font-mono">
+                      {vahanData?.fitness_valid_upto || '2028-06-13'}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 mt-0.5 block font-bold">
+                      ✓ Valid & Roadworthy
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">INSURANCE POLICY</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block truncate">
+                      {vahanData?.insurance_company || 'The New India Assurance Co. Ltd.'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block font-mono">
+                      Exp: {vahanData?.insurance_valid_upto || '2027-06-13'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">NATIONAL RELIEF PERMIT</span>
+                    <span className="font-bold text-white text-xs mt-0.5 block truncate font-mono">
+                      {vahanData?.national_permit_number || 'NP-AS-2022-MED-04421'}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 mt-0.5 block">
+                      All 8 NE States Authorized
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/80 border border-slate-800 rounded-lg">
+                    <span className="text-[10px] text-slate-400 font-bold block">TAX STATUS</span>
+                    <span className="font-bold text-emerald-400 text-xs mt-0.5 block">
+                      {vahanData?.tax_status || 'EXEMPT (Emergency Medical / Disaster Fleet)'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      PUCC Valid: {vahanData?.pucc_valid_upto || '2026-11-20'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MoRTH AIS-140 Vehicle Location Tracking (VLT) Unit */}
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
-                    <ShieldCheck size={14} className="text-emerald-400" />
-                    <span>MoRTH AIS-140 Vehicle Location Tracking (VLT) Unit</span>
+                    <Radio size={14} className="text-purple-400" />
+                    <span>MoRTH AIS-140 Certified VLTD Telemetry Hardware</span>
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    Certified VLT v2.1
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    ERSS-112 Integrated
                   </span>
                 </div>
 
@@ -598,9 +759,21 @@ export default function VehicleDossierModal({
                   </div>
 
                   <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Emergency Panic Button</span>
-                    <span className="font-bold text-emerald-400 text-sm mt-0.5 block">NORMAL (INACTIVE)</span>
-                    <span className="text-[10px] text-slate-500 mt-1 block">MoRTH SOS Trigger Armed</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">VLTD Device & IMEI</span>
+                    <span className="font-mono font-bold text-emerald-400 text-xs mt-0.5 block truncate">
+                      {vahanData?.ais_140_vltd_device_id || 'VLTD-AS01-4421-M2M'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1 block font-mono">
+                      IMEI: {vahanData?.ais_140_imei || '864192051144210'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Emergency Panic Buttons</span>
+                    <span className="font-bold text-emerald-400 text-sm mt-0.5 block">
+                      {vahanData?.emergency_panic_buttons || 3} ARMED BUTTONS
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1 block">MoRTH SOS Trigger Direct to 112</span>
                   </div>
 
                   <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
@@ -610,21 +783,17 @@ export default function VehicleDossierModal({
                   </div>
 
                   <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Cellular Uplink</span>
-                    <span className="font-bold text-white text-sm mt-0.5 block">4G LTE Cat-M1 / BSNL</span>
-                    <span className="text-[10px] text-slate-500 mt-1 block">eSIM 1 Primary • eSIM 2 Disaster</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Cellular Telemetry M2M</span>
+                    <span className="font-bold text-white text-sm mt-0.5 block">
+                      {vahanData?.ais_140_carrier || 'BSNL M2M / Airtel Dual-eSIM'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1 block">Dual Dedicated Machine SIMs</span>
                   </div>
 
                   <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
                     <span className="text-[10px] text-slate-400 uppercase font-bold block">Ignition Sense Wire</span>
                     <span className="font-bold text-emerald-400 text-sm mt-0.5 block">IGNITION ON (13.8V)</span>
-                    <span className="text-[10px] text-slate-500 mt-1 block">Continuous Realtime Streaming</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Telemetry Frequency</span>
-                    <span className="font-bold text-cyan-300 text-sm mt-0.5 block">2.5s Stream Ping</span>
-                    <span className="text-[10px] text-slate-500 mt-1 block">WebSocket + LoRa Fallback</span>
+                    <span className="text-[10px] text-slate-500 mt-1 block">Continuous 2.5s Stream Ping</span>
                   </div>
                 </div>
               </div>

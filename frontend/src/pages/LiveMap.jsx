@@ -256,6 +256,8 @@ const LiveMap = () => {
   const [isBlockageModalOpen, setIsBlockageModalOpen] = useState(false);
   const [selectedBlockageId, setSelectedBlockageId] = useState('blk-1');
   const [activeDetourApplied, setActiveDetourApplied] = useState(false);
+  const [vahanSyncing, setVahanSyncing] = useState(false);
+  const [vahanSyncToast, setVahanSyncToast] = useState(null);
 
   // Route from current origin / GPS position to this vehicle's exact coordinates
   const routeToVehicle = useCallback(async (veh) => {
@@ -1168,6 +1170,32 @@ const LiveMap = () => {
 
               {/* Top Control Actions */}
               <div className="flex flex-wrap items-center gap-2">
+                {/* Transport Ministry MoRTH VAHAN Database Sync */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setVahanSyncing(true);
+                    try {
+                      const res = await fetch('http://localhost:8000/api/vahan/sync-database', { method: 'POST' });
+                      if (res.ok) {
+                        const data = await res.json();
+                        setVahanSyncToast(data);
+                        setTimeout(() => setVahanSyncToast(null), 6000);
+                      }
+                    } catch (err) {
+                      console.warn('VAHAN database sync error:', err);
+                    } finally {
+                      setVahanSyncing(false);
+                    }
+                  }}
+                  disabled={vahanSyncing}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow-md bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50"
+                  title="Connect database with Ministry of Road Transport & Highways (MoRTH) VAHAN 4.0 registry"
+                >
+                  <RefreshCw size={13} className={vahanSyncing ? 'animate-spin text-emerald-400' : 'text-emerald-400'} />
+                  <span>{vahanSyncing ? 'Syncing VAHAN...' : '🇮🇳 MoRTH VAHAN Sync'}</span>
+                </button>
+
                 {/* Zen Focus Mode Toggle */}
                 <button
                   onClick={() => setIsZenMode(!isZenMode)}
@@ -1209,6 +1237,29 @@ const LiveMap = () => {
                 </div>
               </div>
             </div>
+
+            {/* MoRTH VAHAN Database Sync Notification Banner */}
+            {vahanSyncToast && (
+              <div className="p-3 bg-emerald-950/90 border border-emerald-500/60 rounded-xl flex items-center justify-between gap-3 text-xs text-emerald-200 animate-in fade-in shadow-xl">
+                <div className="flex items-center space-x-2">
+                  <span className="text-base">🇮🇳</span>
+                  <div>
+                    <span className="font-extrabold text-white">MoRTH VAHAN 4.0 Database Connected:</span>{' '}
+                    <span>{vahanSyncToast.synced_records} authentic emergency vehicle numbers committed to {vahanSyncToast.database}.</span>
+                    <span className="text-[10px] text-emerald-400 block font-mono">
+                      States Covered: {vahanSyncToast.states_covered?.join(', ')} • {vahanSyncToast.telemetry_standard}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVahanSyncToast(null)}
+                  className="p-1 hover:bg-emerald-900 rounded text-emerald-400 hover:text-white cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             {/* 🛰️ REAL-TIME TELEMETRY STREAM STATUS RIBBON */}
             <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
