@@ -14,7 +14,9 @@ export default function VehicleDossierModal({
   isTracking = false,
   onCenterOnMap,
   autoFollowCam = false,
-  onToggleAutoFollow
+  onToggleAutoFollow,
+  onRouteToVehicle,
+  onRouteMission
 }) {
   const [copiedCoords, setCopiedCoords] = useState(false);
   const [activeTab, setActiveTab] = useState('location'); // 'location' | 'telemetry' | 'driver_cargo' | 'ais140'
@@ -103,6 +105,20 @@ export default function VehicleDossierModal({
           </div>
 
           <div className="flex items-center space-x-2 ml-auto">
+            {onRouteToVehicle && (
+              <button
+                type="button"
+                onClick={() => {
+                  onRouteToVehicle(vehicle);
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-all shadow cursor-pointer bg-blue-600 hover:bg-blue-500 text-white border border-blue-400/80 shadow-blue-950/40"
+                title="Calculate and display real highway route to this vehicle"
+              >
+                <Navigation size={13} />
+                <span>Route to Vehicle</span>
+              </button>
+            )}
             {onTrackLive && (
               <button
                 type="button"
@@ -293,6 +309,34 @@ export default function VehicleDossierModal({
                     {copiedCoords ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     <span>{copiedCoords ? 'Coordinates Copied!' : 'Copy Exact GPS Coordinates'}</span>
                   </button>
+
+                  {onRouteToVehicle && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRouteToVehicle(vehicle);
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow"
+                    >
+                      <Navigation size={14} />
+                      <span>Route to Vehicle</span>
+                    </button>
+                  )}
+
+                  {onRouteMission && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRouteMission(vehicle);
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shadow"
+                    >
+                      <MapPin size={14} />
+                      <span>Plot Mission Route</span>
+                    </button>
+                  )}
 
                   {onCenterOnMap && (
                     <button
@@ -596,6 +640,19 @@ export default function VehicleDossierModal({
           </div>
 
           <div className="flex items-center space-x-2 ml-auto">
+            {onRouteToVehicle && (
+              <button
+                type="button"
+                onClick={() => {
+                  onRouteToVehicle(vehicle);
+                  onClose();
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center space-x-1.5 shadow-lg shadow-blue-950 transition-all cursor-pointer border border-blue-400/60"
+              >
+                <Navigation size={14} />
+                <span>Route to This Vehicle</span>
+              </button>
+            )}
             {onTrackLive && (
               <button
                 type="button"

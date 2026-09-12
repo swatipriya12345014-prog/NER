@@ -257,7 +257,119 @@ const LiveMap = () => {
   const [selectedBlockageId, setSelectedBlockageId] = useState('blk-1');
   const [activeDetourApplied, setActiveDetourApplied] = useState(false);
 
-  // Expose global helper for seamless map engine switching and vehicle tracking
+  // Route from current origin / GPS position to this vehicle's exact coordinates
+  const routeToVehicle = useCallback(async (veh) => {
+    if (!veh) return;
+    const vLat = Number(veh.lat ?? veh.location?.lat ?? 26.0445);
+    const vLng = Number(veh.lng ?? veh.location?.lng ?? 91.8102);
+
+    const destObj = {
+      id: veh.id,
+      name: `${veh.license_plate || veh.id} (${veh.name || 'Emergency Vehicle'})`,
+      lat: vLat,
+      lng: vLng,
+      elevation_m: veh.altitude_m || 400,
+      state: veh.state || 'Assam'
+    };
+
+    setCustomDest(destObj);
+    setDestHubId('custom');
+    setSelectedVehicleId(veh.id);
+
+    let originObj;
+    if (originHubId === 'current-gps' && deviceGPS) {
+      originObj = {
+        id: 'current-gps',
+        name: 'My Current Device GPS',
+        lat: deviceGPS.lat,
+        lng: deviceGPS.lng,
+        elevation_m: Math.round(deviceGPS.altitude_m || 80),
+        state: 'Live GPS Unit'
+      };
+    } else if (customOrigin) {
+      originObj = customOrigin;
+    } else {
+      originObj = NER_HUBS.find((h) => h.id === originHubId) || NER_HUBS[0];
+    }
+
+    setIsOptimizing(true);
+    try {
+      const result = await calculateRealHighwayRoute({
+        origin: originObj,
+        destination: destObj,
+        vehicleId: veh.id,
+        simulatedFuel: veh.current_fuel_litres || simulatedFuel,
+        hazards: HAZARD_INCIDENTS
+      });
+
+      if (result) {
+        setRouteResult(result);
+        setIsAiRouteOpen(true);
+        setActiveRouteView('all');
+        jumpToLocation((originObj.lat + destObj.lat) / 2, (originObj.lng + destObj.lng) / 2, 9);
+      }
+    } catch (err) {
+      console.error('Route to vehicle error:', err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [originHubId, customOrigin, simulatedFuel, deviceGPS, jumpToLocation]);
+
+  // Route the vehicle's assigned transit mission (Origin Depot ➔ Destination Hub)
+  const routeVehicleMission = useCallback(async (veh) => {
+    if (!veh) return;
+    const destStr = (veh.destination || '').toLowerCase();
+    const cityStr = (veh.rto_city || '').toLowerCase();
+
+    // Match destination hub
+    let destObj = NER_HUBS.find((h) =>
+      destStr.includes(h.name.toLowerCase()) ||
+      destStr.includes(h.id.toLowerCase())
+    ) || (destStr.includes('tawang') ? NER_HUBS.find(h => h.id === 'tawang') : null)
+      || (destStr.includes('shillong') ? NER_HUBS.find(h => h.id === 'shillong') : null)
+      || (destStr.includes('kohima') ? NER_HUBS.find(h => h.id === 'kohima') : null)
+      || (destStr.includes('imphal') ? NER_HUBS.find(h => h.id === 'imphal') : null)
+      || (destStr.includes('aizawl') ? NER_HUBS.find(h => h.id === 'aizawl') : null)
+      || (destStr.includes('agartala') ? NER_HUBS.find(h => h.id === 'agartala') : null)
+      || (destStr.includes('gangtok') ? NER_HUBS.find(h => h.id === 'gangtok') : null)
+      || NER_HUBS[1];
+
+    // Match origin hub
+    let originObj = NER_HUBS.find((h) =>
+      cityStr.includes(h.name.toLowerCase()) ||
+      cityStr.includes(h.id.toLowerCase())
+    ) || NER_HUBS[0];
+
+    setOriginHubId(originObj.id);
+    setCustomOrigin(null);
+    setDestHubId(destObj.id);
+    setCustomDest(null);
+    setSelectedVehicleId(veh.id);
+
+    setIsOptimizing(true);
+    try {
+      const result = await calculateRealHighwayRoute({
+        origin: originObj,
+        destination: destObj,
+        vehicleId: veh.id,
+        simulatedFuel: veh.current_fuel_litres || simulatedFuel,
+        hazards: HAZARD_INCIDENTS
+      });
+
+      if (result) {
+        setRouteResult(result);
+        setIsAiRouteOpen(true);
+        setActiveRouteView('all');
+        jumpToLocation((originObj.lat + destObj.lat) / 2, (originObj.lng + destObj.lng) / 2, 9);
+      }
+    } catch (err) {
+      console.error('Vehicle mission route error:', err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [simulatedFuel, jumpToLocation]);
+
+  // Expose global helper for seamless map engine switching, vehicle tracking, and routing
   useEffect(() => {
     window.__nerSwitchOffline = () => setMapEngine('offline');
     window.__nerSwitchGoogle = () => setMapEngine('google');
@@ -285,13 +397,66 @@ const LiveMap = () => {
         openVehicleDossier(match);
       }
     };
+    window.__nerSetDest = (point) => {
+      if (!point) return;
+      const cleanId = String(point.id || '').replace(/[\s-]/g, '').toUpperCase();
+      const cleanName = String(point.name || '').replace(/[\s-]/g, '').toUpperCase();
+      const matched = fleet.find(
+        (v) =>
+          v.id === point.id ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanId) ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanName)
+      );
+      if (matched) {
+        routeToVehicle(matched);
+      } else {
+        const customPoint = {
+          id: point.id || 'custom-loc',
+          name: point.name || 'Selected Location',
+          lat: Number(point.lat ?? point.latitude),
+          lng: Number(point.lng ?? point.longitude),
+          state: point.state || 'Assam'
+        };
+        setCustomDest(customPoint);
+        setDestHubId('custom');
+        const originObj = NER_HUBS.find((h) => h.id === originHubId) || NER_HUBS[0];
+        calculateRealHighwayRoute({
+          origin: originObj,
+          destination: customPoint,
+          vehicleId: selectedVehicleId,
+          simulatedFuel,
+          hazards: HAZARD_INCIDENTS
+        }).then((res) => {
+          if (res) {
+            setRouteResult(res);
+            setIsAiRouteOpen(true);
+            setActiveRouteView('all');
+            jumpToLocation((originObj.lat + customPoint.lat) / 2, (originObj.lng + customPoint.lng) / 2, 9);
+          }
+        });
+      }
+    };
+    window.__nerRouteToVehicle = (vehicleIdentifier) => {
+      if (!vehicleIdentifier) return;
+      const cleanTarget = vehicleIdentifier.replace(/[\s-]/g, '').toUpperCase();
+      const match = fleet.find(
+        (v) =>
+          v.id === vehicleIdentifier ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanTarget)
+      );
+      if (match) {
+        routeToVehicle(match);
+      }
+    };
     return () => {
       delete window.__nerSwitchOffline;
       delete window.__nerSwitchGoogle;
       delete window.__nerTrackVehicle;
       delete window.__nerOpenVehicleDossier;
+      delete window.__nerSetDest;
+      delete window.__nerRouteToVehicle;
     };
-  }, [fleet, startTrackingVehicle, openVehicleDossier]);
+  }, [fleet, startTrackingVehicle, openVehicleDossier, routeToVehicle, originHubId, selectedVehicleId, simulatedFuel]);
 
   // Keep trackedVehicle & dossierVehicle updated with latest live telemetry position & speed
   useEffect(() => {
@@ -1435,11 +1600,28 @@ const LiveMap = () => {
               <div className="flex items-center space-x-2 ml-auto flex-wrap gap-y-1">
                 <button
                   type="button"
+                  onClick={() => routeToVehicle(trackedVehicle)}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg border border-blue-400/60 flex items-center space-x-1.5 cursor-pointer transition-all"
+                  title="Calculate and display real surveyed highway route to this vehicle"
+                >
+                  <Navigation size={13} />
+                  <span>📍 Route to Vehicle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => routeVehicleMission(trackedVehicle)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white font-bold text-xs rounded-xl shadow border border-blue-500/30 flex items-center space-x-1.5 cursor-pointer transition-all"
+                  title="Calculate vehicle's assigned dispatch mission corridor"
+                >
+                  <span>🛣️ Mission Route</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => openVehicleDossier(trackedVehicle)}
                   className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-lg border border-emerald-400/60 flex items-center space-x-1.5 cursor-pointer transition-all"
                   title="Inspect full vehicle dossier & exact location"
                 >
-                  <span>📋 Full Vehicle Dossier</span>
+                  <span>📋 Full Dossier</span>
                 </button>
                 <button
                   type="button"
@@ -2054,6 +2236,7 @@ const LiveMap = () => {
                   setOriginHubId('custom');
                 }
               }}
+              onRouteToVehicle={routeToVehicle}
               onSetDestination={(point) => {
                 if (typeof point === 'string') {
                   setDestHubId(point);
@@ -2062,8 +2245,15 @@ const LiveMap = () => {
                   setDestHubId(point.id);
                   setCustomDest(null);
                 } else {
-                  setCustomDest(point);
-                  setDestHubId('custom');
+                  const matchedVeh = fleet.find(
+                    (v) => v.id === point?.id || (v.license_plate && v.license_plate === point?.id)
+                  );
+                  if (matchedVeh) {
+                    routeToVehicle(matchedVeh);
+                  } else {
+                    setCustomDest(point);
+                    setDestHubId('custom');
+                  }
                 }
               }}
               onMapError={(reason) => {
@@ -3591,6 +3781,8 @@ const LiveMap = () => {
         onCenterOnMap={(lat, lng) => jumpToLocation(lat, lng, 12)}
         autoFollowCam={autoFollowCam}
         onToggleAutoFollow={() => setAutoFollowCam(!autoFollowCam)}
+        onRouteToVehicle={routeToVehicle}
+        onRouteMission={routeVehicleMission}
       />
       </div>
     </div>

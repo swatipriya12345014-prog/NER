@@ -771,7 +771,7 @@ export default function GoogleMapView({
                   </button>
                 </div>
                 <div style="margin-top: 4px;">
-                  <button onclick="window.__nerSetDest && window.__nerSetDest({ id: '${veh.id}', name: '${veh.license_plate || veh.name}', lat: ${lat}, lng: ${lng} })" style="width: 100%; padding: 5px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                  <button onclick="if (window.__nerRouteToVehicle) { window.__nerRouteToVehicle('${veh.id}'); } else if (window.__nerSetDest) { window.__nerSetDest({ id: '${veh.id}', name: '${veh.license_plate || veh.name}', lat: ${lat}, lng: ${lng} }); }" style="width: 100%; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;">
                     📍 Route to This Vehicle
                   </button>
                 </div>
@@ -1172,6 +1172,7 @@ export default function GoogleMapView({
     if (!routeResult) return;
     const destName = routeResult.destination?.name || 'Destination';
     const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km || 140} km`;
+    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours || 3} hours`;
     const verdict = routeResult.ai_recommendation?.safety_verdict || `${routeResult.safest_route?.route_code || 'All-Weather Highway'} recommended as the safest route.`;
     speakText(`Route Guidance to ${destName}. Distance: ${dist}. Estimated drive time: ${dur}. Safety verdict: ${verdict}`);
   };

@@ -210,12 +210,17 @@ export async function fetchGoogleBackendRoute({
   roadCondition = 'Mountain Ghat Road'
 }) {
   const apiBase = getApiBase();
+  const oLat = Number(origin?.lat ?? origin?.latitude ?? origin?.location?.lat ?? 26.1445);
+  const oLng = Number(origin?.lng ?? origin?.longitude ?? origin?.location?.lng ?? 91.7362);
+  const dLat = Number(destination?.lat ?? destination?.latitude ?? destination?.location?.lat ?? 25.5788);
+  const dLng = Number(destination?.lng ?? destination?.longitude ?? destination?.location?.lng ?? 91.8933);
+
   const res = await fetch(`${apiBase}/api/v1/routes/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      origin: { latitude: origin.lat, longitude: origin.lng },
-      destination: { latitude: destination.lat, longitude: destination.lng },
+      origin: { latitude: oLat, longitude: oLng },
+      destination: { latitude: dLat, longitude: dLng },
       vehicle_id: vehicleId,
       weather_condition: weatherCondition,
       road_condition: roadCondition
@@ -613,10 +618,13 @@ export function getAuthenticCorridorNames(origin, dest) {
   const dState = dest?.state?.toLowerCase() || 'assam';
   const hInfo = stateHighways[dState] || stateHighways[oState] || { nh: 'NH-27', alt: 'NH-15', bypass: 'Regional Valley Bypass' };
 
+  const oName = origin?.name || 'Guwahati Depot';
+  const dName = dest?.name || 'Destination';
+
   return {
     safest: {
       code: `${hInfo.nh} All-Weather Express Artery`,
-      title: `${hInfo.nh}: ${origin.name} ➔ ${dest.name} All-Weather Corridor`,
+      title: `${hInfo.nh}: ${oName} ➔ ${dName} All-Weather Corridor`,
       routeDesc: `Follows the fortified ${hInfo.nh} national highway contour with reinforced slope protections, concrete drainage culverts, and 0 active road closures.`,
       hazardDetail: null
     },
@@ -627,7 +635,7 @@ export function getAuthenticCorridorNames(origin, dest) {
       hazardDetail: `⛔ Active Mudslide & Rockfall Debris: 380m road blockage reported. Border Roads Organisation (BRO) clearance in progress.`
     },
     bypass: {
-      code: `${dest.name || origin.name} Strategic Valley Bypass`,
+      code: `${dName} Strategic Valley Bypass`,
       title: `${hInfo.bypass}: Low-Altitude Strategic Alternate`,
       routeDesc: `Strategic lower-elevation valley bypass skirting high-risk mountain escarpments. Provides secure, uninterrupted logistics passage.`,
       hazardDetail: null
@@ -640,10 +648,15 @@ export function getAuthenticCorridorNames(origin, dest) {
  * Strictly avoids any imaginary bezier curves!
  */
 export function getAuthenticHighwayFallbackRoute(origin, dest, routeType, vehicle, currentFuel, baseEconomy, hazards = REAL_TIME_HAZARDS) {
-  const originId = origin.id?.toLowerCase() || '';
-  const destId = dest.id?.toLowerCase() || '';
+  const originId = origin?.id?.toLowerCase() || '';
+  const destId = dest?.id?.toLowerCase() || '';
   const directKey = `${originId}->${destId}`;
   const revKey = `${destId}->${originId}`;
+
+  const oLat = Number(origin?.lat ?? origin?.latitude ?? origin?.location?.lat ?? 26.1445);
+  const oLng = Number(origin?.lng ?? origin?.longitude ?? origin?.location?.lng ?? 91.7362);
+  const dLat = Number(dest?.lat ?? dest?.latitude ?? dest?.location?.lat ?? 25.5788);
+  const dLng = Number(dest?.lng ?? dest?.longitude ?? dest?.location?.lng ?? 91.8933);
 
   let rawCoords = [];
   if (AUTHENTIC_HIGHWAY_CORRIDORS[directKey]) {
@@ -684,8 +697,8 @@ export function getAuthenticHighwayFallbackRoute(origin, dest, routeType, vehicl
     const ptsCount = 18;
     for (let i = 0; i < ptsCount; i++) {
       const frac = i / (ptsCount - 1);
-      const lat = origin.lat + frac * (dest.lat - origin.lat);
-      const lng = origin.lng + frac * (dest.lng - origin.lng);
+      const lat = oLat + frac * (dLat - oLat);
+      const lng = oLng + frac * (dLng - oLng);
       // Different lateral meander for each road
       const meanderMultiplier = routeType === 'safest' ? 0.018 : routeType === 'bypass' ? 0.045 : 0.006;
       const meander = Math.sin(frac * Math.PI * 2) * meanderMultiplier;
@@ -703,12 +716,15 @@ export function getAuthenticHighwayFallbackRoute(origin, dest, routeType, vehicl
   const avgSpeed = routeType === 'safest' ? 46 : routeType === 'bypass' ? 44 : 30; // Direct pass slowed by mountain hazards
   const etaHours = +(totalKm / avgSpeed).toFixed(1);
 
-  const terrainMultiplier = routeType === 'safest' ? vehicle.terrain_multiplier * 0.95 : routeType === 'bypass' ? vehicle.terrain_multiplier * 1.05 : vehicle.terrain_multiplier * 1.30;
-  const effectiveEconomy = +(baseEconomy / terrainMultiplier).toFixed(2);
+  const baseTerrainMult = Number(vehicle?.terrain_multiplier || 1.15);
+  const terrainMultiplier = routeType === 'safest' ? baseTerrainMult * 0.95 : routeType === 'bypass' ? baseTerrainMult * 1.05 : baseTerrainMult * 1.30;
+  const safeEconomy = (baseEconomy && !isNaN(baseEconomy) && baseEconomy > 0) ? Number(baseEconomy) : 4.5;
+  const safeCurrentFuel = (currentFuel !== null && currentFuel !== undefined && !isNaN(currentFuel)) ? Number(currentFuel) : 45;
+  const effectiveEconomy = +(safeEconomy / terrainMultiplier).toFixed(2);
   const fuelRequired = +(totalKm / effectiveEconomy).toFixed(1);
-  const fuelMargin = +(currentFuel - fuelRequired).toFixed(1);
+  const fuelMargin = +(safeCurrentFuel - fuelRequired).toFixed(1);
   const remFuel = Math.max(0, fuelMargin);
-  const fuelSufficient = currentFuel >= fuelRequired * 1.05;
+  const fuelSufficient = safeCurrentFuel >= fuelRequired * 1.05;
 
   const { riskScore: calculatedRisk, encountered } = evaluateRouteHazardRisk(rawCoords, hazards);
 
