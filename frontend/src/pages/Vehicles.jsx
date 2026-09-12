@@ -147,9 +147,9 @@ const Vehicles = () => {
       </div>
 
       {/* Fleet KPI Fuel Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up stagger-1">
         {/* Total Active Vehicles */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="glass-card-interactive rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30">
               <Truck size={22} />
@@ -167,7 +167,7 @@ const Vehicles = () => {
         </div>
 
         {/* Total Fleet Fuel In Tanks */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="glass-card-interactive rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
               <Fuel size={22} />
@@ -190,7 +190,7 @@ const Vehicles = () => {
         </div>
 
         {/* Critical Low Fuel Warnings */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="glass-card-interactive rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/30">
               <AlertTriangle size={22} />
@@ -207,7 +207,7 @@ const Vehicles = () => {
         </div>
 
         {/* Total Safe Cruising Range */}
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="glass-card-interactive rounded-2xl p-5 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
               <Gauge size={22} />
@@ -286,7 +286,7 @@ const Vehicles = () => {
           return (
             <div
               key={vehicle.id}
-              className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-xl hover:border-slate-600 transition-all flex flex-col justify-between space-y-4 group"
+              className="glass-card-interactive rounded-2xl p-5 flex flex-col justify-between space-y-4 group animate-fade-in"
             >
               <div>
                 {/* Header */}
@@ -413,14 +413,14 @@ const Vehicles = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-700/50">
                 <button
                   onClick={() => handleTrackVehicle(vehicle)}
-                  className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-1.5 transition-all active:scale-98 cursor-pointer border border-emerald-400/30"
+                  className="btn-press btn-glow-emerald w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-1.5 transition-all cursor-pointer border border-emerald-400/30"
                 >
                   <Crosshair size={13} className="animate-spin-slow text-white" />
                   <span>Track Live Map</span>
                 </button>
                 <button
                   onClick={() => handlePlanRoute(vehicle.id)}
-                  className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-1.5 transition-all active:scale-98 cursor-pointer"
+                  className="btn-press btn-glow-blue w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
                 >
                   <Navigation size={13} />
                   <span>AI Route</span>

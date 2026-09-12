@@ -27,8 +27,166 @@ code {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SAFEST ROUTE AI HIGHLIGHT & CORRIDOR ANIMATIONS
+   MODERN ULTRA-SMOOTH ANIMATION & INTERACTION SYSTEM
    ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
+
+html, body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Sleek custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 9999px;
+  transition: background 0.2s var(--ease-spring);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Smooth momentum scrolling for mobile */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HARDWARE-ACCELERATED KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes floatSoft {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pulseGlowEmerald {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.6), 0 0 0 2px rgba(16, 185, 129, 0.7);
+  }
+}
+
+@keyframes pulseGlowCyan {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.25), 0 0 0 1px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.6), 0 0 0 2px rgba(6, 182, 212, 0.7);
+  }
+}
+
+@keyframes pulseGlowAmber {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25), 0 0 0 1px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(245, 158, 11, 0.6), 0 0 0 2px rgba(245, 158, 11, 0.7);
+  }
+}
+
+@keyframes pulseGlowRose {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.3), 0 0 0 1px rgba(244, 63, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 26px rgba(244, 63, 94, 0.7), 0 0 0 2px rgba(244, 63, 94, 0.8);
+  }
+}
+
+@keyframes radarSweep {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    background-position: -250% 0;
+  }
+  100% {
+    background-position: 250% 0;
+  }
+}
+
+@keyframes gradientPan {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
 
 @keyframes lifelineFlow {
   0% {
@@ -50,24 +208,60 @@ code {
   }
 }
 
-@keyframes safestShimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+/* ═══════════════════════════════════════════════════════════════
+   SMOOTH ANIMATION UTILITIES
+   ═══════════════════════════════════════════════════════════════ */
+
+.animate-fade-in {
+  animation: fadeIn 0.4s var(--ease-spring) forwards;
 }
 
-@keyframes beaconRipple {
-  0% {
-    transform: scale(0.8);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.8);
-    opacity: 0;
-  }
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s var(--ease-spring) forwards;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.4s var(--ease-bounce) forwards;
+}
+
+.animate-float-soft {
+  animation: floatSoft 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow-emerald {
+  animation: pulseGlowEmerald 2.5s var(--ease-spring) infinite;
+}
+
+.animate-pulse-glow-cyan {
+  animation: pulseGlowCyan 2.5s var(--ease-spring) infinite;
+}
+
+.animate-pulse-glow-amber {
+  animation: pulseGlowAmber 2.5s var(--ease-spring) infinite;
+}
+
+.animate-pulse-glow-rose {
+  animation: pulseGlowRose 2s var(--ease-spring) infinite;
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 3s linear infinite;
+}
+
+.animate-gradient-pan {
+  background-size: 200% 200%;
+  animation: gradientPan 6s ease infinite;
 }
 
 .animate-lifeline-flow {
@@ -78,50 +272,58 @@ code {
   animation: lifelinePulse 2.8s ease-in-out infinite;
 }
 
-.animate-safest-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(16, 185, 129, 0.1) 0%,
-    rgba(52, 211, 153, 0.35) 50%,
-    rgba(16, 185, 129, 0.1) 100%
-  );
-  background-size: 200% 100%;
-  animation: safestShimmer 3.5s ease-in-out infinite;
-}
-
-.animate-beacon-ripple {
-  animation: beaconRipple 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-}
+/* Stagger entrance delays */
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
+.stagger-5 { animation-delay: 300ms; }
 
 /* ═══════════════════════════════════════════════════════════════
-   SAMSUNG GALAXY S24 & MOBILE AMOLED OPTIMIZATIONS
+   MODERN GLASSMORPHISM & TACTILE HOVER DYNAMICS
    ═══════════════════════════════════════════════════════════════ */
-:root {
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-  --sal: env(safe-area-inset-left, 0px);
-  --sar: env(safe-area-inset-right, 0px);
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  transition: all 0.3s var(--ease-spring);
 }
 
-html, body {
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain;
+.glass-card-interactive {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
 }
 
-/* Smooth momentum scrolling for mobile */
-.mobile-scroll {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+.glass-card-interactive:hover {
+  transform: translateY(-3px);
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.18);
+}
+
+.btn-press {
+  transition: transform 0.15s var(--ease-spring), filter 0.15s var(--ease-spring), box-shadow 0.15s var(--ease-spring);
+}
+
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+.btn-glow-emerald:hover {
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+}
+
+.btn-glow-blue:hover {
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
 }
 
 @media (max-width: 640px) {
   ::-webkit-scrollbar {
     width: 3px;
     height: 3px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.3);
-    border-radius: 9999px;
   }
 }

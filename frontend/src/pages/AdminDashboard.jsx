@@ -146,23 +146,23 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => navigate('/live-map')}
-            className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-900/30 flex items-center space-x-2.5 transition-all cursor-pointer hover:scale-105"
+            className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-900/30 flex items-center space-x-2.5 transition-all cursor-pointer btn-press btn-glow-blue"
           >
             <Navigation size={18} />
             <span>Launch Live Interactive Map</span>
           </button>
           <button
             onClick={() => navigate('/alerts')}
-            className="px-4 py-3 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-sm shadow-lg flex items-center space-x-2 transition-all cursor-pointer"
+            className="px-4 py-3 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-sm shadow-lg flex items-center space-x-2 transition-all cursor-pointer btn-press"
           >
-            <Bell size={17} className="text-rose-400" />
+            <Bell size={17} className="text-rose-400 animate-pulse" />
             <span>Emergency Alerts (4)</span>
           </button>
         </div>
       </div>
 
       {/* 2. Simple 3-Step Operations Guide ("How NER-LIFELINE Works") */}
-      <div className="bg-gradient-to-r from-blue-950/50 via-slate-900 to-indigo-950/50 border border-blue-800/40 rounded-2xl p-5 shadow-xl">
+      <div className="bg-gradient-to-r from-blue-950/50 via-slate-900 to-indigo-950/50 border border-blue-800/40 rounded-2xl p-5 shadow-xl glass-card animate-fade-in-up">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div className="space-y-0.5">
             <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs uppercase tracking-wider">
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={() => navigate('/live-map')}
-            className="self-start md:self-auto text-xs font-bold text-blue-300 hover:text-white bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-md"
+            className="self-start md:self-auto text-xs font-bold text-blue-300 hover:text-white bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 shadow-md btn-press"
           >
             <span>Open Interactive Map</span>
             <ArrowRight size={14} />
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-          <div className="bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 space-y-2 transition-all">
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-emerald-500/40 rounded-xl p-4 space-y-2 transition-all glass-card-interactive">
             <div className="flex items-center space-x-2 text-emerald-400 font-bold text-xs">
               <span className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs font-black">1</span>
               <span className="text-sm">Pick an Emergency Route</span>
@@ -193,37 +193,37 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 rounded-xl p-4 space-y-2 transition-all">
-            <div className="flex items-center space-x-2 text-amber-400 font-bold text-xs">
-              <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xs font-black">2</span>
-              <span className="text-sm">Check Safety & Fuel</span>
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-blue-500/40 rounded-xl p-4 space-y-2 transition-all glass-card-interactive">
+            <div className="flex items-center space-x-2 text-blue-400 font-bold text-xs">
+              <span className="w-6 h-6 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-xs font-black">2</span>
+              <span className="text-sm">Inspect Real-time Fuel & Risks</span>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Our AI evaluates mountain altitude climbs, monsoon rainfall, and road blockages so vehicles never run out of fuel or get stuck in mud.
+              Our AI calculates vehicle fuel consumption under mountain terrain load and compares the Safest route vs Shortest route with fuel stop locations.
             </p>
           </div>
 
-          <div className="bg-slate-950/80 border border-slate-800 hover:border-purple-500/40 rounded-xl p-4 space-y-2 transition-all">
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-purple-500/40 rounded-xl p-4 space-y-2 transition-all glass-card-interactive">
             <div className="flex items-center space-x-2 text-purple-400 font-bold text-xs">
               <span className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-black">3</span>
-              <span className="text-sm">Track Convoy Live</span>
+              <span className="text-sm">Blackout LoRa Resilience</span>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Follow GPS coordinates in real-time. If mountain cell networks collapse, our offline LoRa radio mesh automatically routes distress packets.
+              When cellular networks go down in landslides, ESP32 nodes store-and-forward telemetry over 865 MHz mesh automatically.
             </p>
           </div>
         </div>
       </div>
 
-      {/* 3. Key Metrics Overview (4 Clean Cards) */}
+      {/* KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => {
+        {kpis.map((k, idx) => {
           const Icon = k.icon;
           return (
             <div
               key={k.title}
               onClick={() => navigate(k.route)}
-              className="bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition-all duration-200 cursor-pointer group shadow-xl flex flex-col justify-between"
+              className={`glass-card-interactive rounded-2xl p-5 cursor-pointer group shadow-xl flex flex-col justify-between animate-fade-in-up stagger-${idx + 1}`}
             >
               <div className="flex items-center justify-between">
                 <div className={`p-3 rounded-xl bg-${k.color}-500/10 border border-${k.color}-500/20 text-${k.color}-400 group-hover:scale-110 transition-transform`}>
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center space-x-1 text-slate-500 group-hover:text-white transition-colors text-xs font-semibold">
                   <span>View</span>
-                  <ArrowUpRight size={14} />
+                  <ArrowUpRight size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </div>
               </div>
               <div className="mt-4">
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* 3. Interactive Quick Corridor Routing Bar */}
-      <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+      <div className="glass-card rounded-2xl p-5 shadow-xl space-y-3 animate-fade-in-up stagger-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
@@ -258,7 +258,7 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={() => navigate('/live-map')}
-            className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center space-x-1 cursor-pointer"
+            className="text-xs font-bold text-blue-400 hover:text-blue-300 flex items-center space-x-1 cursor-pointer btn-press"
           >
             <span>Custom Route Builder</span>
             <ChevronRight size={14} />
@@ -266,11 +266,11 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 pt-1">
-          {POPULAR_CORRIDORS.map((corridor) => (
+          {POPULAR_CORRIDORS.map((corridor, cIdx) => (
             <div
               key={corridor.id}
               onClick={() => navigate(`/live-map?origin=${corridor.originId}&dest=${corridor.destId}&autoRoute=true`)}
-              className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900/80 transition-all cursor-pointer group shadow-md flex flex-col justify-between space-y-3"
+              className={`p-4 rounded-xl glass-card-interactive cursor-pointer group shadow-md flex flex-col justify-between space-y-3 animate-fade-in-up stagger-${cIdx + 1}`}
             >
               <div>
                 <div className="flex items-center justify-between">

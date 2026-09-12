@@ -89,15 +89,22 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen = false, onMobileClose = () =
                         to={item.path}
                         onClick={onMobileClose}
                         className={({ isActive }) =>
-                          `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+                          `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 ease-out group cursor-pointer ${
                             isActive
-                              ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40 font-semibold'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-white font-medium'
+                              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40 font-bold ring-1 ring-blue-400/40 scale-[1.01]'
+                              : 'text-slate-400 hover:bg-slate-800/80 hover:text-white hover:translate-x-1 font-medium'
                           }`
                         }
                       >
-                        <Icon size={18} className="flex-shrink-0" />
-                        <span className="text-xs truncate">{localizedName}</span>
+                        {({ isActive }) => (
+                          <>
+                            <Icon size={18} className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+                            <span className="text-xs truncate flex-1">{localizedName}</span>
+                            {isActive && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                            )}
+                          </>
+                        )}
                       </NavLink>
                     );
                   })}
@@ -159,15 +166,24 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen = false, onMobileClose = () =
                     to={item.path}
                     title={localizedName}
                     className={({ isActive }) =>
-                      `flex items-center space-x-3 px-3 py-2 rounded-xl transition-all duration-200 group ${
+                      `flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 ease-out group relative cursor-pointer ${
                         isActive
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40 font-semibold'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white font-medium'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-900/40 font-bold ring-1 ring-blue-400/40 scale-[1.01]'
+                          : 'text-slate-400 hover:bg-slate-800/80 hover:text-white hover:translate-x-1 font-medium'
                       }`
                     }
                   >
-                    <Icon size={18} className="flex-shrink-0" />
-                    {!collapsed && <span className="text-xs truncate">{localizedName}</span>}
+                    {({ isActive }) => (
+                      <>
+                        <Icon size={18} className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110 group-active:scale-95" />
+                        {!collapsed && (
+                          <span className="text-xs truncate flex-1">{localizedName}</span>
+                        )}
+                        {isActive && !collapsed && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                        )}
+                      </>
+                    )}
                   </NavLink>
                 );
               })}

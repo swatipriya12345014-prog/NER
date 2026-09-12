@@ -209,8 +209,8 @@ export default function Incidents() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up stagger-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Total Active Incidents</span>
             <AlertTriangle size={16} className="text-rose-400" />
@@ -219,7 +219,7 @@ export default function Incidents() {
           <p className="text-[10px] text-slate-500">Live monitored across NER</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Highways Blocked</span>
             <AlertOctagon size={16} className="text-red-500" />
@@ -230,7 +230,7 @@ export default function Incidents() {
           <p className="text-[10px] text-red-400/80">Diversion corridors required</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>River Flooding / Causeways</span>
             <CloudRain size={16} className="text-cyan-400" />
@@ -241,7 +241,7 @@ export default function Incidents() {
           <p className="text-[10px] text-cyan-400/80">Active monsoonal rivers</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>BRO / SDRF Heavy Units</span>
             <HardHat size={16} className="text-amber-400" />
@@ -314,7 +314,7 @@ export default function Incidents() {
         {filteredIncidents.map((inc) => (
           <div
             key={inc.id}
-            className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all shadow-lg space-y-3.5"
+            className="glass-card-interactive p-5 rounded-2xl space-y-3.5 animate-fade-in"
           >
             {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
@@ -395,7 +395,7 @@ export default function Incidents() {
               </span>
               <button
                 onClick={() => navigate('/live-map')}
-                className="px-3.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+                className="btn-press px-3.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
               >
                 <span>Inspect Hazard on Live Map</span>
                 <ArrowRight size={13} />

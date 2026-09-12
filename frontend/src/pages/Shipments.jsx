@@ -222,8 +222,8 @@ export default function Shipments() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up stagger-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Total Shipments</span>
             <Package size={16} className="text-blue-400" />
@@ -232,7 +232,7 @@ export default function Shipments() {
           <p className="text-[10px] text-slate-500">Across 8 NER regional hubs</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Active In-Transit</span>
             <Truck size={16} className="text-emerald-400" />
@@ -243,7 +243,7 @@ export default function Shipments() {
           <p className="text-[10px] text-emerald-400/80">Continuous GPS tracked</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Cold-Chain Monitored</span>
             <Snowflake size={16} className="text-cyan-400" />
@@ -254,7 +254,7 @@ export default function Shipments() {
           <p className="text-[10px] text-cyan-400/80">Zero temperature excursions</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+        <div className="glass-card-interactive p-4 rounded-xl space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
             <span>Urgent Medical</span>
             <HeartPulse size={16} className="text-rose-400" />
@@ -316,7 +316,7 @@ export default function Shipments() {
         {filteredShipments.map((s) => (
           <div
             key={s.id}
-            className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all shadow-lg space-y-3"
+            className="glass-card-interactive p-4 rounded-xl space-y-3 animate-fade-in"
           >
             {/* Top row: ID & Status */}
             <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
@@ -396,8 +396,8 @@ export default function Shipments() {
                 ETA: {s.estimatedArrival} ({s.distanceKm} km)
               </span>
               <button
-                onClick={() => navigate('/live-map')}
-                className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 text-blue-300 hover:text-white font-bold text-[11px] flex items-center space-x-1 transition-colors cursor-pointer"
+                onClick={() => navigate(`/live-map?track=true&query=${encodeURIComponent(s.vehicle)}`)}
+                className="btn-press px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 text-blue-300 hover:text-white font-bold text-[11px] flex items-center space-x-1 transition-all cursor-pointer"
               >
                 <span>Track on Live Map</span>
                 <ArrowRight size={13} />

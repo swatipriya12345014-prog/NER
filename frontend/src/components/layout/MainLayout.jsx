@@ -42,8 +42,10 @@ const MainLayout = () => {
           sidebarCollapsed={sidebarCollapsed}
           mobileOpen={mobileMenuOpen}
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-950">
-          <Outlet />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-950 scroll-smooth">
+          <div className="animate-fade-in transition-all duration-300 min-h-full">
+            <Outlet />
+          </div>
         </main>
       </div>
 
