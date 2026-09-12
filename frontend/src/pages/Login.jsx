@@ -29,7 +29,7 @@ const Login = () => {
       case 'field_officer':
         return '/field-officer';
       case 'logistics_manager':
-        return '/shipments';
+        return '/manager-dashboard';
       default:
         return '/admin-dashboard';
     }

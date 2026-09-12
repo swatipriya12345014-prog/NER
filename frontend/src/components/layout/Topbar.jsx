@@ -14,6 +14,11 @@ import { isRouteAllowedForRole, ROLE_CONFIG, getDefaultRouteForRole, getRoleDisp
 
 // Searchable entity catalog
 const SEARCHABLE_ENTITIES = [
+  // Primary Role Workspaces
+  { id: 'ws-admin', type: 'command', title: 'State Command Dashboard', subtitle: 'Executive state operations, corridors, and telemetry', path: '/admin-dashboard', meta: 'Role: Administrator' },
+  { id: 'ws-manager', type: 'command', title: 'Supply Chain & Fleet Command', subtitle: 'Consignments pipeline, depot inventories, and dispatches', path: '/manager-dashboard', meta: 'Role: Logistics Manager' },
+  { id: 'ws-field', type: 'command', title: 'Field Recon & Hazard Console', subtitle: 'GPS hazard logging, clearance verification, and LoRa beacon', path: '/field-officer', meta: 'Role: Field Officer' },
+  { id: 'ws-driver', type: 'command', title: 'Driver Tactical Cockpit', subtitle: 'SOS emergency dialer, route guidance, and hazard reporter', path: '/driver-dashboard', meta: 'Role: Driver' },
   // Vehicles
   { id: 'v1', type: 'vehicle', title: 'Highland Rapid Ambulance 01', subtitle: 'Plate: AS-01-EV-4421 • Driver: Tashi Namgyal', path: '/vehicles', meta: 'Fuel: 48L (68.6%) • Cruising: 313.8 km' },
   { id: 'v2', type: 'vehicle', title: 'Mountain Blood Express 02', subtitle: 'Plate: ML-05-BX-1092 • Driver: Biren Das', path: '/vehicles', meta: 'Fuel: 18L (32.7%) • Critical Low Fuel' },
@@ -72,22 +77,26 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Live Autocomplete Filter (Role-Protected)
+  // Live Autocomplete Filter (Role-Protected with 120ms debounce for smooth typing)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
     }
-    const q = searchQuery.toLowerCase();
-    const matches = SEARCHABLE_ENTITIES.filter(
-      item => (
-        isRouteAllowedForRole(role, item.path) &&
-        (item.title.toLowerCase().includes(q) ||
-         item.subtitle.toLowerCase().includes(q) ||
-         item.meta.toLowerCase().includes(q))
-      )
-    ).slice(0, 7);
-    setSearchResults(matches);
+    const debounceTimer = setTimeout(() => {
+      const q = searchQuery.toLowerCase();
+      const matches = SEARCHABLE_ENTITIES.filter(
+        item => (
+          isRouteAllowedForRole(role, item.path) &&
+          (item.title.toLowerCase().includes(q) ||
+           item.subtitle.toLowerCase().includes(q) ||
+           item.meta.toLowerCase().includes(q))
+        )
+      ).slice(0, 7);
+      setSearchResults(matches);
+    }, 120);
+
+    return () => clearTimeout(debounceTimer);
   }, [searchQuery, role]);
 
   // Global keyboard shortcut: Ctrl+K / Cmd+K to focus search, Esc to close

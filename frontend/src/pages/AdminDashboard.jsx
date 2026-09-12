@@ -83,6 +83,23 @@ const WEATHER_STATIONS = [
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [selectedStation, setSelectedStation] = useState(WEATHER_STATIONS[0]);
+  const [adminToast, setAdminToast] = useState(null);
+  const [redAlertActive, setRedAlertActive] = useState(false);
+
+  const showAdminToast = (msg) => {
+    setAdminToast(msg);
+    setTimeout(() => setAdminToast(null), 4000);
+  };
+
+  const handleToggleRedAlert = () => {
+    const newState = !redAlertActive;
+    setRedAlertActive(newState);
+    showAdminToast(
+      newState
+        ? 'STATE-WIDE MONSOON RED ALERT BROADCAST: All disaster response teams & convoys alerted!'
+        : 'State-wide Red Alert stood down to Normal Readiness posture.'
+    );
+  };
 
   // Executive KPI Cards
   const kpis = [
@@ -122,42 +139,89 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* 1. Welcome & Primary Action Header */}
-      <div className="bg-gradient-to-br from-purple-950/80 via-slate-900 to-slate-900 border border-purple-800/40 rounded-2xl p-6 shadow-2xl backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-        <div className="space-y-1.5">
-          <div className="flex items-center space-x-2.5">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-              <span>STATE COMMAND ADMINISTRATOR</span>
-            </span>
-            <span className="text-xs text-slate-400 font-mono">
-              Central Command • Guwahati HQ
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            NER-LIFELINE Smart Logistics Command
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-            AI-powered highland route optimization, live vehicle telemetry, terrain risk tracking, and blackout-resilient disaster response.
-          </p>
+      {/* Toast Notification */}
+      {adminToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-purple-600 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2.5 border border-purple-400 animate-in slide-in-from-bottom duration-300">
+          <CheckCircle2 size={18} className="flex-shrink-0" />
+          <span className="text-xs font-bold">{adminToast}</span>
         </div>
+      )}
 
-        {/* Big, Clear CTA Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => navigate('/live-map')}
-            className="px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-xl shadow-blue-900/30 flex items-center space-x-2.5 transition-all cursor-pointer btn-press btn-glow-blue"
-          >
-            <Navigation size={18} />
-            <span>Launch Live Interactive Map</span>
-          </button>
-          <button
-            onClick={() => navigate('/alerts')}
-            className="px-4 py-3 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-800/80 text-rose-300 font-bold text-sm shadow-lg flex items-center space-x-2 transition-all cursor-pointer btn-press"
-          >
-            <Bell size={17} className="text-rose-400 animate-pulse" />
-            <span>Emergency Alerts (4)</span>
-          </button>
+      {/* 1. Welcome & Primary Action Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-slate-900 border border-purple-500/30 p-5 sm:p-6 shadow-2xl">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-2.5 flex-wrap gap-y-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center space-x-1.5">
+                <ShieldCheck size={12} className="text-purple-400" />
+                <span>State Command Administrator • Authority Level 4</span>
+              </span>
+              <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+                <Radio size={12} className="text-emerald-400 animate-pulse" /> Guwahati Central Command HQ • All 8 States Online
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              NER-LIFELINE State Emergency Operations Centre
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+              AI-powered highland route optimization, live fleet telemetry, LoRa mesh resilience, cross-role oversight, and sovereign GIS surveillance across North East India.
+            </p>
+          </div>
+
+          {/* Big, Clear CTA Buttons & Emergency Broadcast */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={handleToggleRedAlert}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center space-x-2 shadow-xl transition-all cursor-pointer ${
+                redAlertActive
+                  ? 'bg-rose-600 text-white animate-pulse shadow-rose-900/50'
+                  : 'bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800'
+              }`}
+            >
+              <AlertTriangle size={15} />
+              <span>{redAlertActive ? 'MONSOON RED ALERT ACTIVE' : 'Declare State Red Alert'}</span>
+            </button>
+            <button
+              onClick={() => navigate('/live-map')}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl shadow-blue-900/30 flex items-center space-x-2 transition-all cursor-pointer"
+            >
+              <Navigation size={15} />
+              <span>Launch Live Tactical Map</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* System Infrastructure Health & Governance Matrix */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-900/80 border border-slate-800/80 p-3.5 rounded-2xl">
+        <div className="flex items-center space-x-2.5 px-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+          <div className="text-xs">
+            <p className="font-bold text-white leading-tight">FastAPI Engine</p>
+            <p className="text-[10px] text-slate-400 font-mono">ONLINE • 18ms Latency</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2.5 px-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+          <div className="text-xs">
+            <p className="font-bold text-white leading-tight">Supabase PostgreSQL</p>
+            <p className="text-[10px] text-slate-400 font-mono">CONNECTED • RLS Enforced</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2.5 px-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+          <div className="text-xs">
+            <p className="font-bold text-white leading-tight">LIFELINE LoRa Mesh</p>
+            <p className="text-[10px] text-slate-400 font-mono">18/18 NODES SYNCHRONIZED</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2.5 px-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+          <div className="text-xs">
+            <p className="font-bold text-white leading-tight">Bharat Maps / NIC GIS</p>
+            <p className="text-[10px] text-slate-400 font-mono">SOVEREIGN PORTAL ACTIVE</p>
+          </div>
         </div>
       </div>
 

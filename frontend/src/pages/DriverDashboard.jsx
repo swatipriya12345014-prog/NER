@@ -39,7 +39,8 @@ import {
   Truck,
   Layers,
   RefreshCw,
-  GitFork
+  GitFork,
+  Snowflake
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { initiateSosCall, sendCallHeartbeat, endSosCall, EMERGENCY_CONTROLLER_PHONE, EMERGENCY_CONTROLLER_RAW } from '../services/sosService';
@@ -989,24 +990,36 @@ SDRF Dispatch Status: Connected`;
         </div>
       )}
 
-      {/* Driver Problem & Emergency Portal Header */}
-      <div className="bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-800/40 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center space-x-1">
-              <AlertOctagon size={12} className="animate-pulse" />
-              <span>DRIVER ASSISTANCE & PROBLEM RESOLUTION PORTAL</span>
+      {/* Driver Tactical Cockpit Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10">
+          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center space-x-1">
+              <Truck size={12} className="text-emerald-400" />
+              <span>Emergency Fleet Driver • Tactical Cockpit</span>
             </span>
             <span className="text-[10px] font-mono text-cyan-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-              VEHICLE: AS-01-EV-4421
+              VEHICLE: AS-01-EV-4421 (Highland Rapid Ambulance)
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight">
-            Field Driver Problem & Distress Portal
+          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight flex items-center gap-2">
+            Emergency Driver Navigation & Hazard Cockpit
           </h1>
           <p className="text-xs text-slate-400">
-            Assigned Pilot: <strong>Tenzing Norbu</strong> • Active Route: <strong>Guwahati Central ➔ Tawang Border Hospital (NH-13)</strong>
+            Assigned Pilot: <strong className="text-white">Tashi Namgyal</strong> • Corridor: <strong className="text-slate-200">Guwahati Central ➔ Tawang Border Center (NH-13)</strong>
           </p>
+          <div className="mt-2 flex items-center space-x-3 text-[11px] font-mono text-slate-300 flex-wrap gap-y-1">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <Fuel size={12} /> Fuel: 68.6% (48L)
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1 text-cyan-300">
+              <Snowflake size={12} /> Cold-Chain: -4.2°C (Optimal)
+            </span>
+            <span>•</span>
+            <span className="text-slate-400">GPS: 27.0142°N, 92.5645°E (Bhalukpong)</span>
+          </div>
         </div>
 
         <div className="flex flex-col space-y-2.5 w-full md:w-auto">

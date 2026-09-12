@@ -33,11 +33,11 @@ export const ROLE_CONFIG = {
       '/ai-assistant',
       '/settings',
     ],
-    // Driver cockpit & field officer portal belong strictly to their operational actors
+    // Dedicated cockpits belonging strictly to their operational actors
     forbiddenRoutes: [
+      '/manager-dashboard',
       '/driver-dashboard',
       '/field-officer',
-      '/manager-dashboard',
     ],
   },
   [ROLES.LOGISTICS_MANAGER]: {
@@ -83,8 +83,8 @@ export const ROLE_CONFIG = {
     ],
     forbiddenRoutes: [
       '/admin-dashboard',
-      '/driver-dashboard',
       '/manager-dashboard',
+      '/driver-dashboard',
       '/shipments',
       '/vehicles',
       '/mesh',
@@ -107,8 +107,8 @@ export const ROLE_CONFIG = {
     ],
     forbiddenRoutes: [
       '/admin-dashboard',
-      '/field-officer',
       '/manager-dashboard',
+      '/field-officer',
       '/shipments',
       '/vehicles',
       '/incidents',

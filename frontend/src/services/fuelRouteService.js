@@ -1120,20 +1120,51 @@ export function computeAIRouteOptimization(originHubId, destinationHubId, vehicl
   };
 }
 
-export async function fetchVehicles() {
+// ═════════════════════════════════════════════════════════════════
+// CLIENT-SIDE PERFORMANCE CACHE (TTL In-Memory Store)
+// Prevents duplicate HTTP requests and heavy corridor recalculations
+// ═════════════════════════════════════════════════════════════════
+const _CLIENT_CACHE = new Map();
+const VEHICLES_CACHE_TTL = 15000; // 15 seconds
+const ROUTES_CACHE_TTL = 30000;   // 30 seconds
+
+export async function fetchVehicles(forceRefresh = false) {
+  const cacheKey = 'fleet_vehicles';
+  const now = Date.now();
+  if (!forceRefresh && _CLIENT_CACHE.has(cacheKey)) {
+    const cached = _CLIENT_CACHE.get(cacheKey);
+    if (now - cached.timestamp < VEHICLES_CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
   try {
     const res = await fetch(`${API_BASE_URL}/api/vehicles`, { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data;
+      if (Array.isArray(data) && data.length > 0) {
+        _CLIENT_CACHE.set(cacheKey, { timestamp: now, data });
+        return data;
+      }
     }
   } catch {
     // Graceful offline fallback
   }
+
+  _CLIENT_CACHE.set(cacheKey, { timestamp: now, data: FALLBACK_FLEET_VEHICLES });
   return FALLBACK_FLEET_VEHICLES;
 }
 
 export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, simulatedFuel, simulatedConsumption) {
+  const cacheKey = `route_${originHubId}_${destinationHubId}_${vehicleId || 'none'}_${simulatedFuel || 0}_${simulatedConsumption || 0}`;
+  const now = Date.now();
+  if (_CLIENT_CACHE.has(cacheKey)) {
+    const cached = _CLIENT_CACHE.get(cacheKey);
+    if (now - cached.timestamp < ROUTES_CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
   const origin = REGIONAL_HUBS.find((h) => h.id === originHubId) || REGIONAL_HUBS[0];
   const dest = REGIONAL_HUBS.find((h) => h.id === destinationHubId) || REGIONAL_HUBS[2];
 
@@ -1147,6 +1178,7 @@ export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, 
       simulatedConsumption
     });
     if (googleResult && googleResult.is_real_google_route) {
+      _CLIENT_CACHE.set(cacheKey, { timestamp: now, data: googleResult });
       return googleResult;
     }
   } catch (gErr) {
@@ -1170,6 +1202,7 @@ export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, 
 
     if (res.ok) {
       const data = await res.json();
+      _CLIENT_CACHE.set(cacheKey, { timestamp: now, data });
       return data;
     }
   } catch {
@@ -1177,5 +1210,8 @@ export async function optimizeAIRoute(originHubId, destinationHubId, vehicleId, 
   }
 
   // 3. Embedded Authentic Highway Calculator
-  return computeAIRouteOptimization(originHubId, destinationHubId, vehicleId, simulatedFuel, simulatedConsumption);
+  const fallbackResult = computeAIRouteOptimization(originHubId, destinationHubId, vehicleId, simulatedFuel, simulatedConsumption);
+  _CLIENT_CACHE.set(cacheKey, { timestamp: now, data: fallbackResult });
+  return fallbackResult;
 }
+
