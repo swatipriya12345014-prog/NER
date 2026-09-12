@@ -3,32 +3,32 @@ import { User, Plus, X, Shield, ArrowRight } from 'lucide-react';
 
 const DEFAULT_ACCOUNTS = [
   {
-    name: 'Ramesh Kalita (Normal Driver)',
+    name: 'Ramesh Kalita (Commercial Fleet Operator)',
     email: 'ramesh.highway.driver@gmail.com',
     avatarBg: 'bg-emerald-600',
     initial: 'R',
-    roleTag: 'Commercial Driver',
+    roleTag: 'Commercial Freight Carrier',
   },
   {
-    name: 'Swati Priya',
+    name: 'Swati Priya (Directorate Controller)',
     email: 'swatipriya12345014@gmail.com',
     avatarBg: 'bg-teal-600',
     initial: 'S',
-    roleTag: 'Primary Account',
+    roleTag: 'Primary Executive Controller',
   },
   {
-    name: 'NER Field Operations',
+    name: 'NER Field Operations Directorate',
     email: 'operations.ner@gmail.com',
     avatarBg: 'bg-blue-600',
     initial: 'N',
-    roleTag: 'Field Operations',
+    roleTag: 'Tactical Reconnaissance Unit',
   },
   {
-    name: 'Dr. R. Sharma (Admin)',
+    name: 'Dr. R. Sharma (Director General)',
     email: 'admin.lifeline@gov.in',
     avatarBg: 'bg-purple-600',
     initial: 'R',
-    roleTag: 'Regional Directorate',
+    roleTag: 'Apex Directorate Authority',
   },
 ];
 
@@ -38,6 +38,24 @@ const GoogleAccountChooserModal = ({ isOpen, onClose, onSelectAccount, selectedR
   const [customEmail, setCustomEmail] = useState('');
 
   if (!isOpen) return null;
+
+  const getRoleDisplayName = (role) => {
+    switch (role) {
+      case 'driver':
+      case 'normal_driver':
+        return 'COMMERCIAL FLEET & HIGHWAY CARRIER';
+      case 'emergency_driver':
+        return 'CRITICAL RELIEF CONVOY PILOT';
+      case 'field_officer':
+        return 'DISASTER RECONNAISSANCE FIELD OFFICER';
+      case 'logistics_manager':
+        return 'REGIONAL LOGISTICS & DISPATCH DIRECTOR';
+      case 'admin':
+        return 'SOVEREIGN SYSTEM DIRECTORATE & APEX CONTROLLER';
+      default:
+        return (role?.replace('_', ' ') || 'ENTERPRISE MISSION ROLE').toUpperCase();
+    }
+  };
 
   const handleSelect = (account) => {
     onSelectAccount({
@@ -87,9 +105,9 @@ const GoogleAccountChooserModal = ({ isOpen, onClose, onSelectAccount, selectedR
               />
             </svg>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 leading-tight">Choose an account</h2>
+              <h2 className="text-xl font-bold text-gray-900 leading-tight">Select Authorized Identity</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                to continue to <span className="font-semibold text-blue-600">NER-LIFELINE</span>
+                to establish session credentials for <span className="font-semibold text-blue-600">NER-LIFELINE</span>
               </p>
             </div>
           </div>
@@ -106,12 +124,10 @@ const GoogleAccountChooserModal = ({ isOpen, onClose, onSelectAccount, selectedR
         <div className="px-6 py-2.5 bg-blue-50/60 border-b border-blue-100/70 flex items-center justify-between text-xs">
           <span className="text-gray-600 flex items-center space-x-1.5">
             <Shield size={13} className="text-blue-600" />
-            <span>Signing in as:</span>
+            <span>Authorizing Role:</span>
           </span>
           <span className="font-bold text-blue-700 uppercase tracking-wide">
-            {selectedRole === 'normal_driver'
-              ? 'NORMAL DRIVER (COMMERCIAL & HIGHWAY)'
-              : (selectedRole?.replace('_', ' ') || 'ADMIN')}
+            {getRoleDisplayName(selectedRole)}
           </span>
         </div>
 

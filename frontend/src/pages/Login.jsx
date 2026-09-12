@@ -45,9 +45,9 @@ const GoogleIcon = () => (
 
 const ADMIN_ROLE = {
   id: 'admin',
-  title: 'System Administrator & Sovereign Directorate',
-  subtitle: 'Central Command Authority • Full Zero-Trust Access Governance • LoRa Mesh Gateways',
-  badge: 'CENTRAL DIRECTORATE • FULL SYSTEM ACCESS',
+  title: 'Sovereign Directorate & Apex Administration',
+  subtitle: 'Apex Command Authority • Zero-Trust Access Governance • LoRa Mesh Telemetry Gateways',
+  badge: 'APEX GOVERNANCE • CENTRAL DIRECTORATE',
   icon: Shield,
   features: [
     'Zero-Trust RBAC Governance & Cryptographic Overrides',
@@ -55,17 +55,17 @@ const ADMIN_ROLE = {
     'MoRTH VAHAN & Supabase Dual-Engine Replication',
     'Sovereign Security Audit Logs & Emergency Dispatch'
   ],
-  actionTitle: 'Sign in as Administrator with Google',
+  actionTitle: 'Authenticate Administrator (Google SSO)',
   dashboardRoute: '/admin-dashboard',
-  targetPortal: 'Executive Directorate Command Center'
+  targetPortal: 'Apex Directorate Command Console'
 };
 
 const COMPACT_ROLE_CARDS = [
   {
     id: 'normal_driver',
-    title: 'Normal Driver',
-    subtitle: 'Commercial Freight, Trucks & Cabs',
-    badge: 'GOOGLE ONLY',
+    title: 'Commercial Fleet Operator',
+    subtitle: 'Interstate Freight, Heavy Cargo & Transit',
+    badge: 'COMMERCIAL SSO',
     accentColor: 'emerald',
     icon: Truck,
     gradient: 'from-emerald-950/40 via-slate-900 to-slate-950',
@@ -74,15 +74,15 @@ const COMPACT_ROLE_CARDS = [
     badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     headerIconColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
     glow: 'hover:shadow-[0_0_25px_rgba(16,185,129,0.18)]',
-    actionTitle: 'Sign in as Driver',
+    actionTitle: 'Authorize Fleet Operator',
     dashboardRoute: '/driver-dashboard',
-    targetPortal: 'Commercial Driver Cockpit'
+    targetPortal: 'Commercial Telemetry Terminal'
   },
   {
     id: 'emergency_driver',
-    title: 'Convoy Pilot',
-    subtitle: 'Oxygen Tankers & Medical 4x4',
-    badge: 'OFFICIAL CONVOY',
+    title: 'Critical Relief Convoy Pilot',
+    subtitle: 'Cryogenic Oxygen, Blood Plasma & Tactical 4x4',
+    badge: 'PRIORITY CONVOY',
     accentColor: 'teal',
     icon: Compass,
     gradient: 'from-teal-950/40 via-slate-900 to-slate-950',
@@ -91,15 +91,15 @@ const COMPACT_ROLE_CARDS = [
     badgeBg: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
     headerIconColor: 'text-teal-400 bg-teal-950/60 border-teal-700/50',
     glow: 'hover:shadow-[0_0_25px_rgba(20,184,166,0.18)]',
-    actionTitle: 'Sign in as Pilot',
+    actionTitle: 'Authorize Convoy Pilot',
     dashboardRoute: '/driver-dashboard',
-    targetPortal: 'Emergency Tactical Cockpit'
+    targetPortal: 'Tactical Convoy Cockpit'
   },
   {
     id: 'field_officer',
-    title: 'Field Officer',
-    subtitle: 'Landslides & Sinking Zones',
-    badge: 'GROUND COMMAND',
+    title: 'Disaster Reconnaissance Officer',
+    subtitle: 'Geological Hazard & Sinking Zone Assessment',
+    badge: 'TACTICAL RECON',
     accentColor: 'amber',
     icon: Users,
     gradient: 'from-amber-950/40 via-slate-900 to-slate-950',
@@ -108,15 +108,15 @@ const COMPACT_ROLE_CARDS = [
     badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     headerIconColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
     glow: 'hover:shadow-[0_0_25px_rgba(245,158,11,0.18)]',
-    actionTitle: 'Sign in as Officer',
+    actionTitle: 'Authorize Recon Officer',
     dashboardRoute: '/field-officer',
-    targetPortal: 'Field Ground Command'
+    targetPortal: 'Ground Assessment Terminal'
   },
   {
     id: 'logistics_manager',
-    title: 'Logistics Manager',
-    subtitle: 'Regional Depots & Supply Chains',
-    badge: 'HQ DISPATCH',
+    title: 'Regional Logistics Director',
+    subtitle: 'Strategic Depots & Interstate Allocations',
+    badge: 'CENTRAL DISPATCH',
     accentColor: 'cyan',
     icon: Building,
     gradient: 'from-cyan-950/40 via-slate-900 to-slate-950',
@@ -125,9 +125,9 @@ const COMPACT_ROLE_CARDS = [
     badgeBg: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
     headerIconColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
     glow: 'hover:shadow-[0_0_25px_rgba(6,182,212,0.18)]',
-    actionTitle: 'Sign in as Manager',
+    actionTitle: 'Authorize Logistics Director',
     dashboardRoute: '/manager-dashboard',
-    targetPortal: 'HQ Logistics Command'
+    targetPortal: 'Supply Chain Command Terminal'
   }
 ];
 
@@ -312,17 +312,17 @@ const Login = () => {
       <div className="w-full max-w-6xl mx-auto text-center mb-6">
         <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-950/80 border border-blue-600/40 text-blue-300 text-xs font-bold tracking-widest uppercase shadow-inner mb-3">
           <Activity size={14} className="animate-pulse text-blue-400" />
-          <span>Government of India • Ministry of Road Transport & Highways & NDMA</span>
+          <span>GOVERNMENT OF INDIA • MINISTRY OF ROAD TRANSPORT & HIGHWAYS • NDMA</span>
         </div>
         
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-md">
           NER-LIFELINE
         </h1>
         <p className="mt-1 text-sm sm:text-base font-semibold text-blue-300 max-w-2xl mx-auto">
-          AI-Powered Smart Logistics & Emergency Route Navigation System
+          Autonomous Resilient Logistics & High-Risk Mountain Route Navigation Infrastructure
         </p>
         <p className="mt-1 text-xs text-slate-400 max-w-xl mx-auto">
-          Dedicated, role-isolated operational access for emergency crews across Assam, Arunachal Pradesh, Meghalaya, Sikkim, Nagaland, Manipur, Mizoram & Tripura.
+          Sovereign Multi-Agency Mission Console for Emergency Logistics, Terrain Vulnerability Assessment, and Inter-State Convoy Coordination across the North Eastern Region.
         </p>
       </div>
 
@@ -332,7 +332,7 @@ const Login = () => {
           <div className="flex items-start space-x-2.5">
             <AlertCircle size={18} className="flex-shrink-0 text-red-400 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold text-red-300">Authentication Alert</p>
+              <p className="font-bold text-red-300">Identity Provider & Authentication Exception</p>
               <p className="text-slate-300 mt-0.5 leading-relaxed">{errorMsg || authError}</p>
             </div>
           </div>
@@ -342,7 +342,7 @@ const Login = () => {
             className="w-full flex items-center justify-center space-x-2 py-2 px-4 bg-red-900/60 hover:bg-red-800 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer border border-red-700/60"
           >
             <UserCheck size={14} />
-            <span>Open Google Account Selector Directly for {selectedRole.toUpperCase().replace('_', ' ')}</span>
+            <span>Open Enterprise Directory (IdP) for {selectedRole.toUpperCase().replace('_', ' ')}</span>
           </button>
         </div>
       )}
@@ -363,37 +363,37 @@ const Login = () => {
                 <div className="flex flex-wrap items-center gap-2 mb-2.5">
                   <span className="text-[11px] font-black px-3.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white tracking-widest uppercase shadow-md flex items-center space-x-1.5">
                     <Sparkles size={13} className="text-yellow-300" />
-                    <span>PRIMARY ACCESS • SYSTEM ADMINISTRATOR</span>
+                    <span>APEX GOVERNANCE • CENTRAL DIRECTORATE</span>
                   </span>
                   <span className="text-xs text-purple-300 font-semibold flex items-center space-x-1">
-                    <span>Sovereign Directorate & Full System Authority</span>
+                    <span>Sovereign Directorate & Strategic Command Authority</span>
                   </span>
                 </div>
 
                 <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  System Administrator Command Portal
+                  Sovereign Directorate & Apex Command Console
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-                  Central sovereign governance console for North Eastern disaster logistics: oversee full-spectrum emergency fleet dispatches, zero-trust RBAC permissions, live LoRa mesh hardware telemetry, Supabase database replication, and cryptographic security overrides.
+                  Supreme administrative authority for North Eastern emergency logistics infrastructure: orchestrate multi-jurisdictional fleet dispatches, enforce zero-trust RBAC protocols, monitor resilient LoRa hardware mesh telemetry, supervise MoRTH VAHAN & Supabase replication, and audit cryptographic security registers.
                 </p>
 
                 {/* Key Admin Capability Badges */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 text-xs text-slate-200">
                   <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
                     <Shield size={14} className="text-purple-400 flex-shrink-0" />
-                    <span className="font-semibold truncate">Zero-Trust RBAC</span>
+                    <span className="font-semibold truncate">Zero-Trust RBAC Policy</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
                     <Radio size={14} className="text-cyan-400 flex-shrink-0" />
-                    <span className="font-semibold truncate">LoRa Mesh Control</span>
+                    <span className="font-semibold truncate">Resilient LoRa Gateways</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
                     <Activity size={14} className="text-emerald-400 flex-shrink-0" />
-                    <span className="font-semibold truncate">VAHAN & Supabase</span>
+                    <span className="font-semibold truncate">VAHAN & Supabase Sync</span>
                   </div>
                   <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
                     <Key size={14} className="text-amber-400 flex-shrink-0" />
-                    <span className="font-semibold truncate">Sovereign Crypto</span>
+                    <span className="font-semibold truncate">Cryptographic Registry</span>
                   </div>
                 </div>
               </div>
@@ -410,7 +410,7 @@ const Login = () => {
                 {submittingRole === ADMIN_ROLE.id ? (
                   <div className="flex items-center space-x-2 py-0.5">
                     <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                    <span>Authorizing Administrator...</span>
+                    <span>Authorizing Apex Directorate...</span>
                   </div>
                 ) : (
                   <>
@@ -422,7 +422,7 @@ const Login = () => {
               </button>
 
               <span className="text-xs text-purple-300/90 font-medium text-center lg:text-right">
-                Instant 1-Tap Google Login • Opens Sovereign Admin Directorate
+                Instant Enterprise SSO • Establishes Sovereign Directorate Session
               </span>
             </div>
           </div>
@@ -434,7 +434,7 @@ const Login = () => {
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-400">
             <Radio size={13} className="text-blue-400 animate-pulse" />
-            <span>Field Operations, Convoy Pilots & Civilian Drivers (Quick Google Access)</span>
+            <span>Tactical Field Reconnaissance, Relief Convoys & Commercial Terminals</span>
           </div>
           <button
             type="button"
@@ -442,7 +442,7 @@ const Login = () => {
             className="text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted cursor-pointer flex items-center space-x-1"
           >
             <UserCheck size={12} />
-            <span>Authorized Accounts</span>
+            <span>Enterprise Identity Directory (IdP)</span>
           </button>
         </div>
 
@@ -486,7 +486,7 @@ const Login = () => {
                     {isCurrentSubmitting ? (
                       <div className="w-full flex items-center justify-center space-x-1.5 py-0.5">
                         <div className="w-3 h-3 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-[11px] font-bold text-slate-800">Signing in...</span>
+                        <span className="text-[11px] font-bold text-slate-800">Authenticating...</span>
                       </div>
                     ) : (
                       <>
@@ -521,15 +521,15 @@ const Login = () => {
               <Lock size={15} className="text-blue-400" />
               <div>
                 <p className="text-xs font-bold text-slate-200">
-                  Departmental Credentials Login (.gov.in)
+                  National Informatics Centre (NIC) / Departmental Directory (.gov.in)
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  For officers authenticating via official emergency service email & security password
+                  For commissioned officers authenticating via Gov-Domain Enterprise LDAP Directory
                 </p>
               </div>
             </div>
             <div className="text-slate-400 flex items-center space-x-1 text-xs">
-              <span>{showEmailForm ? 'Hide Form' : 'Show Form'}</span>
+              <span>{showEmailForm ? 'Hide Directory Form' : 'Expand Directory Form'}</span>
               {showEmailForm ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </div>
           </button>
@@ -540,23 +540,23 @@ const Login = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Assigned Role
+                      Assigned Mission Designation
                     </label>
                     <select
                       value={selectedRole}
                       onChange={(e) => setSelectedRole(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
                     >
-                      <option value="driver">Emergency Driver (Convoy Pilot)</option>
-                      <option value="field_officer">Disaster Response Field Officer</option>
-                      <option value="logistics_manager">Emergency Logistics Manager</option>
-                      <option value="admin">System & Security Administrator</option>
+                      <option value="driver">Critical Relief Convoy Pilot</option>
+                      <option value="field_officer">Disaster Reconnaissance Field Officer</option>
+                      <option value="logistics_manager">Regional Emergency Logistics Director</option>
+                      <option value="admin">Sovereign Directorate System Administrator</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Official Email Address
+                      Official Enterprise Email (.gov.in)
                     </label>
                     <div className="relative">
                       <Mail size={14} className="absolute left-3 top-2.5 text-slate-400" />
@@ -574,7 +574,7 @@ const Login = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Security Key / Password
+                    Cryptographic Passphrase / Security Token
                   </label>
                   <div className="relative">
                     <Key size={14} className="absolute left-3 top-2.5 text-slate-400" />
@@ -591,14 +591,14 @@ const Login = () => {
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-[11px] text-slate-400">
-                    Direct access to {getDashboardRoute(selectedRole)}
+                    Direct routing to {getDashboardRoute(selectedRole)}
                   </span>
                   <button
                     type="submit"
                     disabled={isSubmittingEmail}
                     className="py-2.5 px-5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
                   >
-                    {isSubmittingEmail ? 'Authenticating...' : `Authorize as ${selectedRole.toUpperCase().replace('_', ' ')}`}
+                    {isSubmittingEmail ? 'Authenticating...' : `Authorize Session as ${selectedRole.toUpperCase().replace('_', ' ')}`}
                   </button>
                 </div>
               </form>
