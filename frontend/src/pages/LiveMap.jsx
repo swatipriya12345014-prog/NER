@@ -627,10 +627,10 @@ const LiveMap = () => {
         is_real_google_route: true,
         provider: 'NER-LIFELINE AI Alternate Detour Engine',
         ai_recommendation: {
-          recommended_route_code: 'Road Z (Bypass)',
-          safest_road: 'Road Z (Alternate Bypass)',
-          headline: `AI DETOUR ACTIVE: DIVERSION VIA ${blockage?.diversion_corridor || 'VALLEY BYPASS'}`,
-          rationale: `Primary corridor is closed due to ${blockage?.reason || 'active blockage'}. Convoy has been successfully rerouted onto the fortified valley bypass, avoiding 6-hour roadblock.`
+          recommended_route_code: altRoute.route_code || 'Strategic Valley Bypass',
+          safest_road: altRoute.route_code || 'Strategic Valley Bypass',
+          headline: `AI DETOUR ACTIVE: DIVERSION VIA ${altRoute.route_code || blockage?.diversion_corridor || 'VALLEY BYPASS'}`,
+          rationale: `Primary corridor is closed due to ${blockage?.reason || 'active blockage'}. Convoy has been successfully rerouted onto ${altRoute.route_code || 'the fortified valley bypass'}, avoiding 6-hour roadblock.`
         }
       });
     }
@@ -1837,7 +1837,7 @@ const LiveMap = () => {
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Route Selector on map header (Road X, Road Y, Road Z) */}
+              {/* Route Selector on map header (Authentic Highway Corridors) */}
               {filterLayer.routes && routeResult && (
                 <div className="flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-700 text-[11px] shadow-md backdrop-blur-sm">
                   <button
@@ -1856,29 +1856,29 @@ const LiveMap = () => {
                         ? 'bg-emerald-600 text-white shadow-[0_0_12px_#10b981] ring-1 ring-emerald-300'
                         : 'text-emerald-400 hover:text-emerald-200 hover:bg-emerald-950/50'
                     }`}
-                    title="Road X: Safest all-weather contour (No landslides)"
+                    title={`${routeResult.safest_route?.route_code || 'Safest Highway'}: All-weather fortified contour (No landslides)`}
                   >
                     <Shield size={12} className={activeRouteView === 'safest' ? 'animate-pulse text-white' : 'text-emerald-400'} />
-                    <span>🟢 Road X (Safest)</span>
+                    <span>🟢 {routeResult.safest_route?.route_code ? `${routeResult.safest_route.route_code.split('/')[0].split(':')[0].trim()} (Safest)` : 'Safest Highway'}</span>
                   </button>
                   <button
                     onClick={() => setActiveRouteView('shortest')}
                     className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                       activeRouteView === 'shortest' ? 'bg-rose-600 text-white shadow' : 'text-rose-400 hover:text-rose-300'
                     }`}
-                    title="Road Y: Direct mountain pass (⚠️ Active Landslide Hazard)"
+                    title={`${routeResult.shortest_route?.route_code || 'Direct Mountain Pass'}: Direct mountain pass (⚠️ Active Landslide Hazard)`}
                   >
                     <AlertTriangle size={12} />
-                    <span>🔴 Road Y (Landslide)</span>
+                    <span>🔴 {routeResult.shortest_route?.route_code ? `${routeResult.shortest_route.route_code.split('/')[0].split(':')[0].trim()} (Landslide)` : 'Direct Pass'}</span>
                   </button>
                   <button
                     onClick={() => setActiveRouteView('bypass')}
                     className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer flex items-center space-x-1 ${
                       activeRouteView === 'bypass' ? 'bg-cyan-600 text-white shadow' : 'text-cyan-400 hover:text-cyan-300'
                     }`}
-                    title="Road Z: Valley Ridge Strategic Bypass"
+                    title={`${routeResult.bypass_route?.route_code || 'Strategic Bypass'}: Strategic Valley Bypass`}
                   >
-                    <span>🔵 Road Z (Bypass)</span>
+                    <span>🔵 {routeResult.bypass_route?.route_code ? `${routeResult.bypass_route.route_code.split('/')[0].split(':')[0].trim()} (Bypass)` : 'Strategic Bypass'}</span>
                   </button>
                 </div>
               )}
@@ -2864,7 +2864,10 @@ const LiveMap = () => {
                       return;
                     }
                     window.speechSynthesis.cancel();
-                    const text = `NER AI Route Assessment from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Caution: Road Y is affected by active landslides and rockfall hazards. Road X is recommended as the safest all-weather route, spanning ${routeResult.safest_route?.distance_km} kilometers with estimated travel time of ${routeResult.safest_route?.duration_text}. Road Z is also available as a valley bypass corridor.`;
+                    const safestName = routeResult.safest_route?.route_code || 'the primary all-weather highway';
+                    const hazardName = routeResult.shortest_route?.route_code || 'the direct mountain pass';
+                    const bypassName = routeResult.bypass_route?.route_code || 'the strategic valley bypass';
+                    const text = `NER AI Route Assessment from ${routeResult.origin?.name} to ${routeResult.destination?.name}. Caution: ${hazardName} is affected by active landslides and rockfall hazards. ${safestName} is recommended as the safest all-weather corridor, spanning ${routeResult.safest_route?.distance_km} kilometers with estimated travel time of ${routeResult.safest_route?.duration_text}. ${bypassName} is also available as a valley bypass corridor.`;
                     const utter = new SpeechSynthesisUtterance(text);
                     window.speechSynthesis.speak(utter);
                   }
@@ -3126,7 +3129,7 @@ const LiveMap = () => {
                   </span>
                 </div>
 
-                {/* 1. Road X: Safest Route Card (AI Pick) */}
+                {/* 1. Safest Route Card (AI Pick) */}
                 <div
                   onClick={() => {
                     setActiveRouteView('safest');
@@ -3151,9 +3154,13 @@ const LiveMap = () => {
                       <div>
                         <div className="flex items-center space-x-1.5">
                           <Shield size={14} className="text-emerald-400" />
-                          <span className="font-extrabold text-emerald-300 text-sm tracking-wide">Road X • Safest Corridor</span>
+                          <span className="font-extrabold text-emerald-300 text-sm tracking-wide">
+                            {routeResult.safest_route?.route_code || 'All-Weather Corridor'} • Safest
+                          </span>
                         </div>
-                        <span className="text-[10px] text-emerald-400/90 font-bold block">★ AI Top Recommendation (All-Weather Fortified)</span>
+                        <span className="text-[10px] text-emerald-400/90 font-bold block">
+                          ★ AI Top Recommendation ({routeResult.safest_route?.title || 'Fortified Highway'})
+                        </span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
@@ -3162,7 +3169,7 @@ const LiveMap = () => {
                   </div>
 
                   <p className="text-[11px] text-emerald-200/80 leading-relaxed relative z-10 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/40">
-                    Reinforced all-weather alignment. Bypasses all active landslide & debris flow zones completely. High bridge structural clearance.
+                    {routeResult.safest_route?.reasoning || 'Reinforced all-weather alignment. Bypasses all active landslide & debris flow zones completely. High bridge structural clearance.'}
                   </p>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs relative z-10">
@@ -3197,7 +3204,7 @@ const LiveMap = () => {
                   </div>
                 </div>
 
-                {/* 2. Road Y: Direct Highway Card (⚠️ LANDSLIDE AFFECTED) */}
+                {/* 2. Direct Highway Card (⚠️ LANDSLIDE AFFECTED) */}
                 <div
                   onClick={() => {
                     setActiveRouteView('shortest');
@@ -3215,8 +3222,12 @@ const LiveMap = () => {
                     <div className="flex items-center space-x-2">
                       <span className="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-pulse"></span>
                       <div>
-                        <span className="font-extrabold text-rose-300 text-sm">Road Y • Direct Highway</span>
-                        <span className="text-[10px] text-rose-400 block font-semibold">Direct Mountain Pass (Shortest km)</span>
+                        <span className="font-extrabold text-rose-300 text-sm">
+                          {routeResult.shortest_route?.route_code || 'Direct Highway'} • Mountain Ridge
+                        </span>
+                        <span className="text-[10px] text-rose-400 block font-semibold">
+                          {routeResult.shortest_route?.title || 'Direct Mountain Pass (Shortest km)'}
+                        </span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/20 text-rose-300 border border-rose-500/50">
@@ -3230,7 +3241,8 @@ const LiveMap = () => {
                     <div>
                       <span className="font-black text-rose-100 block">⚠️ ACTIVE LANDSLIDE & DEBRIS HAZARD</span>
                       <span className="text-[11px] text-rose-300 leading-snug">
-                        Active slope failure reported. Road Y is blocked/impassable due to mudflow & boulder slips. Border Roads Organisation (BRO) clearance in progress. <strong>AI diverted to Road X.</strong>
+                        {routeResult.shortest_route?.hazard_alert || 'Active slope failure reported. Roadway is obstructed by mudflow and boulder slips.'}{' '}
+                        <strong>AI diverted to {routeResult.safest_route?.route_code || 'the all-weather corridor'}.</strong>
                       </span>
                     </div>
                   </div>
@@ -3260,7 +3272,7 @@ const LiveMap = () => {
                   </div>
                 </div>
 
-                {/* 3. Road Z: Valley Ridge Strategic Bypass Card (Alternate Route) */}
+                {/* 3. Valley Ridge Strategic Bypass Card (Alternate Route) */}
                 <div
                   onClick={() => {
                     setActiveRouteView('bypass');
@@ -3278,8 +3290,12 @@ const LiveMap = () => {
                     <div className="flex items-center space-x-2">
                       <span className="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]"></span>
                       <div>
-                        <span className="font-extrabold text-cyan-300 text-sm">Road Z • Valley Ridge Bypass</span>
-                        <span className="text-[10px] text-cyan-400/80 block font-semibold">Strategic Secondary Contour (Alternate)</span>
+                        <span className="font-extrabold text-cyan-300 text-sm">
+                          {routeResult.bypass_route?.route_code || 'Valley Bypass'} • Strategic Bypass
+                        </span>
+                        <span className="text-[10px] text-cyan-400/80 block font-semibold">
+                          {routeResult.bypass_route?.title || 'Strategic Secondary Contour (Alternate)'}
+                        </span>
                       </div>
                     </div>
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
@@ -3288,7 +3304,7 @@ const LiveMap = () => {
                   </div>
 
                   <p className="text-[11px] text-cyan-200/80 leading-relaxed bg-cyan-950/40 p-2 rounded-lg border border-cyan-800/40">
-                    Secondary valley bypass corridor. Loops completely around the mountain slope affected by landslides. Passable for heavy relief vehicles.
+                    {routeResult.bypass_route?.reasoning || 'Secondary valley bypass corridor. Loops completely around the mountain slope affected by landslides. Passable for heavy relief vehicles.'}
                   </p>
 
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -3429,7 +3445,7 @@ const LiveMap = () => {
                           </span>
                         </div>
                         <span className="text-[10px] text-blue-400 font-mono font-bold bg-blue-950/60 px-2 py-0.5 rounded border border-blue-500/30">
-                          {activeRouteView === 'shortest' ? 'Road Y (Direct)' : activeRouteView === 'bypass' ? 'Road Z (Bypass)' : 'Road X (Safest)'}
+                          {activeRouteView === 'shortest' ? `${routeResult.shortest_route?.route_code || 'Direct Pass'} (Direct)` : activeRouteView === 'bypass' ? `${routeResult.bypass_route?.route_code || 'Valley Bypass'} (Bypass)` : `${routeResult.safest_route?.route_code || 'All-Weather Corridor'} (Safest)`}
                         </span>
                       </div>
 

@@ -983,10 +983,11 @@ export default function GoogleMapView({
       if (coords && coords.length > 1) {
         let stepIdx = 0;
         const truckCallsign = selectedVehicleId || 'AS-01-EV-4421';
+        const corridorTitle = routeResult.safest_route?.route_code || 'All-Weather Corridor';
         const transitMarker = new window.google.maps.Marker({
           position: { lat: coords[0][0], lng: coords[0][1] },
           map: map,
-          title: `🚚 ${truckCallsign} • IN TRANSIT (Road X)`,
+          title: `🚚 ${truckCallsign} • IN TRANSIT (${corridorTitle})`,
           icon: {
             url: createTransitTruckSvg(truckCallsign, 54),
             scaledSize: new window.google.maps.Size(46, 46),
@@ -1005,7 +1006,7 @@ export default function GoogleMapView({
                   <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">IN TRANSIT</span>
                 </div>
                 <div style="margin-top: 6px; font-size: 11px; color: #475569;">
-                  <div>Corridor: <strong>Road X (Safest Highway)</strong></div>
+                  <div>Corridor: <strong>${corridorTitle}</strong></div>
                   <div>Live Speed: <strong>54 km/h (In Transit)</strong></div>
                   <div>ETA: <strong>${routeResult.safest_route?.duration_text || '3.5 hours'}</strong></div>
                   <div>Cargo: <strong>Essential Disaster Relief & Medical Supplies</strong></div>
@@ -1160,8 +1161,7 @@ export default function GoogleMapView({
     if (!routeResult) return;
     const destName = routeResult.destination?.name || 'Destination';
     const dist = routeResult.distance?.text || `${routeResult.safest_route?.distance_km || 140} km`;
-    const dur = routeResult.duration?.text || routeResult.safest_route?.duration_text || `${routeResult.safest_route?.eta_hours || 3.5} hours`;
-    const verdict = routeResult.ai_recommendation?.safety_verdict || 'Safest Highway (Road X) recommended.';
+    const verdict = routeResult.ai_recommendation?.safety_verdict || `${routeResult.safest_route?.route_code || 'All-Weather Highway'} recommended as the safest route.`;
     speakText(`Route Guidance to ${destName}. Distance: ${dist}. Estimated drive time: ${dur}. Safety verdict: ${verdict}`);
   };
 
@@ -1388,54 +1388,54 @@ export default function GoogleMapView({
             </div>
           </div>
 
-          {/* 3 Road Options Filter */}
+          {/* 3 Authentic Road Options Filter */}
           <div className="space-y-1 text-[10px] pt-1 border-t border-slate-800/80">
-            {/* Road X */}
+            {/* Safest Highway */}
             <button
-              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-x' ? 'all' : 'road-x')}
+              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-x' || activeRoadFilter === 'safest' ? 'all' : 'safest')}
               className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
                 activeRoadFilter === 'road-x' || activeRoadFilter === 'safest'
                   ? 'bg-emerald-900/60 border-emerald-400 ring-1 ring-emerald-400 text-white'
                   : 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200 hover:border-emerald-400'
               }`}
             >
-              <div className="flex items-center space-x-1.5 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>Road X: Safest Highway</span>
+              <div className="flex items-center space-x-1.5 font-bold truncate max-w-[170px]">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+                <span className="truncate">{routeResult.safest_route?.route_code || 'Safest Highway'}</span>
               </div>
-              <span className="font-mono text-emerald-400 font-extrabold">Risk 18 (LOW)</span>
+              <span className="font-mono text-emerald-400 font-extrabold flex-shrink-0">Risk {routeResult.safest_route?.risk_score ?? 18} (LOW)</span>
             </button>
 
-            {/* Road Y */}
+            {/* Direct Mountain Pass */}
             <button
-              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-y' ? 'all' : 'road-y')}
+              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-y' || activeRoadFilter === 'direct' || activeRoadFilter === 'shortest' ? 'all' : 'direct')}
               className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
-                activeRoadFilter === 'road-y' || activeRoadFilter === 'direct'
+                activeRoadFilter === 'road-y' || activeRoadFilter === 'direct' || activeRoadFilter === 'shortest'
                   ? 'bg-rose-900/60 border-rose-400 ring-1 ring-rose-400 text-white'
                   : 'bg-rose-950/40 border-rose-500/30 text-rose-200 hover:border-rose-400'
               }`}
             >
-              <div className="flex items-center space-x-1.5 font-bold">
-                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                <span>Road Y: Direct Mountain</span>
+              <div className="flex items-center space-x-1.5 font-bold truncate max-w-[170px]">
+                <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></span>
+                <span className="truncate">{routeResult.shortest_route?.route_code || 'Direct Mountain Pass'}</span>
               </div>
-              <span className="font-mono text-rose-400 font-extrabold">Risk 74 (HIGH)</span>
+              <span className="font-mono text-rose-400 font-extrabold flex-shrink-0">Risk {routeResult.shortest_route?.risk_score ?? 88} (HIGH)</span>
             </button>
 
-            {/* Road Z */}
+            {/* Strategic Bypass */}
             <button
-              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-z' ? 'all' : 'road-z')}
+              onClick={() => setActiveRoadFilter(activeRoadFilter === 'road-z' || activeRoadFilter === 'bypass' ? 'all' : 'bypass')}
               className={`w-full flex items-center justify-between p-1.5 rounded border transition-all cursor-pointer ${
                 activeRoadFilter === 'road-z' || activeRoadFilter === 'bypass'
                   ? 'bg-cyan-900/60 border-cyan-400 ring-1 ring-cyan-400 text-white'
                   : 'bg-cyan-950/40 border-cyan-500/30 text-cyan-200 hover:border-cyan-400'
               }`}
             >
-              <div className="flex items-center space-x-1.5 font-bold">
-                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                <span>Road Z: Strategic Bypass</span>
+              <div className="flex items-center space-x-1.5 font-bold truncate max-w-[170px]">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0"></span>
+                <span className="truncate">{routeResult.bypass_route?.route_code || 'Strategic Bypass'}</span>
               </div>
-              <span className="font-mono text-cyan-400 font-extrabold">Risk 22 (PASSABLE)</span>
+              <span className="font-mono text-cyan-400 font-extrabold flex-shrink-0">Risk {routeResult.bypass_route?.risk_score ?? 36} (PASSABLE)</span>
             </button>
           </div>
         </div>

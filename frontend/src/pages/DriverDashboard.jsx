@@ -119,14 +119,14 @@ export default function DriverDashboard() {
   const [activeProblems, setActiveProblems] = useState([
     {
       id: 'PRB-NER-8091',
-      title: 'Active Landslide & Rockfall on Road Y',
+      title: 'Active Landslide on Old Bhalukpong Ghat Road',
       type: 'LANDSLIDE',
-      location: 'NH-13 Km 42 (Bhalukpong Pass)',
+      location: 'NH-13 Km 42 (Bhalukpong Mountain Pass)',
       gps: '27.0124°N, 92.5638°E',
       severity: 'CRITICAL',
       status: 'BRO Excavator Active',
       statusColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-      action: 'Divert to Road X (Safest Highway via NH-27)',
+      action: 'Divert to NH-13 BCT Fortified Corridor (via Sela Tunnel Contour)',
       reportedAt: '12 mins ago',
       etaResolution: '45 mins'
     },
@@ -260,7 +260,7 @@ export default function DriverDashboard() {
       stopSpeech();
       return;
     }
-    const text = `High priority driver advisory: Active landslide reported 4.2 kilometers ahead on National Highway 13 near Bhalukpong Pass. Road Y is completely blocked. Recommended AI action: Divert immediately to Road X via the NH-27 southern contour. Road X is fortified and clear of all hazards. Sela Pass BRO Camp 142 is 6.2 kilometers away with emergency diesel, recovery crane, and mechanic assistance.`;
+    const text = `High priority driver advisory: Active landslide reported 4.2 kilometers ahead on National Highway 13 near Bhalukpong Pass. The direct mountain pass is completely blocked. Recommended AI action: Divert immediately to the NH-13 BCT Fortified Corridor via the southern all-weather contour. The highway is fortified and clear of all hazards. Sela Pass BRO Camp 142 is 6.2 kilometers away with emergency diesel, recovery crane, and mechanic assistance.`;
     speakText(text);
   };
 
@@ -269,8 +269,8 @@ export default function DriverDashboard() {
 Vehicle: AS-01-EV-4421 (Highland 4x4 Ambulance)
 Pilot: Tenzing Norbu | Phone: +91 94351 99201
 Current Corridor: Guwahati Central ➔ Tawang District Hospital (NH-13)
-Active Obstruction: Road Y Landslide Km 42 (Impassable)
-Active AI Resolution: Divert via Road X (NH-27 Fortified Valley Contour)
+Active Obstruction: Old Bhalukpong Mountain Pass Landslide Km 42 (Impassable)
+Active AI Resolution: Divert via NH-13 BCT Fortified Valley Corridor (via Sela Tunnel)
 Emergency Mesh Channel: LoRa Mesh Ch 1 / VHF 146.2 MHz
 Nearest BRO Refuge: Camp 142 Bhalukpong (6.2 km)
 SDRF Dispatch Status: Connected`;
@@ -643,7 +643,7 @@ SDRF Dispatch Status: Connected`;
               </div>
               <div className="grid grid-cols-3 gap-1.5 text-[10px]">
                 <button
-                  onClick={() => handleQuickReportCall('Reported: 40m mud & boulder collapse blocking Road Y. Light rain falling.')}
+                  onClick={() => handleQuickReportCall('Reported: 40m mud & boulder collapse blocking Old Mountain Pass. Light rain falling.')}
                   className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-left border border-slate-700 cursor-pointer"
                 >
                   🪨 Report Boulder Size
@@ -1139,7 +1139,7 @@ SDRF Dispatch Status: Connected`;
                 <span className="text-xs text-rose-300 font-mono font-bold">NH-13 Km 42 (Near Bhalukpong)</span>
               </div>
               <h2 className="text-lg sm:text-xl font-black text-white mt-0.5">
-                Active Landslide on Road Y — Mountain Pass Impassable
+                Active Landslide on Old Bhalukpong Pass — Impassable
               </h2>
             </div>
           </div>
@@ -1160,7 +1160,7 @@ SDRF Dispatch Status: Connected`;
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
               A 40-meter stretch of the hillside collapsed onto the pavement following monsoon downpours. 
-              Multiple vehicles are turned back. Road Y (direct pass) has a <strong>Risk Score of 74/100</strong>. Do NOT proceed past Forest Checkpost Km 38.
+              Multiple vehicles are turned back. The direct mountain pass has a <strong>Risk Score of 74/100</strong>. Do NOT proceed past Forest Checkpost Km 38.
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-400">
               <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300">
@@ -1176,10 +1176,10 @@ SDRF Dispatch Status: Connected`;
             <div>
               <div className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center space-x-1.5">
                 <CheckCircle2 size={14} />
-                <span>AI Divert Solution: Road X</span>
+                <span>AI Divert Solution: NH-13 Fortified Artery</span>
               </div>
               <p className="text-xs text-emerald-200/90 mt-1 leading-relaxed">
-                Divert immediately onto <strong>Road X (Safest Highway via NH-27 Contour)</strong>. All-weather fortified roadway with zero landslides reported.
+                Divert immediately onto <strong>NH-13 BCT Fortified Highway (via Sela Tunnel Contour)</strong>. All-weather engineered roadway with zero active landslides reported.
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center text-[10px]">
                 <div className="p-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-lg">
@@ -1206,7 +1206,7 @@ SDRF Dispatch Status: Connected`;
                 className="w-full sm:flex-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center justify-center space-x-1.5 cursor-pointer transition-all"
               >
                 <Navigation size={13} />
-                <span>Navigate Road X</span>
+                <span>Navigate NH-13 Fortified</span>
               </button>
               <button
                 onClick={() => {
