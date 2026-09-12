@@ -231,6 +231,7 @@ export default function GoogleMapView({
   onMapError = null,
   onSetOrigin = null,
   onSetDestination = null,
+  trackedBreadcrumbs = [],
   heightClass = 'h-[640px]'
 }) {
   const mapContainerRef = useRef(null);
@@ -243,6 +244,7 @@ export default function GoogleMapView({
   const incidentMarkersMapRef = useRef(new Map());
   const roadPolylinesRef = useRef({ safest: null, shortest: null, bypass: null, flowInterval: null });
   const operationalOverlaysRef = useRef({ blocked: [], risky: [], riskZones: [] });
+  const trackedBreadcrumbPolylineRef = useRef(null);
   const locationMarkerRef = useRef(null);
   const locationAccuracyCircleRef = useRef(null);
   const watchIdRef = useRef(null);
@@ -478,6 +480,34 @@ export default function GoogleMapView({
       }
     }
   }, [center?.lat, center?.lng, zoom]);
+
+  // Render live real-time breadcrumbs trail for tracked vehicle
+  useEffect(() => {
+    if (!mapInstanceRef.current || !window.google?.maps) return;
+
+    if (!trackedBreadcrumbs || trackedBreadcrumbs.length < 2) {
+      if (trackedBreadcrumbPolylineRef.current) {
+        trackedBreadcrumbPolylineRef.current.setMap(null);
+        trackedBreadcrumbPolylineRef.current = null;
+      }
+      return;
+    }
+
+    const path = trackedBreadcrumbs.map((pt) => ({ lat: pt.lat, lng: pt.lng }));
+
+    if (trackedBreadcrumbPolylineRef.current) {
+      trackedBreadcrumbPolylineRef.current.setPath(path);
+    } else {
+      trackedBreadcrumbPolylineRef.current = new window.google.maps.Polyline({
+        path,
+        map: mapInstanceRef.current,
+        strokeColor: '#10b981',
+        strokeOpacity: 0.85,
+        strokeWeight: 4,
+        zIndex: 60
+      });
+    }
+  }, [trackedBreadcrumbs]);
 
   // ─────────────────────────────────────────────────────────────
   // 3. Current Location Feature (GPS Watcher & Navigation Marker)
