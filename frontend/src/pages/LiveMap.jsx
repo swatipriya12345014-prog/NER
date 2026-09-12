@@ -379,11 +379,31 @@ const LiveMap = () => {
     activeFleetCount: 21,
     streamProtocol: 'AIS-140-MoRTH-v2.1'
   });
-  const [autoFollowCam, setAutoFollowCam] = useState(true);
+  const [autoFollowCam, setAutoFollowCam] = useState(false);
   const [isOfficerBroadcasting, setIsOfficerBroadcasting] = useState(false);
   const [officerTelemetry, setOfficerTelemetry] = useState(null);
 
-  // Subscribe to live WebSocket / SSE AIS-140 telemetry stream
+  const trackedVehicleRef = useRef(trackedVehicle);
+  useEffect(() => {
+    trackedVehicleRef.current = trackedVehicle;
+  }, [trackedVehicle]);
+
+  const autoFollowCamRef = useRef(autoFollowCam);
+  useEffect(() => {
+    autoFollowCamRef.current = autoFollowCam;
+  }, [autoFollowCam]);
+
+  const centerRef = useRef(center);
+  useEffect(() => {
+    centerRef.current = center;
+  }, [center]);
+
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Subscribe to live WebSocket / SSE AIS-140 telemetry stream (single mount setup)
   useEffect(() => {
     const unsubStatus = realtimeTrackingService.subscribeStatus((status, stats) => {
       setStreamStatus(status);
@@ -421,17 +441,22 @@ const LiveMap = () => {
       });
 
       // Update tracked vehicle live coordinates and follow camera
-      if (trackedVehicle) {
+      const currentTracked = trackedVehicleRef.current;
+      if (currentTracked) {
         const updated = incomingVehicles.find(
           (v) =>
-            v.vehicle_number === trackedVehicle.vehicle_number ||
-            v.license_plate === trackedVehicle.license_plate ||
-            v.id === trackedVehicle.id
+            v.vehicle_number === currentTracked.vehicle_number ||
+            v.license_plate === currentTracked.license_plate ||
+            v.id === currentTracked.id
         );
         if (updated) {
           setTrackedVehicle((prev) => ({ ...prev, ...updated }));
-          if (autoFollowCam && updated.lat && updated.lng) {
-            jumpToLocation(updated.lat, updated.lng, zoom);
+          if (autoFollowCamRef.current && updated.lat && updated.lng) {
+            const curC = centerRef.current;
+            const dist = Math.hypot((curC?.lat || 0) - updated.lat, (curC?.lng || 0) - updated.lng);
+            if (dist > 0.001) {
+              jumpToLocation(updated.lat, updated.lng, zoomRef.current);
+            }
           }
         }
       }
@@ -441,7 +466,7 @@ const LiveMap = () => {
       unsubStatus();
       unsubStream();
     };
-  }, [trackedVehicle, autoFollowCam, zoom, jumpToLocation]);
+  }, [jumpToLocation]);
 
   // Compute live breadcrumbs trail for tracked vehicle
   const trackedBreadcrumbs = useMemo(() => {
@@ -704,41 +729,58 @@ const LiveMap = () => {
     };
   };
 
-  const handleMouseMove = (e) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      const offsetX = e.clientX - rect.left;
-      const offsetY = e.clientY - rect.top;
-      const centerPixelX = lonToPixelX(center.lng, zoom);
-      const centerPixelY = latToPixelY(center.lat, zoom);
-      const targetPixelX = centerPixelX - (dimensions.width / 2) + offsetX;
-      const targetPixelY = centerPixelY - (dimensions.height / 2) + offsetY;
+  const lastMouseCoordTimeRef = useRef(0);
+  const dragRafRef = useRef(null);
 
-      setMouseCoord({
-        lat: +pixelToLat(targetPixelY, zoom).toFixed(4),
-        lng: +pixelToLon(targetPixelX, zoom).toFixed(4)
-      });
+  const handleMouseMove = (e) => {
+    // 1. Throttle mouse coordinates calculation to at most once per 250ms to prevent component thrashing
+    const now = performance.now();
+    if (now - lastMouseCoordTimeRef.current > 250) {
+      lastMouseCoordTimeRef.current = now;
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        const centerPixelX = lonToPixelX(center.lng, zoom);
+        const centerPixelY = latToPixelY(center.lat, zoom);
+        const targetPixelX = centerPixelX - (dimensions.width / 2) + offsetX;
+        const targetPixelY = centerPixelY - (dimensions.height / 2) + offsetY;
+
+        setMouseCoord({
+          lat: +pixelToLat(targetPixelY, zoom).toFixed(4),
+          lng: +pixelToLon(targetPixelX, zoom).toFixed(4)
+        });
+      }
     }
 
+    // 2. High-performance requestAnimationFrame for dragging (smooth 60 FPS)
     if (!isDragging) return;
 
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
+    if (dragRafRef.current) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
 
-    const startPixelX = lonToPixelX(dragStartRef.current.centerLng, zoom);
-    const startPixelY = latToPixelY(dragStartRef.current.centerLat, zoom);
+    dragRafRef.current = requestAnimationFrame(() => {
+      dragRafRef.current = null;
+      const dx = clientX - dragStartRef.current.x;
+      const dy = clientY - dragStartRef.current.y;
 
-    const newPixelX = startPixelX - dx;
-    const newPixelY = startPixelY - dy;
+      const startPixelX = lonToPixelX(dragStartRef.current.centerLng, zoom);
+      const startPixelY = latToPixelY(dragStartRef.current.centerLat, zoom);
 
-    setCenter({
-      lat: +pixelToLat(newPixelY, zoom).toFixed(5),
-      lng: +pixelToLon(newPixelX, zoom).toFixed(5)
+      setCenter({
+        lat: +pixelToLat(startPixelY - dy, zoom).toFixed(5),
+        lng: +pixelToLon(startPixelX - dx, zoom).toFixed(5)
+      });
     });
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    if (dragRafRef.current) {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+    }
   };
 
   // Zoom control
@@ -746,54 +788,61 @@ const LiveMap = () => {
     setZoom((prev) => Math.max(4, Math.min(14, prev + delta)));
   };
 
-  // Compute active tiles visible in the viewport
-  const centerPixelX = lonToPixelX(center.lng, zoom);
-  const centerPixelY = latToPixelY(center.lat, zoom);
+  // Compute active tiles visible in the viewport with useMemo
+  const visibleTiles = useMemo(() => {
+    const centerPixelX = lonToPixelX(center.lng, zoom);
+    const centerPixelY = latToPixelY(center.lat, zoom);
 
-  const minPixelX = centerPixelX - dimensions.width / 2;
-  const maxPixelX = centerPixelX + dimensions.width / 2;
-  const minPixelY = centerPixelY - dimensions.height / 2;
-  const maxPixelY = centerPixelY + dimensions.height / 2;
+    const minPixelX = centerPixelX - dimensions.width / 2;
+    const maxPixelX = centerPixelX + dimensions.width / 2;
+    const minPixelY = centerPixelY - dimensions.height / 2;
+    const maxPixelY = centerPixelY + dimensions.height / 2;
 
-  const minTileX = Math.floor(minPixelX / 256);
-  const maxTileX = Math.floor(maxPixelX / 256);
-  const minTileY = Math.floor(minPixelY / 256);
-  const maxTileY = Math.floor(maxPixelY / 256);
+    const minTileX = Math.floor(minPixelX / 256);
+    const maxTileX = Math.floor(maxPixelX / 256);
+    const minTileY = Math.floor(minPixelY / 256);
+    const maxTileY = Math.floor(maxPixelY / 256);
 
-  const visibleTiles = [];
-  const maxTileIndex = Math.pow(2, zoom) - 1;
+    const tiles = [];
+    const maxTileIndex = Math.pow(2, zoom) - 1;
 
-  for (let x = minTileX; x <= maxTileX; x++) {
-    for (let y = minTileY; y <= maxTileY; y++) {
-      if (y >= 0 && y <= maxTileIndex) {
-        const wrappedX = ((x % (maxTileIndex + 1)) + (maxTileIndex + 1)) % (maxTileIndex + 1);
-        const tileLeft = x * 256 - minPixelX;
-        const tileTop = y * 256 - minPixelY;
+    for (let x = minTileX; x <= maxTileX; x++) {
+      for (let y = minTileY; y <= maxTileY; y++) {
+        if (y >= 0 && y <= maxTileIndex) {
+          const wrappedX = ((x % (maxTileIndex + 1)) + (maxTileIndex + 1)) % (maxTileIndex + 1);
+          const tileLeft = x * 256 - minPixelX;
+          const tileTop = y * 256 - minPixelY;
 
-        visibleTiles.push({
-          key: `${zoom}-${wrappedX}-${y}`,
-          x: wrappedX,
-          y: y,
-          left: tileLeft,
-          top: tileTop,
-          url: BASEMAP_TILES[basemap].url(wrappedX, y, zoom)
-        });
+          tiles.push({
+            key: `${zoom}-${wrappedX}-${y}`,
+            x: wrappedX,
+            y: y,
+            left: tileLeft,
+            top: tileTop,
+            url: BASEMAP_TILES[basemap].url(wrappedX, y, zoom)
+          });
+        }
       }
     }
-  }
+    return tiles;
+  }, [center.lng, center.lat, zoom, dimensions.width, dimensions.height, basemap]);
 
   // Convert GPS Coordinates to Screen Pixels
-  const coordToScreen = (lat, lng) => {
+  const coordToScreen = useCallback((lat, lng) => {
+    const centerPixelX = lonToPixelX(center.lng, zoom);
+    const centerPixelY = latToPixelY(center.lat, zoom);
+    const minPixelX = centerPixelX - dimensions.width / 2;
+    const minPixelY = centerPixelY - dimensions.height / 2;
     const px = lonToPixelX(lng, zoom);
     const py = latToPixelY(lat, zoom);
     return {
       x: px - minPixelX,
       y: py - minPixelY
     };
-  };
+  }, [center.lng, center.lat, zoom, dimensions.width, dimensions.height]);
 
   // Convert Route Coordinates to SVG Path
-  const getSvgPathFromCoords = (coords) => {
+  const getSvgPathFromCoords = useCallback((coords) => {
     if (!coords || coords.length === 0) return '';
     return coords
       .map(([lat, lng], idx) => {
@@ -801,7 +850,7 @@ const LiveMap = () => {
         return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
       })
       .join(' ');
-  };
+  }, [coordToScreen]);
 
   const shortestSvgPath = useMemo(() => {
     if (!routeResult?.shortest_route?.coordinates) return '';

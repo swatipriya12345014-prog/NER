@@ -145,7 +145,7 @@ function createVehicleSvg(type = 'truck', status = 'ACTIVE', heading = 0) {
 }
 
 function createTransitTruckSvg(callsign = 'AS-01-EV', speed = 54) {
-  const cacheKey = `transit_truck_marker_${callsign}_${speed}`;
+  const cacheKey = `transit_truck_marker_${callsign}`;
   return getCachedSvg(cacheKey, () => {
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
       <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
@@ -471,11 +471,20 @@ export default function GoogleMapView({
     }
   }, [isApiLoaded, currentMapStyle]);
 
-  // Sync map viewport when center or zoom props update
+  // Sync map viewport when center or zoom props update (with micro-jitter damping)
   useEffect(() => {
     if (mapInstanceRef.current && center && center.lat && center.lng) {
-      mapInstanceRef.current.panTo({ lat: center.lat, lng: center.lng });
-      if (typeof zoom === 'number' && zoom > 0) {
+      const currentCenter = mapInstanceRef.current.getCenter();
+      if (currentCenter) {
+        const dLat = Math.abs(currentCenter.lat() - center.lat);
+        const dLng = Math.abs(currentCenter.lng() - center.lng);
+        if (dLat > 0.0008 || dLng > 0.0008) {
+          mapInstanceRef.current.panTo({ lat: center.lat, lng: center.lng });
+        }
+      } else {
+        mapInstanceRef.current.panTo({ lat: center.lat, lng: center.lng });
+      }
+      if (typeof zoom === 'number' && zoom > 0 && mapInstanceRef.current.getZoom() !== zoom) {
         mapInstanceRef.current.setZoom(zoom);
       }
     }
@@ -964,7 +973,7 @@ export default function GoogleMapView({
           icons[0].offset = `${(count / 2) % 100}%`;
           poly.set('icons', icons);
         }
-      }, 80);
+      }, 240);
 
       // Moving Relief Truck Marker traveling through the road in transit
       const coords = routeResult.safest_route.coordinates;
@@ -1099,6 +1108,27 @@ export default function GoogleMapView({
     return () => {
       if (roadPolylinesRef.current.flowInterval) {
         clearInterval(roadPolylinesRef.current.flowInterval);
+        roadPolylinesRef.current.flowInterval = null;
+      }
+      if (roadPolylinesRef.current.transitInterval) {
+        clearInterval(roadPolylinesRef.current.transitInterval);
+        roadPolylinesRef.current.transitInterval = null;
+      }
+      if (roadPolylinesRef.current.transitMarker) {
+        roadPolylinesRef.current.transitMarker.setMap(null);
+        roadPolylinesRef.current.transitMarker = null;
+      }
+      if (roadPolylinesRef.current.safest) {
+        roadPolylinesRef.current.safest.setMap(null);
+        roadPolylinesRef.current.safest = null;
+      }
+      if (roadPolylinesRef.current.shortest) {
+        roadPolylinesRef.current.shortest.setMap(null);
+        roadPolylinesRef.current.shortest = null;
+      }
+      if (roadPolylinesRef.current.bypass) {
+        roadPolylinesRef.current.bypass.setMap(null);
+        roadPolylinesRef.current.bypass = null;
       }
     };
   }, [mapInstance, routeResult, activeRoadFilter, filterLayer.routes]);

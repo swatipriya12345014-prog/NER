@@ -1971,12 +1971,12 @@ async def ais140_telemetry_broadcast_loop():
     Emits live GPS coordinates, speeds, headings, and satellite lock frames
     for all in-transit government emergency vehicles every 1.5 seconds.
     """
-    print("NER-LIFELINE: Launching AIS-140 Government Real-Time Telemetry Broadcaster (1.5s interval)...")
+    print("NER-LIFELINE: Launching AIS-140 Government Real-Time Telemetry Broadcaster (2.5s interval)...")
     await asyncio.sleep(2.0)  # Grace period during startup
 
     while True:
         try:
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(2.5)
             now_iso = datetime.utcnow().isoformat()
             updated_vehicles = []
 
@@ -1997,8 +1997,8 @@ async def ais140_telemetry_broadcast_loop():
                 live_speed = max(18.0, min(80.0, round(base_speed + speed_jitter, 1)))
                 veh["speed_kmh"] = live_speed
 
-                # Distance moved in 1.5 seconds
-                dist_km = live_speed * (1.5 / 3600.0)
+                # Distance moved in 2.5 seconds
+                dist_km = live_speed * (2.5 / 3600.0)
                 d_lat = (dist_km * math.cos(heading_rad)) / 110.574
                 lat_rad = math.radians(veh["lat"])
                 cos_lat = max(0.2, math.cos(lat_rad))
