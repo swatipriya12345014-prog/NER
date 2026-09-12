@@ -74,9 +74,12 @@ const COMPACT_ROLE_CARDS = [
     icon: Truck,
     gradient: 'from-emerald-950/40 via-slate-900 to-slate-950',
     border: 'border-emerald-500/30 hover:border-emerald-400',
+    lightBorder: 'border-emerald-200 hover:border-emerald-400',
     btnBg: 'bg-white hover:bg-emerald-50 text-slate-900 border-emerald-300',
     badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    lightBadgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     headerIconColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
+    lightHeaderIconColor: 'text-emerald-700 bg-emerald-50 border-emerald-200',
     glow: 'hover:shadow-[0_0_25px_rgba(16,185,129,0.18)]',
     actionTitle: 'Authorize Fleet Operator',
     dashboardRoute: '/driver-dashboard',
@@ -91,9 +94,12 @@ const COMPACT_ROLE_CARDS = [
     icon: Compass,
     gradient: 'from-teal-950/40 via-slate-900 to-slate-950',
     border: 'border-teal-500/30 hover:border-teal-400',
+    lightBorder: 'border-teal-200 hover:border-teal-400',
     btnBg: 'bg-white hover:bg-teal-50 text-slate-900 border-teal-300',
     badgeBg: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    lightBadgeBg: 'bg-teal-100 text-teal-800 border-teal-300',
     headerIconColor: 'text-teal-400 bg-teal-950/60 border-teal-700/50',
+    lightHeaderIconColor: 'text-teal-700 bg-teal-50 border-teal-200',
     glow: 'hover:shadow-[0_0_25px_rgba(20,184,166,0.18)]',
     actionTitle: 'Authorize Convoy Pilot',
     dashboardRoute: '/driver-dashboard',
@@ -108,9 +114,12 @@ const COMPACT_ROLE_CARDS = [
     icon: Users,
     gradient: 'from-amber-950/40 via-slate-900 to-slate-950',
     border: 'border-amber-500/30 hover:border-amber-400',
+    lightBorder: 'border-amber-200 hover:border-amber-400',
     btnBg: 'bg-white hover:bg-amber-50 text-slate-900 border-amber-300',
     badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    lightBadgeBg: 'bg-amber-100 text-amber-800 border-amber-300',
     headerIconColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
+    lightHeaderIconColor: 'text-amber-700 bg-amber-50 border-amber-200',
     glow: 'hover:shadow-[0_0_25px_rgba(245,158,11,0.18)]',
     actionTitle: 'Authorize Recon Officer',
     dashboardRoute: '/field-officer',
@@ -125,9 +134,12 @@ const COMPACT_ROLE_CARDS = [
     icon: Building,
     gradient: 'from-cyan-950/40 via-slate-900 to-slate-950',
     border: 'border-cyan-500/30 hover:border-cyan-400',
+    lightBorder: 'border-cyan-200 hover:border-cyan-400',
     btnBg: 'bg-white hover:bg-cyan-50 text-slate-900 border-cyan-300',
     badgeBg: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+    lightBadgeBg: 'bg-cyan-100 text-cyan-800 border-cyan-300',
     headerIconColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
+    lightHeaderIconColor: 'text-cyan-700 bg-cyan-50 border-cyan-200',
     glow: 'hover:shadow-[0_0_25px_rgba(6,182,212,0.18)]',
     actionTitle: 'Authorize Logistics Director',
     dashboardRoute: '/manager-dashboard',
@@ -239,18 +251,23 @@ const Login = () => {
         backgroundAttachment: 'fixed'
       }}
     >
-      {/* Dynamic atmospheric overlay for contrast & readability */}
+      {/* Atmospheric overlay: split into color base + gradient fade for proper layering */}
       <div 
-        className={`absolute inset-0 pointer-events-none transition-colors duration-500 ${
+        className={`absolute inset-0 pointer-events-none transition-all duration-500 ${
+          isDark ? 'bg-slate-950/60' : 'bg-white/50'
+        }`} 
+      />
+      <div 
+        className={`absolute inset-0 pointer-events-none transition-all duration-500 backdrop-blur-[1.5px] ${
           isDark 
-            ? 'bg-slate-950/85 backdrop-blur-[2px] bg-gradient-to-b from-slate-950/95 via-slate-950/80 to-slate-950/95' 
-            : 'bg-slate-50/85 backdrop-blur-[2px] bg-gradient-to-b from-white/95 via-slate-100/80 to-slate-100/95'
+            ? 'bg-gradient-to-b from-slate-950/70 via-slate-950/50 to-slate-950/75' 
+            : 'bg-gradient-to-b from-white/70 via-slate-100/45 to-white/70'
         }`} 
       />
 
-      {/* Subtle ambient lighting */}
-      <div className={`absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse ${isDark ? 'bg-blue-600/15' : 'bg-blue-400/20'}`} />
-      <div className={`absolute top-1/3 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none -z-10 ${isDark ? 'bg-emerald-600/15' : 'bg-emerald-400/20'}`} />
+      {/* Ambient glow accents (above overlay, below content) */}
+      <div className={`absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none z-[1] animate-pulse ${isDark ? 'bg-blue-600/20' : 'bg-blue-400/15'}`} />
+      <div className={`absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none z-[1] ${isDark ? 'bg-purple-600/15' : 'bg-purple-400/10'}`} />
 
       {/* Top Utility Bar: NavIC Status & Light/Dark Theme Switcher */}
       <div className="w-full max-w-6xl mx-auto flex items-center justify-between py-2 mb-4 relative z-20">
@@ -430,10 +447,10 @@ const Login = () => {
 
       {/* 1. PRIMARY: LARGE PROMINENT ADMINISTRATOR SOVEREIGN DIRECTORATE HERO (BIG) */}
       <div className="w-full max-w-6xl mx-auto mb-8 relative z-10">
-        <div className={`relative rounded-3xl p-6 sm:p-8 overflow-hidden transition-all duration-300 ${
+        <div className={`relative rounded-3xl p-6 sm:p-8 overflow-hidden transition-all duration-300 backdrop-blur-md ${
           isDark
-            ? 'bg-gradient-to-r from-purple-950/95 via-slate-900 to-indigo-950/95 border-2 border-purple-500/60 shadow-[0_0_60px_rgba(168,85,247,0.25)]'
-            : 'bg-gradient-to-r from-purple-50/95 via-white to-indigo-50/95 border-2 border-purple-400/80 shadow-[0_15px_45px_rgba(147,51,234,0.15)]'
+            ? 'bg-gradient-to-r from-purple-950/85 via-slate-900/90 to-indigo-950/85 border-2 border-purple-500/60 shadow-[0_0_60px_rgba(168,85,247,0.25)]'
+            : 'bg-gradient-to-r from-purple-50/85 via-white/88 to-indigo-50/85 border-2 border-purple-400/80 shadow-[0_15px_45px_rgba(147,51,234,0.15)]'
         }`}>
           {/* Ambient Glows */}
           <div className={`absolute -right-10 -bottom-10 w-80 h-80 rounded-full blur-3xl pointer-events-none ${
@@ -582,18 +599,20 @@ const Login = () => {
                 className={`group relative rounded-xl p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 shadow-md ${
                   isDark
                     ? `bg-gradient-to-b ${role.gradient} border ${role.border} ${role.glow}`
-                    : 'bg-white/95 border border-slate-200 hover:border-slate-300 shadow-slate-200/50 hover:shadow-lg'
+                    : `bg-white/90 backdrop-blur-sm border ${role.lightBorder} shadow-slate-200/50 hover:shadow-lg`
                 }`}
               >
                 {/* Top Header */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <div className={`p-1.5 rounded-lg border ${
-                      isDark ? role.headerIconColor : 'bg-slate-100 text-slate-800 border-slate-200'
+                      isDark ? role.headerIconColor : role.lightHeaderIconColor
                     }`}>
                       <Icon size={16} />
                     </div>
-                    <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${role.badgeBg} tracking-wide`}>
+                    <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border tracking-wide ${
+                      isDark ? role.badgeBg : role.lightBadgeBg
+                    }`}>
                       {role.badge}
                     </span>
                   </div>
