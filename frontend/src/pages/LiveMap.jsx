@@ -302,20 +302,57 @@ const LiveMap = () => {
     });
   }, [fleet, vehicleSearchQuery, trackOnlyInTransit]);
 
+  // Matched Regional Hubs / Cities for map search
+  const matchedHubs = useMemo(() => {
+    const q = vehicleSearchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+    return NER_HUBS.filter(
+      (h) =>
+        h.name.toLowerCase().includes(q) ||
+        h.state.toLowerCase().includes(q) ||
+        h.id.toLowerCase().includes(q)
+    );
+  }, [vehicleSearchQuery]);
+
   const handleExecuteVehicleSearch = (e) => {
     if (e) e.preventDefault();
+    if (!vehicleSearchQuery.trim()) return;
+
     if (searchResults.length > 0) {
       startTrackingVehicle(searchResults[0]);
-    } else {
-      const cleanQ = vehicleSearchQuery.replace(/[\s-]/g, '').toUpperCase();
-      const match = fleet.find(
-        (v) =>
-          v.id.toUpperCase().includes(cleanQ) ||
-          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase().includes(cleanQ))
-      );
-      if (match) {
-        startTrackingVehicle(match);
-      }
+      return;
+    }
+
+    if (matchedHubs.length > 0) {
+      const hub = matchedHubs[0];
+      jumpToLocation(hub.lat, hub.lng, 12);
+      setSelectedEntity(hub);
+      setIsVehicleSearchOpen(false);
+      return;
+    }
+
+    const cleanQ = vehicleSearchQuery.replace(/[\s-]/g, '').toUpperCase();
+    const match = fleet.find(
+      (v) =>
+        v.id.toUpperCase().includes(cleanQ) ||
+        (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase().includes(cleanQ))
+    );
+    if (match) {
+      startTrackingVehicle(match);
+      return;
+    }
+
+    const q = vehicleSearchQuery.trim().toLowerCase();
+    const hubMatch = NER_HUBS.find(
+      (h) =>
+        h.name.toLowerCase().includes(q) ||
+        h.state.toLowerCase().includes(q) ||
+        h.id.toLowerCase().includes(q)
+    );
+    if (hubMatch) {
+      jumpToLocation(hubMatch.lat, hubMatch.lng, 12);
+      setSelectedEntity(hubMatch);
+      setIsVehicleSearchOpen(false);
     }
   };
 
@@ -1132,12 +1169,45 @@ const LiveMap = () => {
             )}
 
             {/* Live Autocomplete Dropdown */}
-            {isVehicleSearchOpen && searchResults.length > 0 && (
+            {isVehicleSearchOpen && (searchResults.length > 0 || matchedHubs.length > 0) && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl max-h-80 overflow-y-auto z-50 divide-y divide-slate-800/80 p-1 backdrop-blur-xl">
-                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                  <span>Matching Registered Vehicles ({searchResults.length})</span>
-                  <span className="text-emerald-400">Click card to Track on Map</span>
-                </div>
+                {matchedHubs.length > 0 && (
+                  <div className="p-1 space-y-1">
+                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
+                      <span>Regional Hubs & Outposts ({matchedHubs.length})</span>
+                      <span className="text-slate-400">Click to center map</span>
+                    </div>
+                    {matchedHubs.map((hub) => (
+                      <div
+                        key={hub.id}
+                        onClick={() => {
+                          jumpToLocation(hub.lat, hub.lng, 12);
+                          setSelectedEntity(hub);
+                          setIsVehicleSearchOpen(false);
+                        }}
+                        className="p-2 hover:bg-slate-900 rounded-xl cursor-pointer flex items-center justify-between transition-colors"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">📍</span>
+                          <div>
+                            <div className="text-xs font-bold text-white">{hub.name}</div>
+                            <div className="text-[10px] text-slate-400">{hub.state} • Elev: {hub.elevation_m}m</div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-lg border border-cyan-800">
+                          Jump ➔
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>Matching Registered Vehicles ({searchResults.length})</span>
+                    <span className="text-emerald-400">Click card to Track on Map</span>
+                  </div>
+                )}
                 {searchResults.map((veh) => {
                   const isInTransit = veh.is_in_transit || veh.status === 'En Route' || veh.status === 'In Transit';
                   return (

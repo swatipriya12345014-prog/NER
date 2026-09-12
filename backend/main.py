@@ -1018,7 +1018,7 @@ async def compute_google_route(req: GoogleRouteRequest):
         if now - cached_time < _GOOGLE_ROUTE_CACHE_TTL:
             return cached_response
 
-    api_key = os.getenv("GOOGLE_MAPS_API_KEY") or os.getenv("GOOGLE_ROUTES_API_KEY") or ""
+    api_key = os.getenv("GOOGLE_MAPS_API_KEY") or os.getenv("GOOGLE_ROUTES_API_KEY") or "AIzaSyDP02pC9K1QL7p69lae940OyX1iKcbhAoA"
     
     # 1. Attempt Google Routes API (computeRoutes) using pooled client
     google_url = "https://routes.googleapis.com/directions/v2:computeRoutes"

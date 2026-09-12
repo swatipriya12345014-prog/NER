@@ -339,7 +339,7 @@ export default function GoogleMapView({
     if (!script) {
       script = document.createElement('script');
       script.id = scriptId;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&callback=__initGoogleMapsSdk`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&loading=async&callback=__initGoogleMapsSdk`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
@@ -354,6 +354,9 @@ export default function GoogleMapView({
       document.head.appendChild(script);
     } else {
       if (verifyApi()) return;
+      if (script.src && !script.src.includes(activeApiKey)) {
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&loading=async&callback=__initGoogleMapsSdk`;
+      }
       const timer = setInterval(() => {
         if (verifyApi()) clearInterval(timer);
       }, 50);
@@ -389,7 +392,7 @@ export default function GoogleMapView({
         zoom: zoom,
         mapTypeId: targetType,
         styles: currentMapStyle === 'dark' ? TACTICAL_DARK_STYLE : null,
-        // Official Google Maps Native Controls
+        // Official Google Maps Native Controls (Ergonomically positioned to prevent UI collisions)
         mapTypeControl: true,
         mapTypeControlOptions: {
           style: window.google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
@@ -397,15 +400,12 @@ export default function GoogleMapView({
         },
         zoomControl: true,
         zoomControlOptions: {
-          position: window.google.maps.ControlPosition.RIGHT_BOTTOM
+          position: window.google.maps.ControlPosition.RIGHT_CENTER
         },
-        streetViewControl: true,
-        streetViewControlOptions: {
-          position: window.google.maps.ControlPosition.RIGHT_BOTTOM
-        },
+        streetViewControl: false,
         fullscreenControl: true,
         fullscreenControlOptions: {
-          position: window.google.maps.ControlPosition.RIGHT_TOP
+          position: window.google.maps.ControlPosition.RIGHT_BOTTOM
         },
         rotateControl: true,
         scaleControl: true,
@@ -625,11 +625,6 @@ export default function GoogleMapView({
         if (Math.abs(diff) > 0.05) {
           smoothHeadingRef.current = (smoothHeadingRef.current + diff * 0.18 + 360) % 360;
 
-          if (mapContainerRef.current) {
-            mapContainerRef.current.style.transform = `rotate(${-smoothHeadingRef.current}deg)`;
-            mapContainerRef.current.style.transition = 'transform 0.08s linear';
-          }
-
           if (locationMarkerRef.current) {
             locationMarkerRef.current.setIcon({
               url: createNavPointerSvg(smoothHeadingRef.current),
@@ -637,8 +632,16 @@ export default function GoogleMapView({
               anchor: new window.google.maps.Point(20, 20)
             });
           }
+
+          if (mapInstanceRef.current && typeof mapInstanceRef.current.setHeading === 'function') {
+            try {
+              mapInstanceRef.current.setHeading(smoothHeadingRef.current);
+            } catch (e) {}
+          }
         }
-      } else if (mapContainerRef.current && mapContainerRef.current.style.transform !== 'none') {
+      }
+
+      if (mapContainerRef.current && mapContainerRef.current.style.transform !== 'none') {
         mapContainerRef.current.style.transform = 'none';
       }
 
