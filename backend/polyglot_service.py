@@ -347,6 +347,43 @@ def generate_polyglot_code(language: str, scenario: str, options: Optional[Dict]
                 "}\n"
             )
             explanation = "Dijkstra mountain pass router in Java 21 utilizing PriorityQueue with composite cost weighting (combining distance with monsoon landslide and flash-flood hazard scores)."
+        elif scen in ["vahan", "vahan_verifier", "rc", "morth"]:
+            code = (
+                "package com.nerlifeline.vahan;\n\n"
+                "import com.nerlifeline.NerLifelineClient;\n"
+                "import com.nerlifeline.models.VahanCertificate;\n\n"
+                "/**\n"
+                " * Official MoRTH VAHAN 4.0 Registration Certificate Verifier in Java 21.\n"
+                " */\n"
+                "public class VahanVehicleVerifier {\n"
+                "    public static void main(String[] args) {\n"
+                "        NerLifelineClient client = new NerLifelineClient(\"http://localhost:8000\");\n"
+                "        String plateToVerify = \"AS-01-EV-4421\";\n"
+                "        System.out.println(\"Querying MoRTH VAHAN 4.0 National Register for: \" + plateToVerify);\n\n"
+                "        client.verifyVehiclePlateAsync(plateToVerify)\n"
+                "            .thenAccept(rcJson -> {\n"
+                "                System.out.println(\"✓ Official Parivahan RC Record Received:\");\n"
+                "                System.out.println(rcJson);\n"
+                "            })\n"
+                "            .join();\n"
+                "    }\n"
+                "}\n"
+            )
+            explanation = "Java 21 asynchronous verifier for querying and validating registration certificates against the MoRTH VAHAN 4.0 National Register."
+        elif scen in ["listener", "socket", "telemetry_listener"]:
+            code = (
+                "package com.nerlifeline.telemetry;\n\n"
+                "import com.nerlifeline.telemetry.Ais140TelemetryListener;\n\n"
+                "public class TelemetryDaemonRunner {\n"
+                "    public static void main(String[] args) throws Exception {\n"
+                "        int port = 8092;\n"
+                "        System.out.println(\"Launching Java 21 AIS-140 Virtual Thread Listener on port \" + port);\n"
+                "        Ais140TelemetryListener listener = new Ais140TelemetryListener(port, null);\n"
+                "        listener.start();\n"
+                "    }\n"
+                "}\n"
+            )
+            explanation = "Java 21 daemon runner utilizing Virtual Threads to ingest concurrent TCP/UDP GPS telemetry packets from AIS-140 hardware."
         else:
             code = (
                 "package com.nerlifeline;\n\n"
