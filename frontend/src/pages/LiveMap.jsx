@@ -44,10 +44,12 @@ import {
   Globe,
   Volume2,
   X,
-  GitFork
+  GitFork,
+  Copy
 } from 'lucide-react';
 import GoogleMapView from '../components/GoogleMapView';
 import AIBlockageRerouteModal from '../components/AIBlockageRerouteModal';
+import VehicleDossierModal from '../components/VehicleDossierModal';
 import {
   fetchVehicles,
   optimizeAIRoute,
@@ -186,11 +188,22 @@ const LiveMap = () => {
   const [trackedVehicle, setTrackedVehicle] = useState(null);
   const [isTrackingActive, setIsTrackingActive] = useState(false);
   const [trackOnlyInTransit, setTrackOnlyInTransit] = useState(true);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [dossierVehicle, setDossierVehicle] = useState(null);
+  const [copiedBannerCoords, setCopiedBannerCoords] = useState(false);
+
+  // Open Full AIS-140 Vehicle Dossier
+  const openVehicleDossier = useCallback((veh) => {
+    if (!veh) return;
+    setDossierVehicle(veh);
+    setIsDossierOpen(true);
+  }, []);
 
   // Start tracking a real vehicle: zooms in, activates moving HUD, centers camera
   const startTrackingVehicle = useCallback((veh) => {
     if (!veh) return;
     setTrackedVehicle(veh);
+    setDossierVehicle(veh);
     setIsTrackingActive(true);
     setSelectedVehicleId(veh.id);
     setSelectedEntity(veh);
@@ -260,14 +273,27 @@ const LiveMap = () => {
         startTrackingVehicle(match);
       }
     };
+    window.__nerOpenVehicleDossier = (vehicleIdentifier) => {
+      if (!vehicleIdentifier) return;
+      const cleanTarget = vehicleIdentifier.replace(/[\s-]/g, '').toUpperCase();
+      const match = fleet.find(
+        (v) =>
+          v.id === vehicleIdentifier ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanTarget)
+      );
+      if (match) {
+        openVehicleDossier(match);
+      }
+    };
     return () => {
       delete window.__nerSwitchOffline;
       delete window.__nerSwitchGoogle;
       delete window.__nerTrackVehicle;
+      delete window.__nerOpenVehicleDossier;
     };
-  }, [fleet, startTrackingVehicle]);
+  }, [fleet, startTrackingVehicle, openVehicleDossier]);
 
-  // Keep trackedVehicle updated with latest live telemetry position & speed
+  // Keep trackedVehicle & dossierVehicle updated with latest live telemetry position & speed
   useEffect(() => {
     if (isTrackingActive && trackedVehicle) {
       const liveVeh = fleet.find((v) => v.id === trackedVehicle.id);
@@ -275,7 +301,13 @@ const LiveMap = () => {
         setTrackedVehicle(liveVeh);
       }
     }
-  }, [fleet, isTrackingActive, trackedVehicle?.id]);
+    if (isDossierOpen && dossierVehicle) {
+      const liveVeh = fleet.find((v) => v.id === dossierVehicle.id || v.license_plate === dossierVehicle.license_plate);
+      if (liveVeh) {
+        setDossierVehicle((prev) => ({ ...prev, ...liveVeh }));
+      }
+    }
+  }, [fleet, isTrackingActive, trackedVehicle?.id, isDossierOpen, dossierVehicle?.id]);
 
   // Search results for real vehicle tracker
   const searchResults = useMemo(() => {
@@ -1250,17 +1282,30 @@ const LiveMap = () => {
                           <span className="text-slate-400">Driver: {veh.assigned_driver || veh.driver_name}</span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          startTrackingVehicle(veh);
-                        }}
-                        className="px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center space-x-1 flex-shrink-0 transition-all cursor-pointer"
-                      >
-                        <Crosshair size={12} className="animate-spin-slow" />
-                        <span>Track</span>
-                      </button>
+                      <div className="flex items-center space-x-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openVehicleDossier(veh);
+                          }}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs rounded-xl shadow border border-slate-700 flex items-center space-x-1 transition-all cursor-pointer"
+                          title="View Full Vehicle Dossier & Exact Location"
+                        >
+                          <span>📋 Info</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startTrackingVehicle(veh);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center space-x-1 transition-all cursor-pointer"
+                        >
+                          <Crosshair size={12} className="animate-spin-slow" />
+                          <span>Track</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1313,9 +1358,10 @@ const LiveMap = () => {
               className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer border flex items-center space-x-1.5 shadow-sm ${
                 trackedVehicle?.license_plate === item.plate
                   ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/40'
-                  : 'bg-slate-950/80 hover:bg-slate-800 text-emerald-300 hover:text-white border-slate-700'
+                  : 'bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border-slate-800'
               }`}
             >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>{item.plate}</span>
               <span className="text-[9px] font-sans text-slate-400">({item.name})</span>
             </button>
@@ -1337,7 +1383,7 @@ const LiveMap = () => {
                       {trackedVehicle.license_plate || trackedVehicle.id}
                     </span>
                     <span className="font-bold text-white text-sm">
-                      {trackedVehicle.name}
+                      {trackedVehicle.name || trackedVehicle.vehicle_name}
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 uppercase tracking-widest flex items-center space-x-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
@@ -1347,7 +1393,7 @@ const LiveMap = () => {
                       {trackedVehicle.vehicle_type || 'Disaster Relief Heavy Carrier'}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-300 flex items-center space-x-2 flex-wrap mt-0.5">
+                  <div className="text-xs text-slate-300 flex items-center space-x-2 flex-wrap mt-1">
                     {trackedVehicle.current_road && (
                       <span className="text-amber-300 font-semibold">
                         📍 {trackedVehicle.current_road}
@@ -1358,8 +1404,28 @@ const LiveMap = () => {
                         ➔ En Route to {trackedVehicle.destination}
                       </span>
                     )}
-                    <span className="text-slate-400 font-mono text-[11px]">
-                      • GPS: {(trackedVehicle.location?.lat || trackedVehicle.lat)?.toFixed(4)}°N, {(trackedVehicle.location?.lng || trackedVehicle.lng)?.toFixed(4)}°E
+                    <span className="font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 flex items-center space-x-1.5">
+                      <span>Exact GPS:</span>
+                      <strong className="text-white">
+                        {(trackedVehicle.location?.lat || trackedVehicle.lat)?.toFixed(6)}°N, {(trackedVehicle.location?.lng || trackedVehicle.lng)?.toFixed(6)}°E
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const t = `${(trackedVehicle.location?.lat || trackedVehicle.lat)?.toFixed(6)}, ${(trackedVehicle.location?.lng || trackedVehicle.lng)?.toFixed(6)}`;
+                          navigator.clipboard?.writeText(t);
+                          setCopiedBannerCoords(true);
+                          setTimeout(() => setCopiedBannerCoords(false), 2000);
+                        }}
+                        className="ml-1 text-slate-400 hover:text-white transition-colors cursor-pointer p-0.5"
+                        title="Copy exact GPS coordinates"
+                      >
+                        {copiedBannerCoords ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      </button>
+                    </span>
+                    <span className="text-blue-300 font-mono text-[11px] bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">
+                      ↑ {trackedVehicle.altitude_m || 420}m ASL
                     </span>
                   </div>
                 </div>
@@ -1367,6 +1433,14 @@ const LiveMap = () => {
 
               {/* Action Buttons */}
               <div className="flex items-center space-x-2 ml-auto flex-wrap gap-y-1">
+                <button
+                  type="button"
+                  onClick={() => openVehicleDossier(trackedVehicle)}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-lg border border-emerald-400/60 flex items-center space-x-1.5 cursor-pointer transition-all"
+                  title="Inspect full vehicle dossier & exact location"
+                >
+                  <span>📋 Full Vehicle Dossier</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setAutoFollowCam(!autoFollowCam)}
@@ -2522,6 +2596,7 @@ const LiveMap = () => {
                       e.stopPropagation();
                       setSelectedVehicleId(vehicle.id);
                       setSelectedEntity(vehicle);
+                      openVehicleDossier(vehicle);
                     }}
                     style={{ left: `${pos.x}px`, top: `${pos.y}px` }}
                     className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30 group"
@@ -3502,6 +3577,20 @@ const LiveMap = () => {
         selectedBlockageId={selectedBlockageId}
         onApplyAlternateRoute={handleApplyAlternateRoute}
         activeVehicle={fleet.find((v) => v.id === selectedVehicleId)}
+      />
+
+      {/* Full AIS-140 Vehicle Dossier & Real-Time Exact Location Modal */}
+      <VehicleDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        vehicle={dossierVehicle || trackedVehicle}
+        onTrackLive={(v) => {
+          startTrackingVehicle(v);
+        }}
+        isTracking={isTrackingActive && ((trackedVehicle?.license_plate || trackedVehicle?.id) === (dossierVehicle?.license_plate || dossierVehicle?.id))}
+        onCenterOnMap={(lat, lng) => jumpToLocation(lat, lng, 12)}
+        autoFollowCam={autoFollowCam}
+        onToggleAutoFollow={() => setAutoFollowCam(!autoFollowCam)}
       />
       </div>
     </div>

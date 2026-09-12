@@ -740,28 +740,39 @@ export default function GoogleMapView({
           if (infoWindowRef.current) {
             infoWindowRef.current.setPosition({ lat, lng });
             infoWindowRef.current.setContent(`
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 230px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <strong style="font-size: 13px; color: #0f172a;">${veh.license_plate || veh.name || veh.id}</strong>
-                  <span style="background: ${isInTransit ? '#059669' : '#10b981'}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 8px 6px; color: #0f172a; min-width: 260px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                  <div>
+                    <strong style="font-size: 14px; color: #0f172a; font-family: monospace; letter-spacing: 0.5px;">${veh.license_plate || veh.vehicle_number || veh.id}</strong>
+                    <div style="font-size: 10px; color: #64748b; font-weight: bold;">${veh.name || veh.vehicle_name || 'Emergency Logistics Carrier'}</div>
+                  </div>
+                  <span style="background: ${isInTransit ? '#059669' : '#10b981'}; color: white; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 800; letter-spacing: 0.5px;">
                     ${isInTransit ? 'IN TRANSIT 🚚' : (veh.status || 'ACTIVE')}
                   </span>
                 </div>
-                <div style="margin-top: 4px; font-size: 11px; color: #475569; line-height: 1.4;">
-                  <div>Type: <strong>${veh.name || veh.vehicle_type || 'Fleet Transport'}</strong></div>
-                  <div>Speed: <strong style="color: #059669;">${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : '38 km/h'}</strong></div>
+                <div style="margin-top: 6px; font-size: 11px; color: #334155; line-height: 1.45;">
+                  <div style="background: #f1f5f9; padding: 4px 6px; border-radius: 6px; font-family: monospace; font-size: 10px; color: #0f172a; margin-bottom: 4px; border: 1px solid #cbd5e1;">
+                    📍 <strong>Exact GPS:</strong> ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E (${veh.altitude_m != null ? `${veh.altitude_m}m` : '420m'} ASL)
+                  </div>
+                  <div>Type: <strong>${veh.vehicle_type || 'Disaster Relief Heavy Carrier'}</strong></div>
+                  <div>Speed: <strong style="color: #059669;">${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : '38 km/h'}</strong> • Heading: <strong>${veh.heading_deg != null ? `${veh.heading_deg}°` : '72°'}</strong></div>
                   ${veh.current_road ? `<div>Corridor: <strong style="color: #d97706;">${veh.current_road}</strong></div>` : ''}
                   ${veh.destination ? `<div>Destination: <strong style="color: #2563eb;">${veh.destination}</strong></div>` : ''}
-                  <div>Driver: <strong>${veh.assigned_driver || veh.driver_name || 'Assigned Driver'}</strong> ${veh.driver_phone ? `(${veh.driver_phone})` : ''}</div>
-                  <div>Fuel: <strong>${veh.fuel_percentage ?? veh.fuel_percent ?? 88}%</strong> (${veh.current_fuel_litres || 50} L)</div>
+                  <div>Driver: <strong>${veh.assigned_driver || veh.driver_name || 'Assigned Pilot'}</strong> ${veh.driver_phone ? `(${veh.driver_phone})` : ''}</div>
+                  <div>Fuel: <strong>${veh.fuel_percentage ?? veh.fuel_percent ?? 74}%</strong> (${veh.current_fuel_litres || 48} L / ${veh.fuel_capacity_litres || 70} L)</div>
                   ${veh.cargo_manifest ? `<div style="margin-top: 3px; font-size: 10px; color: #047857; background: #ecfdf5; padding: 3px 5px; border-radius: 4px; border: 1px solid #a7f3d0;">📦 ${veh.cargo_manifest}</div>` : ''}
                 </div>
-                <div style="margin-top: 8px; display: flex; gap: 4px;">
-                  <button onclick="window.__nerTrackVehicle && window.__nerTrackVehicle('${veh.license_plate || veh.id}')" style="flex: 1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
-                    🎯 Track Live Vehicle
+                <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                  <button onclick="window.__nerTrackVehicle && window.__nerTrackVehicle('${veh.license_plate || veh.id}')" style="padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                    🎯 Track Live
                   </button>
-                  <button onclick="window.__nerSetDest && window.__nerSetDest({ id: '${veh.id}', name: '${veh.license_plate || veh.name}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
-                    📍 Route Here
+                  <button onclick="window.__nerOpenVehicleDossier && window.__nerOpenVehicleDossier('${veh.license_plate || veh.id}')" style="padding: 6px 8px; background: #0f766e; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                    📋 Full Dossier
+                  </button>
+                </div>
+                <div style="margin-top: 4px;">
+                  <button onclick="window.__nerSetDest && window.__nerSetDest({ id: '${veh.id}', name: '${veh.license_plate || veh.name}', lat: ${lat}, lng: ${lng} })" style="width: 100%; padding: 5px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                    📍 Route to This Vehicle
                   </button>
                 </div>
               </div>
