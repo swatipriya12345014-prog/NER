@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { REGIONAL_HUBS } from '../../services/fuelRouteService';
 import { OPERATIONAL_ALERTS, OPERATIONAL_BLOCKED_ROADS } from '../../services/googleDirectionsService';
+import { isRouteAllowedForRole, ROLE_CONFIG, getDefaultRouteForRole, getRoleDisplayName } from '../../constants/roles';
 
 // Searchable entity catalog
 const SEARCHABLE_ENTITIES = [
@@ -71,7 +72,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Live Autocomplete Filter
+  // Live Autocomplete Filter (Role-Protected)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -79,12 +80,15 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
     }
     const q = searchQuery.toLowerCase();
     const matches = SEARCHABLE_ENTITIES.filter(
-      item => item.title.toLowerCase().includes(q) ||
-              item.subtitle.toLowerCase().includes(q) ||
-              item.meta.toLowerCase().includes(q)
+      item => (
+        isRouteAllowedForRole(role, item.path) &&
+        (item.title.toLowerCase().includes(q) ||
+         item.subtitle.toLowerCase().includes(q) ||
+         item.meta.toLowerCase().includes(q))
+      )
     ).slice(0, 7);
     setSearchResults(matches);
-  }, [searchQuery]);
+  }, [searchQuery, role]);
 
   // Global keyboard shortcut: Ctrl+K / Cmd+K to focus search, Esc to close
   useEffect(() => {
@@ -123,13 +127,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
   };
 
   const getRoleLabel = (r) => {
-    switch (r) {
-      case 'admin': return 'Regional Admin';
-      case 'driver': return 'Active Driver';
-      case 'field_officer': return 'Field Officer';
-      case 'logistics_manager': return 'Logistics Manager';
-      default: return 'Authorized Officer';
-    }
+    return getRoleDisplayName(r);
   };
 
   const getCategoryBadge = (type) => {
@@ -450,15 +448,27 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
                   <HelpCircle size={14} className="text-cyan-400" />
                   <span>How NER-LIFELINE Works</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    navigate('/settings');
-                  }}
-                  className="w-full flex items-center space-x-2 px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
-                >
-                  <span>⚙️ System Preferences</span>
-                </button>
+                {role === 'admin' ? (
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate('/settings');
+                    }}
+                    className="w-full flex items-center space-x-2 px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span>⚙️ System Preferences</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      navigate(getDefaultRouteForRole(role));
+                    }}
+                    className="w-full flex items-center space-x-2 px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span>📍 My Dedicated Workspace</span>
+                  </button>
+                )}
               </div>
 
               <div className="py-1">

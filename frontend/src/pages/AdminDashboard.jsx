@@ -123,12 +123,12 @@ export default function AdminDashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* 1. Welcome & Primary Action Header */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+      <div className="bg-gradient-to-br from-purple-950/80 via-slate-900 to-slate-900 border border-purple-800/40 rounded-2xl p-6 shadow-2xl backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-5">
         <div className="space-y-1.5">
           <div className="flex items-center space-x-2.5">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>ALL 8 STATES ONLINE</span>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+              <span>STATE COMMAND ADMINISTRATOR</span>
             </span>
             <span className="text-xs text-slate-400 font-mono">
               Central Command • Guwahati HQ

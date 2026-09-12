@@ -11,8 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
-.env.local
-.env.*.local
+
+# Environment variables & secret files protection
+.env
+.env.*
+*.env
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Editor directories and files
 .vscode/*

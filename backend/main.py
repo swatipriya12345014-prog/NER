@@ -42,6 +42,10 @@ from schemas import (
     BlockageInfo, AlternateRouteRequest, AlternateRouteResponse
 )
 from chatbot import ask_ai_chatbot
+from security import (
+    register_security_middlewares, audit_logger, input_sanitizer,
+    fingerprint_validator, InputSanitizer
+)
 
 app = FastAPI(
     title="NER-LIFELINE Backend API",
@@ -49,44 +53,97 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configure CORS for frontend access
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+# ─────────────────────────────────────────────────────────────
+# SECURITY: Strict CORS — NO wildcard "*" origins
+# ─────────────────────────────────────────────────────────────
+origins = [
+    o.strip() for o in
+    os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    if o.strip()
+]
 
 from fastapi.middleware.gzip import GZipMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins + ["*"],  # Permits preview deployments
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=[
+        "Content-Type", "Authorization", "X-Request-ID",
+        "X-CSRF-Nonce", "X-Client-Fingerprint", "Accept",
+        "Origin", "Cache-Control",
+    ],
+    expose_headers=[
+        "X-Request-ID", "X-RateLimit-Limit",
+        "X-RateLimit-Remaining", "X-RateLimit-Reset",
+    ],
+    max_age=600,  # Preflight cache: 10 minutes
 )
 
 # High-speed payload compression for coordinate-heavy GIS payloads
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# ─────────────────────────────────────────────────────────────
+# SECURITY: Mount enterprise security middleware stack
+# ─────────────────────────────────────────────────────────────
+register_security_middlewares(app)
+
+# ─────────────────────────────────────────────────────────────
+# SOURCE FILE LOCKING SYSTEM: Concurrency, Thread & Mutex Architecture
+# ─────────────────────────────────────────────────────────────
+import threading
+from contextlib import contextmanager
+
+# 1. Master Re-entrant Source File Lock (Locks critical operations across the entire source file)
+SRC_FILE_LOCK = threading.RLock()
+
+# 2. Domain-Specific Locks for fine-grained non-blocking concurrency:
+_CACHE_LOCK = threading.Lock()           # In-memory operational cache
+_SHIPMENTS_LOCK = threading.Lock()       # Shipments registry & dispatch
+_INCIDENTS_LOCK = threading.Lock()       # Incident reporting & alerts
+_ROUTE_RISK_LOCK = threading.Lock()      # Terrain vulnerability & route index
+_GPS_LOCK = threading.Lock()             # Real-time GPS stream & device store
+_VEHICLES_LOCK = threading.Lock()        # Fleet vehicle registry & telemetry
+_ROAD_HISTORIES_LOCK = threading.Lock()  # Road histories & blockage events
+_SOS_CALLS_LOCK = threading.Lock()       # Live SOS audio & emergency sessions
+_WS_CONNECTIONS_LOCK = threading.Lock()  # Active WebSocket subscriber pools
+
+@contextmanager
+def locked_src_operation(domain_lock: Optional[threading.Lock] = None):
+    """
+    Context manager to execute thread-safe operations guarded by either
+    a domain lock or the master SRC_FILE_LOCK.
+    """
+    lock = domain_lock or SRC_FILE_LOCK
+    with lock:
+        yield
 
 # High-speed in-memory TTL caching for operational endpoints (<1ms responses)
 _OPERATIONAL_CACHE: Dict[str, Tuple[float, any]] = {}
 _OPERATIONAL_CACHE_TTL = 15.0  # 15 seconds cache for read endpoints
 
 def get_cached_data(cache_key: str, ttl: float = _OPERATIONAL_CACHE_TTL):
-    if cache_key in _OPERATIONAL_CACHE:
-        ts, data = _OPERATIONAL_CACHE[cache_key]
-        if time.time() - ts < ttl:
-            return data
-    return None
+    with _CACHE_LOCK:
+        if cache_key in _OPERATIONAL_CACHE:
+            ts, data = _OPERATIONAL_CACHE[cache_key]
+            if time.time() - ts < ttl:
+                return data
+        return None
 
 def set_cached_data(cache_key: str, data: any):
-    if len(_OPERATIONAL_CACHE) > 500:
-        oldest = sorted(_OPERATIONAL_CACHE.keys(), key=lambda k: _OPERATIONAL_CACHE[k][0])[:50]
-        for k in oldest:
-            _OPERATIONAL_CACHE.pop(k, None)
-    _OPERATIONAL_CACHE[cache_key] = (time.time(), data)
+    with _CACHE_LOCK:
+        if len(_OPERATIONAL_CACHE) > 500:
+            oldest = sorted(_OPERATIONAL_CACHE.keys(), key=lambda k: _OPERATIONAL_CACHE[k][0])[:50]
+            for k in oldest:
+                _OPERATIONAL_CACHE.pop(k, None)
+        _OPERATIONAL_CACHE[cache_key] = (time.time(), data)
 
 def invalidate_cached_data(prefix: str):
-    keys_to_remove = [k for k in _OPERATIONAL_CACHE.keys() if k.startswith(prefix)]
-    for k in keys_to_remove:
-        _OPERATIONAL_CACHE.pop(k, None)
+    with _CACHE_LOCK:
+        keys_to_remove = [k for k in _OPERATIONAL_CACHE.keys() if k.startswith(prefix)]
+        for k in keys_to_remove:
+            _OPERATIONAL_CACHE.pop(k, None)
 
 # In-memory operational mock fallback datasets when Supabase is initializing
 MOCK_SHIPMENTS = [
@@ -328,7 +385,8 @@ def get_shipments():
         return cached
 
     client = get_supabase_client()
-    data = MOCK_SHIPMENTS
+    with _SHIPMENTS_LOCK:
+        data = list(MOCK_SHIPMENTS)
     if client:
         try:
             res = client.table("shipments").select("*").execute()
@@ -355,7 +413,8 @@ def create_shipment(shipment: ShipmentCreate):
         except Exception as e:
             print(f"Supabase insert error: {e}")
 
-    MOCK_SHIPMENTS.append(new_shipment)
+    with _SHIPMENTS_LOCK:
+        MOCK_SHIPMENTS.append(new_shipment)
     return new_shipment
 
 @app.get("/api/routes/risk-index", response_model=List[RouteRiskReport])
@@ -365,7 +424,8 @@ def get_route_risks():
         return cached
 
     client = get_supabase_client()
-    data = MOCK_ROUTE_RISKS
+    with _ROUTE_RISK_LOCK:
+        data = list(MOCK_ROUTE_RISKS)
     if client:
         try:
             res = client.table("route_risks").select("*").execute()
@@ -384,7 +444,8 @@ def get_incidents():
         return cached
 
     client = get_supabase_client()
-    data = MOCK_INCIDENTS
+    with _INCIDENTS_LOCK:
+        data = list(MOCK_INCIDENTS)
     if client:
         try:
             res = client.table("incidents").select("*").eq("active", True).execute()
@@ -409,13 +470,15 @@ def report_incident(incident: IncidentAlert):
         except Exception as e:
             print(f"Supabase incident insert notice: {e}")
 
-    # Also append to MOCK_INCIDENTS in-memory fallback
-    MOCK_INCIDENTS.insert(0, incident_dict)
+    # Also append to MOCK_INCIDENTS in-memory fallback (Thread-Safe)
+    with _INCIDENTS_LOCK:
+        MOCK_INCIDENTS.insert(0, incident_dict)
     return incident
 
 @app.get("/api/mesh/nodes")
 def get_mesh_nodes():
-    return MOCK_MESH_NODES
+    with SRC_FILE_LOCK:
+        return list(MOCK_MESH_NODES)
 
 @app.post("/api/mesh/telemetry")
 def ingest_mesh_telemetry(packet: MeshTelemetryPacket):
@@ -1155,25 +1218,29 @@ MAX_HISTORY_POINTS = 500  # Per-device track history buffer size
 # WebSocket Connection Manager for Real-Time GPS Broadcasting
 # ─────────────────────────────────────────────────────────────
 class GPSConnectionManager:
-    """Manages WebSocket connections for real-time GPS broadcasting."""
+    """Manages WebSocket connections for real-time GPS broadcasting with thread-safe locking."""
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            self.active_connections.append(websocket)
         print(f"GPS WebSocket connected. Total active: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
         print(f"GPS WebSocket disconnected. Total active: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
         """Broadcast a GPS update to ALL connected WebSocket clients."""
+        with _WS_CONNECTIONS_LOCK:
+            connections_snapshot = list(self.active_connections)
         disconnected = []
-        for connection in self.active_connections:
+        for connection in connections_snapshot:
             try:
                 await connection.send_json(message)
             except Exception:
@@ -1187,7 +1254,7 @@ gps_manager = GPSConnectionManager()
 
 
 def _store_gps_update(data: dict) -> dict:
-    """Store a GPS update in-memory and optionally persist to Supabase."""
+    """Store a GPS update in-memory and optionally persist to Supabase (Thread-Safe)."""
     device_id = data["device_id"]
     record_id = f"gps-{uuid.uuid4().hex[:12]}"
     now_iso = datetime.utcnow().isoformat() + "Z"
@@ -1206,32 +1273,33 @@ def _store_gps_update(data: dict) -> dict:
         "received_at": now_iso,
     }
 
-    # In-memory store
-    if device_id not in GPS_LOCATION_STORE:
-        GPS_LOCATION_STORE[device_id] = {"latest": None, "history": []}
+    # In-memory store (guarded by _GPS_LOCK)
+    with _GPS_LOCK:
+        if device_id not in GPS_LOCATION_STORE:
+            GPS_LOCATION_STORE[device_id] = {"latest": None, "history": []}
 
-    GPS_LOCATION_STORE[device_id]["latest"] = record
-    GPS_LOCATION_STORE[device_id]["history"].append({
-        "lat": data["lat"],
-        "lng": data["lng"],
-        "altitude_m": data.get("altitude_m"),
-        "speed_kmh": data.get("speed_kmh"),
-        "heading_deg": data.get("heading_deg"),
-        "accuracy_m": data.get("accuracy_m"),
-        "timestamp": timestamp,
-    })
+        GPS_LOCATION_STORE[device_id]["latest"] = record
+        GPS_LOCATION_STORE[device_id]["history"].append({
+            "lat": data["lat"],
+            "lng": data["lng"],
+            "altitude_m": data.get("altitude_m"),
+            "speed_kmh": data.get("speed_kmh"),
+            "heading_deg": data.get("heading_deg"),
+            "accuracy_m": data.get("accuracy_m"),
+            "timestamp": timestamp,
+        })
 
-    # Trim history buffer
-    if len(GPS_LOCATION_STORE[device_id]["history"]) > MAX_HISTORY_POINTS:
-        GPS_LOCATION_STORE[device_id]["history"] = GPS_LOCATION_STORE[device_id]["history"][-MAX_HISTORY_POINTS:]
+        # Trim history buffer
+        if len(GPS_LOCATION_STORE[device_id]["history"]) > MAX_HISTORY_POINTS:
+            GPS_LOCATION_STORE[device_id]["history"] = GPS_LOCATION_STORE[device_id]["history"][-MAX_HISTORY_POINTS:]
 
-    # Also update the vehicle position in MOCK_VEHICLES if the device_id matches
-    for v in MOCK_VEHICLES:
-        if v["id"] == device_id:
-            v["lat"] = data["lat"]
-            v["lng"] = data["lng"]
-            v["current_location"] = f"GPS: {data['lat']:.4f}, {data['lng']:.4f}"
-            break
+        # Also update the vehicle position in MOCK_VEHICLES if the device_id matches
+        for v in MOCK_VEHICLES:
+            if v["id"] == device_id:
+                v["lat"] = data["lat"]
+                v["lng"] = data["lng"]
+                v["current_location"] = f"GPS: {data['lat']:.4f}, {data['lng']:.4f}"
+                break
 
     return record
 
@@ -1280,56 +1348,57 @@ async def gps_update(update: GPSLocationUpdate):
 
 @app.get("/api/gps/latest", response_model=List[GPSDeviceLatest])
 def get_all_latest_gps():
-    """Get the latest GPS position for ALL tracked devices."""
+    """Get the latest GPS position for ALL tracked devices (Thread-Safe)."""
     results = []
-    for device_id, store in GPS_LOCATION_STORE.items():
-        if store["latest"]:
-            rec = store["latest"]
-            results.append(GPSDeviceLatest(
-                device_id=device_id,
-                lat=rec["lat"],
-                lng=rec["lng"],
-                altitude_m=rec.get("altitude_m"),
-                speed_kmh=rec.get("speed_kmh"),
-                heading_deg=rec.get("heading_deg"),
-                accuracy_m=rec.get("accuracy_m"),
-                timestamp=rec["timestamp"],
-                received_at=rec["received_at"],
-                track_points_count=len(store["history"])
-            ))
+    with _GPS_LOCK:
+        for device_id, store in GPS_LOCATION_STORE.items():
+            if store["latest"]:
+                rec = store["latest"]
+                results.append(GPSDeviceLatest(
+                    device_id=device_id,
+                    lat=rec["lat"],
+                    lng=rec["lng"],
+                    altitude_m=rec.get("altitude_m"),
+                    speed_kmh=rec.get("speed_kmh"),
+                    heading_deg=rec.get("heading_deg"),
+                    accuracy_m=rec.get("accuracy_m"),
+                    timestamp=rec["timestamp"],
+                    received_at=rec["received_at"],
+                    track_points_count=len(store["history"])
+                ))
     return results
 
 
 @app.get("/api/gps/latest/{device_id}", response_model=GPSDeviceLatest)
 def get_device_latest_gps(device_id: str):
-    """Get the latest GPS position for a specific device."""
-    store = GPS_LOCATION_STORE.get(device_id)
-    if not store or not store["latest"]:
-        raise HTTPException(status_code=404, detail=f"No GPS data for device '{device_id}'")
-
-    rec = store["latest"]
-    return GPSDeviceLatest(
-        device_id=device_id,
-        lat=rec["lat"],
-        lng=rec["lng"],
-        altitude_m=rec.get("altitude_m"),
-        speed_kmh=rec.get("speed_kmh"),
-        heading_deg=rec.get("heading_deg"),
-        accuracy_m=rec.get("accuracy_m"),
-        timestamp=rec["timestamp"],
-        received_at=rec["received_at"],
-        track_points_count=len(store["history"])
-    )
+    """Get the latest GPS position for a specific device (Thread-Safe)."""
+    with _GPS_LOCK:
+        store = GPS_LOCATION_STORE.get(device_id)
+        if not store or not store["latest"]:
+            raise HTTPException(status_code=404, detail=f"No GPS data for device '{device_id}'")
+        rec = store["latest"]
+        return GPSDeviceLatest(
+            device_id=device_id,
+            lat=rec["lat"],
+            lng=rec["lng"],
+            altitude_m=rec.get("altitude_m"),
+            speed_kmh=rec.get("speed_kmh"),
+            heading_deg=rec.get("heading_deg"),
+            accuracy_m=rec.get("accuracy_m"),
+            timestamp=rec["timestamp"],
+            received_at=rec["received_at"],
+            track_points_count=len(store["history"])
+        )
 
 
 @app.get("/api/gps/history/{device_id}", response_model=List[GPSTrackPoint])
 def get_device_gps_history(device_id: str, limit: int = 100):
-    """Get the recent GPS track history for a device (breadcrumb trail)."""
-    store = GPS_LOCATION_STORE.get(device_id)
-    if not store:
-        raise HTTPException(status_code=404, detail=f"No GPS history for device '{device_id}'")
-
-    history = store["history"][-limit:]
+    """Get the recent GPS track history for a device (breadcrumb trail, Thread-Safe)."""
+    with _GPS_LOCK:
+        store = GPS_LOCATION_STORE.get(device_id)
+        if not store:
+            raise HTTPException(status_code=404, detail=f"No GPS history for device '{device_id}'")
+        history = list(store["history"][-limit:])
     return [GPSTrackPoint(**pt) for pt in history]
 
 
@@ -1347,11 +1416,12 @@ async def gps_websocket_endpoint(websocket: WebSocket):
     await gps_manager.connect(websocket)
 
     try:
-        # Send initial state: all current GPS positions
+        # Send initial state: all current GPS positions (Thread-Safe)
         initial_positions = []
-        for device_id, store in GPS_LOCATION_STORE.items():
-            if store["latest"]:
-                initial_positions.append(store["latest"])
+        with _GPS_LOCK:
+            for device_id, store in GPS_LOCATION_STORE.items():
+                if store["latest"]:
+                    initial_positions.append(dict(store["latest"]))
 
         await websocket.send_json({
             "type": "initial_state",
@@ -1763,13 +1833,14 @@ def get_road_history_by_id(road_id: str):
 
 @app.post("/api/roads/histories/{road_id}/events")
 def add_road_blockage_event(road_id: str, event: PastBlockageEvent):
-    """Log a new landslide, flash flood or blockage incident into the permanent road history."""
+    """Log a new landslide, flash flood or blockage incident into the permanent road history (Thread-Safe)."""
     road_key = road_id.upper()
     event_dict = event.dict()
 
-    if road_key in ROAD_HISTORIES_DB:
-        ROAD_HISTORIES_DB[road_key]["past_blockage_events"].insert(0, event_dict)
-        ROAD_HISTORIES_DB[road_key]["last_inspected"] = datetime.utcnow().isoformat()
+    with _ROAD_HISTORIES_LOCK:
+        if road_key in ROAD_HISTORIES_DB:
+            ROAD_HISTORIES_DB[road_key]["past_blockage_events"].insert(0, event_dict)
+            ROAD_HISTORIES_DB[road_key]["last_inspected"] = datetime.utcnow().isoformat()
 
     client = get_supabase_client()
     if client:
@@ -1804,15 +1875,19 @@ class VehicleRealtimeManager:
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
+        with _WS_CONNECTIONS_LOCK:
+            connections_snapshot = list(self.active_connections)
         dead_connections = []
-        for connection in self.active_connections:
+        for connection in connections_snapshot:
             try:
                 await connection.send_json(message)
             except Exception:
@@ -1824,13 +1899,14 @@ vehicle_realtime_manager = VehicleRealtimeManager()
 
 @app.get("/api/vehicles/realtime", response_model=List[VehicleRegistryItem])
 def get_all_realtime_vehicles():
-    """Returns real-time operational status for all vehicle numbers in the registry."""
+    """Returns real-time operational status for all vehicle numbers in the registry (Thread-Safe)."""
     cached = get_cached_data("realtime_vehicles")
     if cached is not None:
         return cached
 
     client = get_supabase_client()
-    data = list(REALTIME_VEHICLE_DATABASE.values())
+    with _VEHICLES_LOCK:
+        data = list(REALTIME_VEHICLE_DATABASE.values())
 
     if client:
         try:
@@ -1845,7 +1921,7 @@ def get_all_realtime_vehicles():
 
 @app.get("/api/vehicles/realtime/{vehicle_number}", response_model=VehicleRegistryItem)
 def get_realtime_vehicle_by_plate(vehicle_number: str):
-    """Retrieve realtime location, driver, road and status by vehicle number plate."""
+    """Retrieve realtime location, driver, road and status by vehicle number plate (Thread-Safe)."""
     normalized_plate = vehicle_number.strip().upper().replace(" ", "-")
     client = get_supabase_client()
 
@@ -1857,60 +1933,62 @@ def get_realtime_vehicle_by_plate(vehicle_number: str):
         except Exception as e:
             print(f"Supabase vehicle query notice: {e}")
 
-    if normalized_plate in REALTIME_VEHICLE_DATABASE:
-        return REALTIME_VEHICLE_DATABASE[normalized_plate]
+    with _VEHICLES_LOCK:
+        if normalized_plate in REALTIME_VEHICLE_DATABASE:
+            return dict(REALTIME_VEHICLE_DATABASE[normalized_plate])
 
-    for v in REALTIME_VEHICLE_DATABASE.values():
-        if v["vehicle_number"].replace("-", "") == normalized_plate.replace("-", ""):
-            return v
+        for v in REALTIME_VEHICLE_DATABASE.values():
+            if v["vehicle_number"].replace("-", "") == normalized_plate.replace("-", ""):
+                return dict(v)
 
     raise HTTPException(status_code=404, detail=f"Vehicle registration number {vehicle_number} not found")
 
 @app.post("/api/vehicles/realtime/update", response_model=VehicleRegistryItem)
 async def update_realtime_vehicle(update: RealtimeVehicleTelemetryUpdate):
-    """Update live location, speed, fuel, or road position for a specific vehicle number."""
+    """Update live location, speed, fuel, or road position for a specific vehicle number (Thread-Safe)."""
     plate = update.vehicle_number.strip().upper().replace(" ", "-")
     now_iso = datetime.utcnow().isoformat()
 
-    if plate not in REALTIME_VEHICLE_DATABASE:
-        REALTIME_VEHICLE_DATABASE[plate] = {
-            "vehicle_number": plate,
-            "vehicle_name": f"Fleet Vehicle {plate}",
-            "vehicle_type": "Emergency Transit Carrier",
-            "driver_name": "Field Pilot",
-            "driver_phone": "+91 94350 00000",
-            "fuel_percentage": update.fuel_percentage or 80.0,
-            "speed_kmh": update.speed_kmh or 0.0,
-            "lat": update.lat,
-            "lng": update.lng,
-            "altitude_m": update.altitude_m or 500.0,
-            "current_road": update.current_road or "Active NER Corridor",
-            "destination": "Command Depot",
-            "cargo_manifest": update.cargo_manifest or "Relief Cargo",
-            "status": update.status or "Active",
-            "is_online": True,
-            "mesh_node_id": "MESH-NODE-01",
-            "last_ping": now_iso
-        }
-    else:
-        v = REALTIME_VEHICLE_DATABASE[plate]
-        v["lat"] = update.lat
-        v["lng"] = update.lng
-        v["last_ping"] = now_iso
-        if update.speed_kmh is not None:
-            v["speed_kmh"] = update.speed_kmh
-        if update.fuel_percentage is not None:
-            v["fuel_percentage"] = update.fuel_percentage
-        if update.altitude_m is not None:
-            v["altitude_m"] = update.altitude_m
-        if update.status:
-            v["status"] = update.status
-        if update.current_road:
-            v["current_road"] = update.current_road
-        if update.cargo_manifest:
-            v["cargo_manifest"] = update.cargo_manifest
+    with _VEHICLES_LOCK:
+        if plate not in REALTIME_VEHICLE_DATABASE:
+            REALTIME_VEHICLE_DATABASE[plate] = {
+                "vehicle_number": plate,
+                "vehicle_name": f"Fleet Vehicle {plate}",
+                "vehicle_type": "Emergency Transit Carrier",
+                "driver_name": "Field Pilot",
+                "driver_phone": "+91 94350 00000",
+                "fuel_percentage": update.fuel_percentage or 80.0,
+                "speed_kmh": update.speed_kmh or 0.0,
+                "lat": update.lat,
+                "lng": update.lng,
+                "altitude_m": update.altitude_m or 500.0,
+                "current_road": update.current_road or "Active NER Corridor",
+                "destination": "Command Depot",
+                "cargo_manifest": update.cargo_manifest or "Relief Cargo",
+                "status": update.status or "Active",
+                "is_online": True,
+                "mesh_node_id": "MESH-NODE-01",
+                "last_ping": now_iso
+            }
+        else:
+            v = REALTIME_VEHICLE_DATABASE[plate]
+            v["lat"] = update.lat
+            v["lng"] = update.lng
+            v["last_ping"] = now_iso
+            if update.speed_kmh is not None:
+                v["speed_kmh"] = update.speed_kmh
+            if update.fuel_percentage is not None:
+                v["fuel_percentage"] = update.fuel_percentage
+            if update.altitude_m is not None:
+                v["altitude_m"] = update.altitude_m
+            if update.status:
+                v["status"] = update.status
+            if update.current_road:
+                v["current_road"] = update.current_road
+            if update.cargo_manifest:
+                v["cargo_manifest"] = update.cargo_manifest
 
-    updated_record = REALTIME_VEHICLE_DATABASE[plate]
+        updated_record = dict(REALTIME_VEHICLE_DATABASE[plate])
 
     # Asynchronously persist to Supabase
     client = get_supabase_client()
@@ -2100,16 +2178,20 @@ class SOSCallManager:
 
     async def connect(self, call_id: str, websocket: WebSocket):
         await websocket.accept()
-        self.active_call_sockets[call_id].append(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            self.active_call_sockets[call_id].append(websocket)
 
     def disconnect(self, call_id: str, websocket: WebSocket):
-        if call_id in self.active_call_sockets and websocket in self.active_call_sockets[call_id]:
-            self.active_call_sockets[call_id].remove(websocket)
+        with _WS_CONNECTIONS_LOCK:
+            if call_id in self.active_call_sockets and websocket in self.active_call_sockets[call_id]:
+                self.active_call_sockets[call_id].remove(websocket)
 
     async def broadcast_to_call(self, call_id: str, message: dict):
-        if call_id in self.active_call_sockets:
+        with _WS_CONNECTIONS_LOCK:
+            sockets_snapshot = list(self.active_call_sockets.get(call_id, []))
+        if sockets_snapshot:
             dead = []
-            for ws in self.active_call_sockets[call_id]:
+            for ws in sockets_snapshot:
                 try:
                     await ws.send_json(message)
                 except Exception:
@@ -2135,7 +2217,7 @@ def trigger_emergency_phone_alert(call_session: dict):
 
 @app.post("/api/sos/call/initiate", response_model=SOSCallSession)
 async def initiate_sos_call(req: SOSCallInitiateRequest):
-    """Initiates an emergency audio/radio SOS call connecting directly to the Controller at +91 95705 25463."""
+    """Initiates an emergency audio/radio SOS call connecting directly to the Controller at +91 95705 25463 (Thread-Safe)."""
     call_id = f"CALL-SOS-{str(uuid.uuid4())[:8].upper()}"
     now_iso = datetime.utcnow().isoformat()
 
@@ -2186,12 +2268,14 @@ async def initiate_sos_call(req: SOSCallInitiateRequest):
 
     trigger_emergency_phone_alert(call_session)
 
-    ACTIVE_SOS_CALLS[call_id] = call_session
+    with _SOS_CALLS_LOCK:
+        ACTIVE_SOS_CALLS[call_id] = call_session
 
     # Mark vehicle in real-time registry as 'Distress Call Active'
-    if req.vehicle_number in REALTIME_VEHICLE_DATABASE:
-        REALTIME_VEHICLE_DATABASE[req.vehicle_number]["status"] = "Distress"
-        REALTIME_VEHICLE_DATABASE[req.vehicle_number]["last_ping"] = now_iso
+    with _VEHICLES_LOCK:
+        if req.vehicle_number in REALTIME_VEHICLE_DATABASE:
+            REALTIME_VEHICLE_DATABASE[req.vehicle_number]["status"] = "Distress"
+            REALTIME_VEHICLE_DATABASE[req.vehicle_number]["last_ping"] = now_iso
 
     # Persist call session to Supabase
     client = get_supabase_client()
@@ -2212,13 +2296,14 @@ async def initiate_sos_call(req: SOSCallInitiateRequest):
 
 @app.post("/api/sos/call/{call_id}/heartbeat")
 async def sos_call_heartbeat(call_id: str, payload: dict):
-    """Heartbeat during active emergency call to exchange telemetry and dispatch updates."""
-    if call_id not in ACTIVE_SOS_CALLS:
-        raise HTTPException(status_code=404, detail="Call session not found or already closed")
+    """Heartbeat during active emergency call to exchange telemetry and dispatch updates (Thread-Safe)."""
+    with _SOS_CALLS_LOCK:
+        if call_id not in ACTIVE_SOS_CALLS:
+            raise HTTPException(status_code=404, detail="Call session not found or already closed")
 
-    session = ACTIVE_SOS_CALLS[call_id]
-    duration = payload.get("duration_seconds", session["duration_seconds"] + 5)
-    session["duration_seconds"] = duration
+        session = ACTIVE_SOS_CALLS[call_id]
+        duration = payload.get("duration_seconds", session["duration_seconds"] + 5)
+        session["duration_seconds"] = duration
 
     # Simulated real-time responder updates during the call
     update_message = None
@@ -2228,11 +2313,13 @@ async def sos_call_heartbeat(call_id: str, payload: dict):
         update_message = "Military transit medical team from Dirang alerted on secondary radio channel. Emergency fuel cache ready at refuge bay."
 
     if update_message:
-        session["transcript_logs"].append({
-            "speaker": "DISPATCHER",
-            "time": datetime.utcnow().isoformat(),
-            "message": update_message
-        })
+        with _SOS_CALLS_LOCK:
+            if call_id in ACTIVE_SOS_CALLS:
+                ACTIVE_SOS_CALLS[call_id]["transcript_logs"].append({
+                    "speaker": "DISPATCHER",
+                    "time": datetime.utcnow().isoformat(),
+                    "message": update_message
+                })
         await sos_call_manager.broadcast_to_call(call_id, {
             "type": "dispatcher_message",
             "message": update_message,
@@ -2243,33 +2330,35 @@ async def sos_call_heartbeat(call_id: str, payload: dict):
 
 @app.post("/api/sos/call/{call_id}/end")
 async def end_sos_call(call_id: str, req: SOSCallEndRequest):
-    """Gracefully terminates the emergency SOS call, logs duration and resolution."""
+    """Gracefully terminates the emergency SOS call, logs duration and resolution (Thread-Safe)."""
     now_iso = datetime.utcnow().isoformat()
-    session = ACTIVE_SOS_CALLS.pop(call_id, None)
+    with _SOS_CALLS_LOCK:
+        session = ACTIVE_SOS_CALLS.pop(call_id, None)
 
-    if not session:
-        # Check history
-        for hist in HISTORICAL_SOS_CALLS:
-            if hist["call_id"] == call_id:
-                return hist
-        raise HTTPException(status_code=404, detail="Call session not found")
+        if not session:
+            # Check history
+            for hist in HISTORICAL_SOS_CALLS:
+                if hist["call_id"] == call_id:
+                    return hist
+            raise HTTPException(status_code=404, detail="Call session not found")
 
-    session["status"] = "COMPLETED"
-    session["ended_at"] = now_iso
-    session["duration_seconds"] = req.duration_seconds
-    session["transcript_logs"].append({
-        "speaker": "SYSTEM",
-        "time": now_iso,
-        "message": f"Emergency call ended. Total duration: {req.duration_seconds}s. Resolution: {req.resolution_notes or 'Responder unit dispatched to coordinates.'}"
-    })
+        session["status"] = "COMPLETED"
+        session["ended_at"] = now_iso
+        session["duration_seconds"] = req.duration_seconds
+        session["transcript_logs"].append({
+            "speaker": "SYSTEM",
+            "time": now_iso,
+            "message": f"Emergency call ended. Total duration: {req.duration_seconds}s. Resolution: {req.resolution_notes or 'Responder unit dispatched to coordinates.'}"
+        })
 
-    HISTORICAL_SOS_CALLS.insert(0, session)
+        HISTORICAL_SOS_CALLS.insert(0, session)
 
     # Revert vehicle status in registry
     v_num = session["vehicle_number"]
-    if v_num in REALTIME_VEHICLE_DATABASE:
-        REALTIME_VEHICLE_DATABASE[v_num]["status"] = "Active"
-        REALTIME_VEHICLE_DATABASE[v_num]["last_ping"] = now_iso
+    with _VEHICLES_LOCK:
+        if v_num in REALTIME_VEHICLE_DATABASE:
+            REALTIME_VEHICLE_DATABASE[v_num]["status"] = "Active"
+            REALTIME_VEHICLE_DATABASE[v_num]["last_ping"] = now_iso
 
     # Update in Supabase
     client = get_supabase_client()
@@ -2294,12 +2383,13 @@ async def end_sos_call(call_id: str, req: SOSCallEndRequest):
 
 @app.get("/api/sos/call/active", response_model=List[SOSCallSession])
 def get_active_sos_calls():
-    """Returns currently active emergency call sessions for tactical monitors."""
-    return list(ACTIVE_SOS_CALLS.values())
+    """Returns currently active emergency call sessions for tactical monitors (Thread-Safe)."""
+    with _SOS_CALLS_LOCK:
+        return list(ACTIVE_SOS_CALLS.values())
 
 @app.get("/api/sos/call/history")
 def get_sos_call_history(limit: int = 20):
-    """Returns historical emergency call sessions with full transcripts."""
+    """Returns historical emergency call sessions with full transcripts (Thread-Safe)."""
     client = get_supabase_client()
     if client:
         try:
@@ -2309,17 +2399,23 @@ def get_sos_call_history(limit: int = 20):
         except Exception as e:
             print(f"Supabase sos history notice: {e}")
 
-    return HISTORICAL_SOS_CALLS[:limit]
+    with _SOS_CALLS_LOCK:
+        return list(HISTORICAL_SOS_CALLS[:limit])
 
 @app.websocket("/ws/sos/call/{call_id}")
 async def websocket_sos_call(websocket: WebSocket, call_id: str):
     """Two-way real-time audio handshake and messaging stream for active SOS call."""
     await sos_call_manager.connect(call_id, websocket)
     try:
-        if call_id in ACTIVE_SOS_CALLS:
+        session_data = None
+        with _SOS_CALLS_LOCK:
+            if call_id in ACTIVE_SOS_CALLS:
+                session_data = dict(ACTIVE_SOS_CALLS[call_id])
+
+        if session_data:
             await websocket.send_json({
                 "type": "call_session_state",
-                "session": ACTIVE_SOS_CALLS[call_id]
+                "session": session_data
             })
 
         while True:
@@ -2402,9 +2498,32 @@ def sync_all_databases():
 
     return synced_info
 
+def _enforce_env_file_security():
+    """
+    Guarantees OS-level file security by locking .env files to mode 600 (owner read/write only).
+    Prevents world or group access to sensitive tokens, master keys, and credentials.
+    """
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    env_paths = [
+        os.path.join(workspace_root, ".env"),
+        os.path.join(workspace_root, "backend", ".env"),
+        os.path.join(workspace_root, "frontend", ".env"),
+    ]
+    for path in env_paths:
+        if os.path.exists(path):
+            try:
+                # 0o600 = -rw------- (Read/Write only by owner)
+                os.chmod(path, 0o600)
+            except Exception as e:
+                print(f"Notice: Could not enforce chmod 600 on {path}: {e}")
+
+# Immediately enforce permissions on import
+_enforce_env_file_security()
+
 @app.on_event("startup")
 async def on_startup_sync():
     """Startup hook to verify tables, execute operational sync, and launch real-time telemetry stream."""
+    _enforce_env_file_security()
     print("NER-LIFELINE: Executing startup database synchronization with MoRTH VAHAN...")
     sync_all_databases()
     # Launch real-time AIS-140 live telemetry broadcaster task

@@ -3,15 +3,18 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, Truck, Package, AlertTriangle,
   ShieldAlert, Network, Bell, BarChart3, Settings, LogOut,
-  ChevronLeft, ChevronRight, Activity, AlertOctagon, Shield, X, Bot
+  ChevronLeft, ChevronRight, Activity, AlertOctagon, Shield, X, Bot, Lock
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { isRouteAllowedForRole, ROLE_CONFIG, getRoleDisplayName } from '../../constants/roles';
 
-const navSections = [
+const allNavSections = [
   {
     title: 'Core Operations',
     items: [
       { key: 'nav_dashboard', name: 'Dashboard', path: '/admin-dashboard', icon: LayoutDashboard },
+      { key: 'nav_manager_dashboard', name: 'Manager Command', path: '/manager-dashboard', icon: LayoutDashboard },
       { key: 'nav_live_map', name: 'Live Map & Routes', path: '/live-map', icon: Map },
       { key: 'nav_vehicles', name: 'Fleet Vehicles', path: '/vehicles', icon: Truck },
       { key: 'nav_shipments', name: 'Relief Shipments', path: '/shipments', icon: Package },
@@ -23,7 +26,7 @@ const navSections = [
     title: 'Field & Mesh Roles',
     items: [
       { key: 'nav_driver', name: 'Driver Problem Portal', path: '/driver-dashboard', icon: AlertOctagon },
-      { key: 'nav_field_officer', name: 'Field Officer', path: '/field-officer', icon: Shield },
+      { key: 'nav_field_officer', name: 'Field Officer Console', path: '/field-officer', icon: Shield },
       { key: 'nav_mesh', name: 'LoRa Mesh Network', path: '/mesh', icon: Network },
     ]
   },
@@ -32,14 +35,25 @@ const navSections = [
     items: [
       { key: 'nav_ai_assistant', name: 'Universal AI Assistant', path: '/ai-assistant', icon: Bot },
       { key: 'nav_risk_analysis', name: 'Terrain Risk Matrix', path: '/risk-analysis', icon: ShieldAlert },
-      { key: 'nav_analytics', name: 'Analytics', path: '/analytics', icon: BarChart3 },
-      { key: 'nav_settings', name: 'Settings & Language', path: '/settings', icon: Settings },
+      { key: 'nav_analytics', name: 'Logistics Analytics', path: '/analytics', icon: BarChart3 },
+      { key: 'nav_settings', name: 'Settings & Governance', path: '/settings', icon: Settings },
     ]
   }
 ];
 
 const Sidebar = ({ collapsed, onToggle, mobileOpen = false, onMobileClose = () => {} }) => {
   const { t } = useLanguage();
+  const { role } = useAuth();
+
+  const currentRoleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.admin;
+
+  // Dynamically filter sections and items strictly to the user's role
+  const navSections = allNavSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => isRouteAllowedForRole(role, item.path))
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
     <>
@@ -71,6 +85,16 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen = false, onMobileClose = () =
               >
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Mobile Role Identity Indicator */}
+            <div className="px-4 pt-3 pb-1">
+              <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-[11px]">
+                <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Active Role</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${currentRoleConfig.badgeClass}`}>
+                  {currentRoleConfig.name}
+                </span>
+              </div>
             </div>
 
             {/* Navigation items for Mobile */}
@@ -147,6 +171,18 @@ const Sidebar = ({ collapsed, onToggle, mobileOpen = false, onMobileClose = () =
             )}
           </div>
         </div>
+
+        {/* Role Identity Indicator */}
+        {!collapsed && (
+          <div className="px-3 pt-3 pb-1">
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-[11px]">
+              <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Role</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border truncate max-w-[130px] ${currentRoleConfig.badgeClass}`}>
+                {currentRoleConfig.name}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Sections */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 scrollbar-thin">

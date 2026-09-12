@@ -5,6 +5,19 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    fs: {
+      strict: true,
+      deny: [
+        '.env',
+        '.env.*',
+        '**/.env*',
+        '*.{crt,pem}',
+        'custom.d.ts',
+        'node_modules/.vite'
+      ]
+    }
+  },
   build: {
     chunkSizeWarningLimit: 800,
     rollupOptions: {

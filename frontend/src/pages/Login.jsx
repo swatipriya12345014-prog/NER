@@ -194,29 +194,6 @@ const Login = () => {
         <div className="bg-slate-800/90 backdrop-blur-xl py-7 px-4 shadow-[0_0_40px_rgba(0,0,0,0.5)] sm:rounded-2xl sm:px-10 border border-slate-700 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-blue-400 to-emerald-400"></div>
 
-          {/* Engine Status Badge with settings toggle */}
-          <div className="mb-5 flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-700 text-xs">
-            <span className="text-slate-400">Google Auth:</span>
-            <div className="flex items-center space-x-2">
-              {isFirebaseConfigured ? (
-                <span className="flex items-center space-x-1 text-emerald-400 font-medium">
-                  <CheckCircle2 size={13} />
-                  <span>Firebase Live (ner-l-b0ef4)</span>
-                </span>
-              ) : (
-                <span className="flex items-center space-x-1 text-blue-400 font-medium">
-                  <span>Account Chooser Ready</span>
-                </span>
-              )}
-              <button
-                onClick={() => setShowConfigModal(true)}
-                title="Firebase API Configuration"
-                className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded transition-colors cursor-pointer"
-              >
-                <Settings size={13} />
-              </button>
-            </div>
-          </div>
 
           {/* Error Message with Quick Action */}
           {(errorMsg || authError) && (

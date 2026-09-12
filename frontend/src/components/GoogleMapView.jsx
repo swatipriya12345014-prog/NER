@@ -345,6 +345,8 @@ export default function GoogleMapView({
       script.onload = () => {
         if (typeof window.google?.maps?.Map === 'function') {
           setIsApiLoaded(true);
+        } else if (typeof window.__initGoogleMapsSdk === 'function') {
+          window.__initGoogleMapsSdk();
         }
       };
       script.onerror = (err) => {
@@ -355,7 +357,20 @@ export default function GoogleMapView({
     } else {
       if (verifyApi()) return;
       if (script.src && !script.src.includes(activeApiKey)) {
+        if (script.parentNode) script.parentNode.removeChild(script);
+        script = document.createElement('script');
+        script.id = scriptId;
         script.src = `https://maps.googleapis.com/maps/api/js?key=${activeApiKey}&libraries=places,geometry&loading=async&callback=__initGoogleMapsSdk`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          if (typeof window.google?.maps?.Map === 'function') {
+            setIsApiLoaded(true);
+          } else if (typeof window.__initGoogleMapsSdk === 'function') {
+            window.__initGoogleMapsSdk();
+          }
+        };
+        document.head.appendChild(script);
       }
       const timer = setInterval(() => {
         if (verifyApi()) clearInterval(timer);
