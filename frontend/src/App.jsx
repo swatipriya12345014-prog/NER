@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider } from './context/ThemeContext';
 import MainLayout from './components/layout/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import TacticalLoader from './components/common/TacticalLoader';
@@ -46,8 +47,9 @@ const ManagerDashboard = lazyWithRetry(() => import('./pages/ManagerDashboard'))
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <LanguageProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <LanguageProvider>
           <BrowserRouter>
             <Suspense fallback={<TacticalLoader />}>
               <Routes>
@@ -148,6 +150,7 @@ function App() {
           </BrowserRouter>
         </LanguageProvider>
       </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

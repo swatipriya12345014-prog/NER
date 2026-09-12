@@ -4,10 +4,11 @@ import {
   Bell, Search, User, Menu, Wifi, Shield, LogOut, ChevronDown, 
   HelpCircle, X, Sparkles, Navigation, Fuel, Route, AlertTriangle, 
   Radio, Compass, CheckCircle2, ArrowRight, ExternalLink, BookOpen,
-  Globe, Volume2, VolumeX
+  Globe, Volume2, VolumeX, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import { REGIONAL_HUBS } from '../../services/fuelRouteService';
 import { OPERATIONAL_ALERTS, OPERATIONAL_BLOCKED_ROADS } from '../../services/googleDirectionsService';
 import { isRouteAllowedForRole, ROLE_CONFIG, getDefaultRouteForRole, getRoleDisplayName } from '../../constants/roles';
@@ -53,6 +54,7 @@ const SEARCHABLE_ENTITIES = [
 export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileOpen = false }) {
   const { user, role, logout } = useAuth();
   const { language, setLanguage, t, languagesList, soundAlertsEnabled, setSoundAlertsEnabled, playAlertChime } = useLanguage();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
   
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -382,6 +384,15 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
             </div>
           )}
         </div>
+
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+          title={isDark ? "Switch to Light Theme (Alpine Day)" : "Switch to Dark Theme (Tactical Night)"}
+        >
+          {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-400" />}
+        </button>
 
         {/* Quick User Guide / How It Works Button */}
         <button
