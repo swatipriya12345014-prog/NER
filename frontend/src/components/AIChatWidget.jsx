@@ -20,7 +20,7 @@ export default function AIChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "👋 **Hello! I am the NER-LIFELINE Universal AI Assistant.**\n\nI can answer **literally all questions**: science, mathematics, coding, history, world trivia, plus high-altitude mountain first-aid, road statuses (NH-13, Sela Tunnel), and emergency SOS dispatch to **+91 78110 75355**.\n\n*How can I assist you today?*",
+      content: "👋 **Hello! I am the NER-LIFELINE Universal AI Assistant.**\n\nI can answer **literally all questions**: science, mathematics, coding, history, world trivia, plus high-altitude mountain first-aid, road statuses (NH-13, Sela Tunnel), and emergency SOS dispatch to **+91 95705 25463**.\n\n*How can I assist you today?*",
       source: 'conversational',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
@@ -465,7 +465,7 @@ export default function AIChatWidget() {
             
             <div className="flex items-center justify-between mt-1.5 px-1 text-[10px] text-slate-500">
               <span>Press <b>Enter</b> to send</span>
-              <span className="text-cyan-500/80">SOS Dispatch: +91 78110 75355</span>
+              <span className="text-cyan-500/80">SOS Dispatch: +91 95705 25463</span>
             </div>
           </div>
         </div>

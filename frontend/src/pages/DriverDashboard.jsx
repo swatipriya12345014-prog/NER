@@ -103,7 +103,7 @@ export default function DriverDashboard() {
       if (Array.isArray(vehicles) && vehicles.length > 0) setRealtimeVehicles(vehicles);
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSyncTime(timeStr);
-      setSyncNotice(`Synced ${res.details?.roads_synced || 8} Highways & ${res.details?.vehicles_synced || 8} Vehicles to Controller (+91 78110 75355)`);
+      setSyncNotice(`Synced ${res.details?.roads_synced || 8} Highways & ${res.details?.vehicles_synced || 8} Vehicles to Controller (+91 95705 25463)`);
       playAlertChime('success');
       setTimeout(() => setSyncNotice(null), 4500);
     } catch (e) {
@@ -702,7 +702,7 @@ SDRF Dispatch Status: Connected`;
                 <a
                   href={`tel:${EMERGENCY_CONTROLLER_RAW}`}
                   className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center justify-center space-x-1.5 shadow-lg shadow-emerald-950/60 border border-emerald-400 animate-bounce cursor-pointer min-h-[44px]"
-                  title="Direct phone call to Controller line 7811075355"
+                  title="Direct phone call to Controller line 9570525463"
                 >
                   <Phone size={15} />
                   <span>Call {EMERGENCY_CONTROLLER_RAW}</span>
@@ -718,7 +718,7 @@ SDRF Dispatch Status: Connected`;
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-3 px-3 rounded-xl bg-green-700 hover:bg-green-600 text-white font-bold flex items-center justify-center space-x-1 border border-green-500 cursor-pointer min-h-[44px]"
-                  title="Send emergency WhatsApp distress message to 7811075355"
+                  title="Send emergency WhatsApp distress message to 9570525463"
                 >
                   <span>WhatsApp SOS</span>
                 </a>

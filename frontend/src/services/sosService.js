@@ -5,8 +5,8 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const EMERGENCY_CONTROLLER_PHONE = '+91 78110 75355';
-export const EMERGENCY_CONTROLLER_RAW = '7811075355';
+export const EMERGENCY_CONTROLLER_PHONE = '+91 95705 25463';
+export const EMERGENCY_CONTROLLER_RAW = '9570525463';
 
 export async function initiateSosCall({
   vehicle_number = 'AS-01-EV-4421',

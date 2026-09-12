@@ -2042,7 +2042,7 @@ async def ais140_telemetry_broadcast_loop():
                     "destination": veh.get("destination", "Emergency Hub"),
                     "cargo_manifest": veh.get("cargo_manifest", "Critical Supplies"),
                     "driver_name": veh.get("driver_name", "Officer on Duty"),
-                    "driver_phone": veh.get("driver_phone", "+91 78110 75355"),
+                    "driver_phone": veh.get("driver_phone", "+91 95705 25463"),
                     "mesh_node_id": veh.get("mesh_node_id", "MESH-NODE-01"),
                     "mesh_rssi_dbm": random.randint(-72, -56),
                     "timestamp": now_iso,
@@ -2079,7 +2079,7 @@ def get_ais140_status():
         "active_monitored_vehicles": len(REALTIME_VEHICLE_DATABASE),
         "in_transit_vehicles": sum(1 for v in REALTIME_VEHICLE_DATABASE.values() if v.get("is_in_transit", False)),
         "active_websocket_subscribers": len(vehicle_realtime_manager.active_connections),
-        "emergency_sos_helpline": "+91 78110 75355",
+        "emergency_sos_helpline": "+91 95705 25463",
         "agency": "Government of India • Ministry of Road Transport & Highways (MoRTH) & North Eastern Council (NEC)"
     }
 
@@ -2117,14 +2117,14 @@ class SOSCallManager:
 sos_call_manager = SOSCallManager()
 
 # Designated Central Emergency Receiver Phone (All SOS calls route here)
-EMERGENCY_RECEIVER_PHONE = os.getenv("SOS_RECEIVER_PHONE", "+91 78110 75355")
+EMERGENCY_RECEIVER_PHONE = os.getenv("SOS_RECEIVER_PHONE", "+91 95705 25463")
 
 def trigger_emergency_phone_alert(call_session: dict):
     """
-    Triggers direct routing of the SOS call to the designated controller phone (+91 78110 75355).
+    Triggers direct routing of the SOS call to the designated controller phone (+91 95705 25463).
     Logs and prepares SMS/telephony dispatch payloads.
     """
-    print(f"\n🚨 [EMERGENCY CALL ROUTED TO +91 78110 75355] 🚨")
+    print(f"\n🚨 [EMERGENCY CALL ROUTED TO +91 95705 25463] 🚨")
     print(f"Vehicle: {call_session['vehicle_number']} | Pilot: {call_session['driver_name']} ({call_session['driver_phone']})")
     print(f"Location: {call_session['location_name']} | GPS: {call_session['gps_lat']}°N, {call_session['gps_lng']}°E")
     print(f"Google Maps Link: https://maps.google.com/?q={call_session['gps_lat']},{call_session['gps_lng']}")
@@ -2132,7 +2132,7 @@ def trigger_emergency_phone_alert(call_session: dict):
 
 @app.post("/api/sos/call/initiate", response_model=SOSCallSession)
 async def initiate_sos_call(req: SOSCallInitiateRequest):
-    """Initiates an emergency audio/radio SOS call connecting directly to the Controller at +91 78110 75355."""
+    """Initiates an emergency audio/radio SOS call connecting directly to the Controller at +91 95705 25463."""
     call_id = f"CALL-SOS-{str(uuid.uuid4())[:8].upper()}"
     now_iso = datetime.utcnow().isoformat()
 

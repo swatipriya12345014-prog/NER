@@ -346,7 +346,7 @@ class SOSCallSession(BaseModel):
     emergency_type: str
     responder_unit: str
     responder_officer: str
-    responder_phone: Optional[str] = "+91 78110 75355"
+    responder_phone: Optional[str] = "+91 95705 25463"
     status: str  # CONNECTING, CONNECTED, DISPATCHED, COMPLETED
     channel: str
     started_at: str

@@ -106,7 +106,7 @@ function getOfflineChatFallback(query) {
 
   if (lower.includes('sos') || lower.includes('emergency')) {
     return {
-      answer: '🚨 **Emergency SOS Hotline:**\n• **Direct Incident Receiver**: **+91 78110 75355**\n• **National Helpline**: 108 / 112\n• Automated alerts are relayed instantly over LoRa 865–867 MHz.',
+      answer: '🚨 **Emergency SOS Hotline:**\n• **Direct Incident Receiver**: **+91 95705 25463**\n• **National Helpline**: 108 / 112\n• Automated alerts are relayed instantly over LoRa 865–867 MHz.',
       source: 'offline_emergency_engine',
       suggestions: ['Who receives the SOS call?', 'How to treat hypothermia?'],
       timestamp: timeStr,
@@ -123,7 +123,7 @@ function getOfflineChatFallback(query) {
   }
 
   return {
-    answer: `🤖 **NER AI Assistant (Offline Mode):**\nReceived your inquiry: *"${query}"*.\nFor live calculations, encyclopedia lookups, or code generation, please verify backend connectivity at port 8000. For emergency field response, contact **+91 78110 75355**.`,
+    answer: `🤖 **NER AI Assistant (Offline Mode):**\nReceived your inquiry: *"${query}"*.\nFor live calculations, encyclopedia lookups, or code generation, please verify backend connectivity at port 8000. For emergency field response, contact **+91 95705 25463**.`,
     source: 'offline_fallback',
     suggestions: ['What is the status of NH-13?', 'Emergency SOS contact'],
     timestamp: timeStr,

@@ -250,7 +250,7 @@ export async function syncDatabase() {
       status: 'synchronized',
       roads_synced: 8,
       vehicles_synced: 8,
-      emergency_receiver_phone: '+91 78110 75355'
+      emergency_receiver_phone: '+91 95705 25463'
     }
   };
 }

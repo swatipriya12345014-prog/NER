@@ -12,7 +12,7 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "👋 **Welcome to the NER-LIFELINE Universal AI Assistant.**\n\nI am engineered to answer **literally all questions asked to me**:\n• **Universal Knowledge**: Science, history, geography, space, world facts, and nature.\n• **Mathematics & Physics**: Arithmetic, equations, square roots, percentages, and unit conversions.\n• **Software & Engineering**: Python, React, JavaScript, SQL, Git workflows, algorithms, and debugging.\n• **Mountain Medical & First-Aid**: High-altitude hypothermia, acute mountain sickness (AMS), CPR, and cold-chain protocols.\n• **NER Logistics & Emergency**: Trans-Arunachal Highway (NH-13), Sela Tunnel, Brahmaputra corridor (NH-27), and real-time SOS routing to **+91 78110 75355**.\n\n*What would you like to explore or solve?*",
+      content: "👋 **Welcome to the NER-LIFELINE Universal AI Assistant.**\n\nI am engineered to answer **literally all questions asked to me**:\n• **Universal Knowledge**: Science, history, geography, space, world facts, and nature.\n• **Mathematics & Physics**: Arithmetic, equations, square roots, percentages, and unit conversions.\n• **Software & Engineering**: Python, React, JavaScript, SQL, Git workflows, algorithms, and debugging.\n• **Mountain Medical & First-Aid**: High-altitude hypothermia, acute mountain sickness (AMS), CPR, and cold-chain protocols.\n• **NER Logistics & Emergency**: Trans-Arunachal Highway (NH-13), Sela Tunnel, Brahmaputra corridor (NH-27), and real-time SOS routing to **+91 95705 25463**.\n\n*What would you like to explore or solve?*",
       source: 'conversational',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
@@ -226,7 +226,7 @@ export default function AIAssistant() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
             <PhoneCall size={14} className="text-red-400" />
-            <span>SOS Helpline: <b className="text-white">+91 78110 75355</b></span>
+            <span>SOS Helpline: <b className="text-white">+91 95705 25463</b></span>
           </div>
         </div>
       </div>
@@ -455,7 +455,7 @@ export default function AIAssistant() {
 
             <div className="flex items-center justify-between mt-2 px-2 text-xs text-slate-500">
               <span>Press <b className="text-slate-400">Enter</b> to send message • Multi-turn conversation preserved</span>
-              <span className="text-cyan-400">Regional SOS Direct Line: +91 78110 75355</span>
+              <span className="text-cyan-400">Regional SOS Direct Line: +91 95705 25463</span>
             </div>
           </div>
         </div>

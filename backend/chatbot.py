@@ -6,7 +6,7 @@ Answers literally ANY question:
 3. Math & Scientific Calculator Engine (safe expression parser & unit converter).
 4. Code & Computer Science generation (Python, JS, React, SQL, CSS, Shell).
 5. Medical, Mountain Safety & First-Aid Knowledge Base (Hypothermia, AMS, CPR, Trauma).
-6. NER-LIFELINE Domain (Road Histories, Fleet Telemetry, SOS Dispatch to +91 78110 75355).
+6. NER-LIFELINE Domain (Road Histories, Fleet Telemetry, SOS Dispatch to +91 95705 25463).
 7. Conversational Small Talk & Natural Language Understanding.
 """
 
@@ -26,7 +26,7 @@ ssl_ctx.check_hostname = False
 ssl_ctx.verify_mode = ssl.CERT_NONE
 
 # Regional SOS receiver
-SOS_RECEIVER = os.getenv("SOS_RECEIVER_PHONE", "+91 78110 75355")
+SOS_RECEIVER = os.getenv("SOS_RECEIVER_PHONE", "+91 95705 25463")
 
 # Common unit conversion patterns
 UNIT_CONVERSIONS = {
