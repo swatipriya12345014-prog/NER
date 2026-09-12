@@ -43,12 +43,29 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const ROLE_CARDS = [
+const ADMIN_ROLE = {
+  id: 'admin',
+  title: 'System Administrator & Sovereign Directorate',
+  subtitle: 'Central Command Authority • Full Zero-Trust Access Governance • LoRa Mesh Gateways',
+  badge: 'CENTRAL DIRECTORATE • FULL SYSTEM ACCESS',
+  icon: Shield,
+  features: [
+    'Zero-Trust RBAC Governance & Cryptographic Overrides',
+    'Hardware LoRa Mesh Telemetry & Gateway Routing',
+    'MoRTH VAHAN & Supabase Dual-Engine Replication',
+    'Sovereign Security Audit Logs & Emergency Dispatch'
+  ],
+  actionTitle: 'Sign in as Administrator with Google',
+  dashboardRoute: '/admin-dashboard',
+  targetPortal: 'Executive Directorate Command Center'
+};
+
+const COMPACT_ROLE_CARDS = [
   {
-    id: 'emergency_driver',
-    title: 'Emergency Convoy Pilot',
-    subtitle: 'High-Risk Medical & Relief Fleet',
-    badge: 'OFFICIAL CONVOY',
+    id: 'normal_driver',
+    title: 'Normal Driver',
+    subtitle: 'Commercial Freight, Trucks & Cabs',
+    badge: 'GOOGLE ONLY',
     accentColor: 'emerald',
     icon: Truck,
     gradient: 'from-emerald-950/40 via-slate-900 to-slate-950',
@@ -56,22 +73,32 @@ const ROLE_CARDS = [
     btnBg: 'bg-white hover:bg-emerald-50 text-slate-900 border-emerald-300',
     badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     headerIconColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
-    glow: 'hover:shadow-[0_0_35px_rgba(16,185,129,0.18)]',
-    description: 'Critical blood plasma, cryogenic oxygen tankers, specialized 4x4 highland ambulances & priority passes.',
-    features: [
-      'Tactical Convoy NavIC GPS Telemetry',
-      'Cold-Chain & Oxygen Telemetry Lock',
-      'Sovereign Highland Priority Corridor',
-      'High-Risk Sela/Sonapur Convoy Escort'
-    ],
-    actionTitle: 'Sign in as Convoy Pilot',
+    glow: 'hover:shadow-[0_0_25px_rgba(16,185,129,0.18)]',
+    actionTitle: 'Sign in as Driver',
     dashboardRoute: '/driver-dashboard',
-    targetPortal: 'Emergency Relief Tactical Cockpit'
+    targetPortal: 'Commercial Driver Cockpit'
+  },
+  {
+    id: 'emergency_driver',
+    title: 'Convoy Pilot',
+    subtitle: 'Oxygen Tankers & Medical 4x4',
+    badge: 'OFFICIAL CONVOY',
+    accentColor: 'teal',
+    icon: Compass,
+    gradient: 'from-teal-950/40 via-slate-900 to-slate-950',
+    border: 'border-teal-500/30 hover:border-teal-400',
+    btnBg: 'bg-white hover:bg-teal-50 text-slate-900 border-teal-300',
+    badgeBg: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
+    headerIconColor: 'text-teal-400 bg-teal-950/60 border-teal-700/50',
+    glow: 'hover:shadow-[0_0_25px_rgba(20,184,166,0.18)]',
+    actionTitle: 'Sign in as Pilot',
+    dashboardRoute: '/driver-dashboard',
+    targetPortal: 'Emergency Tactical Cockpit'
   },
   {
     id: 'field_officer',
     title: 'Field Officer',
-    subtitle: 'Ground Disaster Assessment',
+    subtitle: 'Landslides & Sinking Zones',
     badge: 'GROUND COMMAND',
     accentColor: 'amber',
     icon: Users,
@@ -80,22 +107,15 @@ const ROLE_CARDS = [
     btnBg: 'bg-white hover:bg-amber-50 text-slate-900 border-amber-300',
     badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
     headerIconColor: 'text-amber-400 bg-amber-950/60 border-amber-700/50',
-    glow: 'hover:shadow-[0_0_35px_rgba(245,158,11,0.18)]',
-    description: 'Landslide intake, bridge inspection logs, Sela & Sonapur pass monitoring & ground dispatches.',
-    features: [
-      'Live Road Blockage Intake Form',
-      'Sinking Zone & Bridge Verifier',
-      'Forward Unit Dispatch & Routing',
-      'Offline Incident Reporting Queue'
-    ],
-    actionTitle: 'Sign in as Field Officer',
+    glow: 'hover:shadow-[0_0_25px_rgba(245,158,11,0.18)]',
+    actionTitle: 'Sign in as Officer',
     dashboardRoute: '/field-officer',
-    targetPortal: 'Field Officer Ground Command'
+    targetPortal: 'Field Ground Command'
   },
   {
     id: 'logistics_manager',
     title: 'Logistics Manager',
-    subtitle: 'Regional Relief HQ & Supply Chains',
+    subtitle: 'Regional Depots & Supply Chains',
     badge: 'HQ DISPATCH',
     accentColor: 'cyan',
     icon: Building,
@@ -104,41 +124,10 @@ const ROLE_CARDS = [
     btnBg: 'bg-white hover:bg-cyan-50 text-slate-900 border-cyan-300',
     badgeBg: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
     headerIconColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-700/50',
-    glow: 'hover:shadow-[0_0_35px_rgba(6,182,212,0.18)]',
-    description: 'Interstate relief convoys, oxygen/plasma manifests, monsoon risk analysis & depot stockpiles.',
-    features: [
-      'Interstate Convoy Fleet Allocator',
-      'Cold-Chain & Oxygen Manifests',
-      'Dynamic Monsoon & Risk Scoring',
-      'State-Level Depot Stock Matrix'
-    ],
+    glow: 'hover:shadow-[0_0_25px_rgba(6,182,212,0.18)]',
     actionTitle: 'Sign in as Manager',
     dashboardRoute: '/manager-dashboard',
-    targetPortal: 'Logistics Command & Fleet Operations'
-  },
-  {
-    id: 'admin',
-    title: 'Administrator',
-    subtitle: 'Sovereign Directorate & Governance',
-    badge: 'DIRECTORATE',
-    accentColor: 'purple',
-    icon: Shield,
-    gradient: 'from-purple-950/40 via-slate-900 to-slate-950',
-    border: 'border-purple-500/30 hover:border-purple-400',
-    btnBg: 'bg-white hover:bg-purple-50 text-slate-900 border-purple-300',
-    badgeBg: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-    headerIconColor: 'text-purple-400 bg-purple-950/60 border-purple-700/50',
-    glow: 'hover:shadow-[0_0_35px_rgba(168,85,247,0.18)]',
-    description: 'Zero-trust role governance, LoRa hardware mesh telemetry, Supabase sync & cryptographic keys.',
-    features: [
-      'Zero-Trust RBAC Role Governance',
-      'Hardware LoRa Mesh Gateways',
-      'MoRTH VAHAN & Supabase Sync',
-      'Audit Logs & Sovereign Crypto'
-    ],
-    actionTitle: 'Sign in as Admin',
-    dashboardRoute: '/admin-dashboard',
-    targetPortal: 'Executive Governance & System Directorate'
+    targetPortal: 'HQ Logistics Command'
   }
 ];
 
@@ -358,177 +347,160 @@ const Login = () => {
         </div>
       )}
 
-      {/* 1. DEDICATED NORMAL DRIVER FAST-TRACK GOOGLE LOGIN BANNER */}
+      {/* 1. PRIMARY: LARGE PROMINENT ADMINISTRATOR SOVEREIGN DIRECTORATE HERO (BIG) */}
       <div className="w-full max-w-6xl mx-auto mb-8">
-        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-teal-950/80 border-2 border-emerald-500/50 p-5 sm:p-7 shadow-[0_0_45px_rgba(16,185,129,0.18)] overflow-hidden">
-          {/* Ambient Glow */}
-          <div className="absolute -right-8 -bottom-8 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative rounded-3xl bg-gradient-to-r from-purple-950/95 via-slate-900 to-indigo-950/95 border-2 border-purple-500/60 p-6 sm:p-8 shadow-[0_0_60px_rgba(168,85,247,0.25)] overflow-hidden">
+          {/* Ambient Glows */}
+          <div className="absolute -right-10 -bottom-10 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-10 -top-10 w-64 h-64 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
-            <div className="flex items-start space-x-4 max-w-3xl">
-              <div className="p-3.5 sm:p-4 bg-emerald-500/20 border border-emerald-400/50 rounded-2xl text-emerald-400 flex-shrink-0 shadow-lg shadow-emerald-500/20">
-                <Truck size={36} />
+            <div className="flex items-start space-x-5 max-w-3xl">
+              <div className="p-4 sm:p-5 bg-purple-500/20 border-2 border-purple-400/60 rounded-3xl text-purple-300 flex-shrink-0 shadow-xl shadow-purple-500/30">
+                <Shield size={44} className="animate-pulse" />
               </div>
               <div>
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="text-[10px] font-black px-3 py-0.5 rounded-full bg-emerald-500 text-slate-950 tracking-wider uppercase shadow-sm">
-                    GOOGLE LOGIN ONLY • FOR NORMAL DRIVERS
+                <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                  <span className="text-[11px] font-black px-3.5 py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white tracking-widest uppercase shadow-md flex items-center space-x-1.5">
+                    <Sparkles size={13} className="text-yellow-300" />
+                    <span>PRIMARY ACCESS • SYSTEM ADMINISTRATOR</span>
                   </span>
-                  <span className="text-xs text-emerald-300 font-semibold flex items-center space-x-1">
-                    <Sparkles size={12} className="text-emerald-400 animate-pulse" />
-                    <span>Commercial Freight • Trucks • Delivery Vans • Taxis • Highway Commuters</span>
+                  <span className="text-xs text-purple-300 font-semibold flex items-center space-x-1">
+                    <span>Sovereign Directorate & Full System Authority</span>
                   </span>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Normal Driver & Commercial Vehicle Portal
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  System Administrator Command Portal
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
-                  Navigating highways across North East India? Sign in directly with any Google account for live mountain navigation, real-time road blockage alerts, offline 3D NavIC GPS, hill breakdown assistance, and emergency SOS — <strong className="text-white font-bold">no departmental ID or password required</strong>.
+                <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
+                  Central sovereign governance console for North Eastern disaster logistics: oversee full-spectrum emergency fleet dispatches, zero-trust RBAC permissions, live LoRa mesh hardware telemetry, Supabase database replication, and cryptographic security overrides.
                 </p>
 
-                {/* Capability tags */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-[11px] text-slate-200">
-                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
-                    <Compass size={13} className="text-emerald-400 flex-shrink-0" />
-                    <span className="truncate">NavIC 3D GPS</span>
+                {/* Key Admin Capability Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 text-xs text-slate-200">
+                  <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
+                    <Shield size={14} className="text-purple-400 flex-shrink-0" />
+                    <span className="font-semibold truncate">Zero-Trust RBAC</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
-                    <AlertCircle size={13} className="text-amber-400 flex-shrink-0" />
-                    <span className="truncate">Landslide Alerts</span>
+                  <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
+                    <Radio size={14} className="text-cyan-400 flex-shrink-0" />
+                    <span className="font-semibold truncate">LoRa Mesh Control</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
-                    <Radio size={13} className="text-cyan-400 flex-shrink-0" />
-                    <span className="truncate">Offline Route Cache</span>
+                  <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
+                    <Activity size={14} className="text-emerald-400 flex-shrink-0" />
+                    <span className="font-semibold truncate">VAHAN & Supabase</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
-                    <Activity size={13} className="text-red-400 flex-shrink-0" />
-                    <span className="truncate">Emergency SOS</span>
+                  <div className="flex items-center space-x-2 bg-slate-950/80 px-3 py-2 rounded-xl border border-purple-500/30 shadow-sm">
+                    <Key size={14} className="text-amber-400 flex-shrink-0" />
+                    <span className="font-semibold truncate">Sovereign Crypto</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Google Sign In Button for Normal Drivers */}
-            <div className="w-full lg:w-auto flex flex-col items-center lg:items-end flex-shrink-0 space-y-2">
+            {/* Large Admin Google Sign In Button */}
+            <div className="w-full lg:w-auto flex flex-col items-center lg:items-end flex-shrink-0 space-y-2.5">
               <button
                 type="button"
-                onClick={() => handleRoleGoogleSignIn('normal_driver')}
-                disabled={submittingRole === 'normal_driver'}
-                className="w-full sm:w-auto px-7 py-3.5 sm:py-4 bg-white hover:bg-emerald-50 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-[0.98] cursor-pointer border border-emerald-300 group hover:shadow-[0_0_30px_rgba(16,185,129,0.35)]"
+                onClick={() => handleRoleGoogleSignIn(ADMIN_ROLE.id)}
+                disabled={submittingRole === ADMIN_ROLE.id}
+                className="w-full sm:w-auto px-8 py-4 sm:py-5 bg-white hover:bg-purple-50 text-slate-950 font-black text-sm sm:text-base rounded-2xl shadow-2xl flex items-center justify-center space-x-3 transition-all active:scale-[0.98] cursor-pointer border-2 border-purple-300 group hover:shadow-[0_0_35px_rgba(168,85,247,0.4)]"
               >
-                {submittingRole === 'normal_driver' ? (
+                {submittingRole === ADMIN_ROLE.id ? (
                   <div className="flex items-center space-x-2 py-0.5">
                     <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-                    <span>Authorizing Normal Driver...</span>
+                    <span>Authorizing Administrator...</span>
                   </div>
                 ) : (
                   <>
                     <GoogleIcon />
-                    <span className="tracking-wide">Sign in as Normal Driver with Google</span>
-                    <ArrowRight size={16} className="text-slate-900 group-hover:translate-x-1 transition-transform" />
+                    <span className="tracking-wide">{ADMIN_ROLE.actionTitle}</span>
+                    <ArrowRight size={18} className="text-slate-900 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
               </button>
 
-              <span className="text-[11px] text-emerald-300/80 font-medium text-center lg:text-right">
-                Instant 1-Tap Google Login • Opens Driver Tactical Cockpit
+              <span className="text-xs text-purple-300/90 font-medium text-center lg:text-right">
+                Instant 1-Tap Google Login • Opens Sovereign Admin Directorate
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. COMMAND & EMERGENCY SERVICES DIRECTORATE ROLES (GRID) */}
+      {/* 2. SECONDARY: COMPACT FIELD, FLEET & CIVILIAN OPERATIONAL LOGINS (REST SMALL) */}
       <div className="w-full max-w-6xl mx-auto mb-8">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-            <Radio size={14} className="text-blue-400 animate-pulse" />
-            <span>Official Emergency Response & Command Roles (Google Sign-In)</span>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <Radio size={13} className="text-blue-400 animate-pulse" />
+            <span>Field Operations, Convoy Pilots & Civilian Drivers (Quick Google Access)</span>
           </div>
           <button
             type="button"
             onClick={() => setShowAccountChooser(true)}
             className="text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted cursor-pointer flex items-center space-x-1"
           >
-            <UserCheck size={13} />
-            <span>Choose from Authorized Accounts</span>
+            <UserCheck size={12} />
+            <span>Authorized Accounts</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          {ROLE_CARDS.map((role) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {COMPACT_ROLE_CARDS.map((role) => {
             const Icon = role.icon;
             const isCurrentSubmitting = submittingRole === role.id;
 
             return (
               <div
                 key={role.id}
-                className={`group relative rounded-2xl bg-gradient-to-b ${role.gradient} border ${role.border} p-5 flex flex-col justify-between transition-all duration-300 ${role.glow} hover:-translate-y-1 shadow-lg`}
+                className={`group relative rounded-xl bg-gradient-to-b ${role.gradient} border ${role.border} p-3.5 sm:p-4 flex flex-col justify-between transition-all duration-200 ${role.glow} hover:-translate-y-0.5 shadow-md`}
               >
-                {/* Top Role Header */}
+                {/* Top Header */}
                 <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`p-2.5 rounded-xl border ${role.headerIconColor} shadow-inner`}>
-                      <Icon size={22} />
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`p-1.5 rounded-lg border ${role.headerIconColor}`}>
+                      <Icon size={16} />
                     </div>
-                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${role.badgeBg} tracking-wide`}>
+                    <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${role.badgeBg} tracking-wide`}>
                       {role.badge}
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-white group-hover:text-blue-300 transition-colors">
+                  <h3 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors">
                     {role.title}
                   </h3>
-                  <p className="text-xs font-medium text-slate-400 mb-3">
+                  <p className="text-[11px] text-slate-400 line-clamp-1 mb-2">
                     {role.subtitle}
                   </p>
-
-                  <p className="text-[11px] text-slate-300 leading-relaxed mb-4 min-h-[38px]">
-                    {role.description}
-                  </p>
-
-                  {/* Bullet Highlights */}
-                  <div className="space-y-1.5 mb-5 border-t border-slate-800/80 pt-3">
-                    {role.features.map((feat, idx) => (
-                      <div key={idx} className="flex items-center space-x-1.5 text-[11px] text-slate-300">
-                        <CheckCircle2 size={12} className="text-blue-400 flex-shrink-0" />
-                        <span className="truncate">{feat}</span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
-                {/* Individual Role Google Sign In Button */}
-                <div className="mt-auto space-y-2 pt-2">
+                {/* Compact Button */}
+                <div className="mt-2 pt-2 border-t border-slate-800/80">
                   <button
                     type="button"
                     onClick={() => handleRoleGoogleSignIn(role.id)}
                     disabled={isCurrentSubmitting}
-                    className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 ${role.btnBg}`}
+                    className={`w-full flex items-center justify-between py-2 px-2.5 rounded-lg shadow-sm transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 ${role.btnBg}`}
                   >
                     {isCurrentSubmitting ? (
-                      <div className="w-full flex items-center justify-center space-x-2 py-0.5">
-                        <div className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-xs font-bold text-slate-800">Authorizing {role.title}...</span>
+                      <div className="w-full flex items-center justify-center space-x-1.5 py-0.5">
+                        <div className="w-3 h-3 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-[11px] font-bold text-slate-800">Signing in...</span>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className="flex items-center space-x-1.5 min-w-0">
                           <GoogleIcon />
-                          <div className="flex flex-col text-left leading-tight min-w-0">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Google OAuth</span>
-                            <span className="text-xs font-bold text-slate-900 truncate">{role.actionTitle}</span>
-                          </div>
+                          <span className="text-xs font-bold text-slate-900 truncate">{role.actionTitle}</span>
                         </div>
-                        <ArrowRight size={14} className="text-slate-400 flex-shrink-0 ml-1" />
+                        <ArrowRight size={13} className="text-slate-500 flex-shrink-0" />
                       </>
                     )}
                   </button>
 
-                  <div className="text-[10px] text-center text-slate-400 flex items-center justify-center space-x-1">
-                    <ArrowRight size={10} className="text-slate-500" />
-                    <span className="truncate">{role.targetPortal}</span>
+                  <div className="text-[9px] text-center text-slate-500 mt-1.5 truncate">
+                    {role.targetPortal}
                   </div>
                 </div>
               </div>
