@@ -45,10 +45,10 @@ const GoogleIcon = () => (
 
 const ROLE_CARDS = [
   {
-    id: 'driver',
-    title: 'Emergency Driver',
-    subtitle: 'Highland Fleet & Convoy Pilot',
-    badge: 'CONVOY PILOT',
+    id: 'emergency_driver',
+    title: 'Emergency Convoy Pilot',
+    subtitle: 'High-Risk Medical & Relief Fleet',
+    badge: 'OFFICIAL CONVOY',
     accentColor: 'emerald',
     icon: Truck,
     gradient: 'from-emerald-950/40 via-slate-900 to-slate-950',
@@ -57,16 +57,16 @@ const ROLE_CARDS = [
     badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     headerIconColor: 'text-emerald-400 bg-emerald-950/60 border-emerald-700/50',
     glow: 'hover:shadow-[0_0_35px_rgba(16,185,129,0.18)]',
-    description: 'Vehicle telematics, offline mountain highway caches, rockfall alerts & one-touch SOS.',
+    description: 'Critical blood plasma, cryogenic oxygen tankers, specialized 4x4 highland ambulances & priority passes.',
     features: [
-      'Live 3D NavIC GPS & Bearing Guide',
-      'Zero-Network Offline Route Cache',
-      'Emergency SOS & Relief Shuttles',
-      'Mountain Fuel & Tank Range Math'
+      'Tactical Convoy NavIC GPS Telemetry',
+      'Cold-Chain & Oxygen Telemetry Lock',
+      'Sovereign Highland Priority Corridor',
+      'High-Risk Sela/Sonapur Convoy Escort'
     ],
-    actionTitle: 'Sign in as Driver',
+    actionTitle: 'Sign in as Convoy Pilot',
     dashboardRoute: '/driver-dashboard',
-    targetPortal: 'Driver Problem & Navigation Portal'
+    targetPortal: 'Emergency Relief Tactical Cockpit'
   },
   {
     id: 'field_officer',
@@ -168,27 +168,30 @@ const Login = () => {
       case 'admin':
         return '/admin-dashboard';
       case 'driver':
+      case 'normal_driver':
+      case 'emergency_driver':
         return '/driver-dashboard';
       case 'field_officer':
         return '/field-officer';
       case 'logistics_manager':
         return '/manager-dashboard';
       default:
-        return '/admin-dashboard';
+        return '/driver-dashboard';
     }
   };
 
   const handleRoleGoogleSignIn = async (roleId) => {
     setErrorMsg('');
+    const effectiveRole = (roleId === 'normal_driver' || roleId === 'emergency_driver') ? 'driver' : roleId;
     setSelectedRole(roleId);
     setSubmittingRole(roleId);
 
     try {
-      const res = await loginWithGoogle(roleId);
+      const res = await loginWithGoogle(effectiveRole);
       if (res?.needAccountSelection) {
         setShowAccountChooser(true);
       } else if (res?.success) {
-        navigate(getDashboardRoute(roleId));
+        navigate(getDashboardRoute(effectiveRole));
       }
     } catch (err) {
       console.error('Google Sign-in Exception for role', roleId, err);
@@ -199,9 +202,10 @@ const Login = () => {
   };
 
   const handleAccountChosen = (account) => {
-    selectGoogleAccount(account, selectedRole);
+    const effectiveRole = (selectedRole === 'normal_driver' || selectedRole === 'emergency_driver') ? 'driver' : selectedRole;
+    selectGoogleAccount(account, effectiveRole);
     setShowAccountChooser(false);
-    navigate(getDashboardRoute(selectedRole));
+    navigate(getDashboardRoute(effectiveRole));
   };
 
   const handleEmailLogin = async (e) => {
@@ -354,12 +358,93 @@ const Login = () => {
         </div>
       )}
 
-      {/* 4 INDIVIDUAL GOOGLE SIGN-IN ROLE CARDS (GRID) */}
+      {/* 1. DEDICATED NORMAL DRIVER FAST-TRACK GOOGLE LOGIN BANNER */}
+      <div className="w-full max-w-6xl mx-auto mb-8">
+        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-teal-950/80 border-2 border-emerald-500/50 p-5 sm:p-7 shadow-[0_0_45px_rgba(16,185,129,0.18)] overflow-hidden">
+          {/* Ambient Glow */}
+          <div className="absolute -right-8 -bottom-8 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+            <div className="flex items-start space-x-4 max-w-3xl">
+              <div className="p-3.5 sm:p-4 bg-emerald-500/20 border border-emerald-400/50 rounded-2xl text-emerald-400 flex-shrink-0 shadow-lg shadow-emerald-500/20">
+                <Truck size={36} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-[10px] font-black px-3 py-0.5 rounded-full bg-emerald-500 text-slate-950 tracking-wider uppercase shadow-sm">
+                    GOOGLE LOGIN ONLY • FOR NORMAL DRIVERS
+                  </span>
+                  <span className="text-xs text-emerald-300 font-semibold flex items-center space-x-1">
+                    <Sparkles size={12} className="text-emerald-400 animate-pulse" />
+                    <span>Commercial Freight • Trucks • Delivery Vans • Taxis • Highway Commuters</span>
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Normal Driver & Commercial Vehicle Portal
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+                  Navigating highways across North East India? Sign in directly with any Google account for live mountain navigation, real-time road blockage alerts, offline 3D NavIC GPS, hill breakdown assistance, and emergency SOS — <strong className="text-white font-bold">no departmental ID or password required</strong>.
+                </p>
+
+                {/* Capability tags */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 text-[11px] text-slate-200">
+                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
+                    <Compass size={13} className="text-emerald-400 flex-shrink-0" />
+                    <span className="truncate">NavIC 3D GPS</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
+                    <AlertCircle size={13} className="text-amber-400 flex-shrink-0" />
+                    <span className="truncate">Landslide Alerts</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
+                    <Radio size={13} className="text-cyan-400 flex-shrink-0" />
+                    <span className="truncate">Offline Route Cache</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
+                    <Activity size={13} className="text-red-400 flex-shrink-0" />
+                    <span className="truncate">Emergency SOS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Google Sign In Button for Normal Drivers */}
+            <div className="w-full lg:w-auto flex flex-col items-center lg:items-end flex-shrink-0 space-y-2">
+              <button
+                type="button"
+                onClick={() => handleRoleGoogleSignIn('normal_driver')}
+                disabled={submittingRole === 'normal_driver'}
+                className="w-full sm:w-auto px-7 py-3.5 sm:py-4 bg-white hover:bg-emerald-50 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center space-x-3 transition-all active:scale-[0.98] cursor-pointer border border-emerald-300 group hover:shadow-[0_0_30px_rgba(16,185,129,0.35)]"
+              >
+                {submittingRole === 'normal_driver' ? (
+                  <div className="flex items-center space-x-2 py-0.5">
+                    <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                    <span>Authorizing Normal Driver...</span>
+                  </div>
+                ) : (
+                  <>
+                    <GoogleIcon />
+                    <span className="tracking-wide">Sign in as Normal Driver with Google</span>
+                    <ArrowRight size={16} className="text-slate-900 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              <span className="text-[11px] text-emerald-300/80 font-medium text-center lg:text-right">
+                Instant 1-Tap Google Login • Opens Driver Tactical Cockpit
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. COMMAND & EMERGENCY SERVICES DIRECTORATE ROLES (GRID) */}
       <div className="w-full max-w-6xl mx-auto mb-8">
         <div className="flex items-center justify-between mb-4 px-1">
           <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-slate-300">
-            <Radio size={14} className="text-emerald-400 animate-pulse" />
-            <span>Select Individual Role to Continue with Google</span>
+            <Radio size={14} className="text-blue-400 animate-pulse" />
+            <span>Official Emergency Response & Command Roles (Google Sign-In)</span>
           </div>
           <button
             type="button"

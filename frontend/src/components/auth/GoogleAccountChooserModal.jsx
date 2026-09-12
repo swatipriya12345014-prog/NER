@@ -3,9 +3,16 @@ import { User, Plus, X, Shield, ArrowRight } from 'lucide-react';
 
 const DEFAULT_ACCOUNTS = [
   {
+    name: 'Ramesh Kalita (Normal Driver)',
+    email: 'ramesh.highway.driver@gmail.com',
+    avatarBg: 'bg-emerald-600',
+    initial: 'R',
+    roleTag: 'Commercial Driver',
+  },
+  {
     name: 'Swati Priya',
     email: 'swatipriya12345014@gmail.com',
-    avatarBg: 'bg-emerald-600',
+    avatarBg: 'bg-teal-600',
     initial: 'S',
     roleTag: 'Primary Account',
   },
@@ -102,7 +109,9 @@ const GoogleAccountChooserModal = ({ isOpen, onClose, onSelectAccount, selectedR
             <span>Signing in as:</span>
           </span>
           <span className="font-bold text-blue-700 uppercase tracking-wide">
-            {selectedRole?.replace('_', ' ') || 'ADMIN'}
+            {selectedRole === 'normal_driver'
+              ? 'NORMAL DRIVER (COMMERCIAL & HIGHWAY)'
+              : (selectedRole?.replace('_', ' ') || 'ADMIN')}
           </span>
         </div>
 
