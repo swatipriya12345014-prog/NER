@@ -20,7 +20,7 @@ export default function AIChatWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "👋 **Hello! I am the NER-LIFELINE Universal AI Assistant.**\n\nI can answer **literally all questions**: science, mathematics, coding, history, world trivia, plus high-altitude mountain first-aid, road statuses (NH-13, Sela Tunnel), and emergency SOS dispatch to **+91 95705 25463**.\n\n*How can I assist you today?*",
+      content: "👋 **Hello! I am the NER-LIFELINE Universal AI Assistant.**\n\nI have complete intelligence across the **8 North Eastern States (NER)**: mountain passes (Sela Tunnel at 13,000 ft), highways (NH-13, NH-10, NH-27), bridges (Bogibeel, Dhola-Sadiya), landslide protocols, cold-chain vaccines, and emergency SOS dispatch to **+91 95705 25463**.\n\n*What would you like to ask about North East India?*",
       source: 'conversational',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }

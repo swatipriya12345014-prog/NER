@@ -2692,6 +2692,26 @@ def get_chat_suggestions():
     return {
         "categories": [
             {
+                "title": "North Eastern Region (NER)",
+                "prompts": [
+                    "What are the 8 states of North East India?",
+                    "Tell me about the Sela Tunnel and NH-13",
+                    "How long is the Bogibeel Bridge over Brahmaputra?",
+                    "What is the status of the Sikkim lifeline (NH-10)?",
+                    "Why does NER use Bharat Maps instead of Leaflet?",
+                    "How does the LoRa mesh operate during a blackout?"
+                ]
+            },
+            {
+                "title": "Mountain Passes & Tunnels",
+                "prompts": [
+                    "What is the elevation and significance of Sela Pass?",
+                    "Explain the Sonapur Tunnel in Meghalaya",
+                    "What is Nathu La pass in Sikkim?",
+                    "Tell me about Bhupen Hazarika Setu (Dhola-Sadiya)"
+                ]
+            },
+            {
                 "title": "Road & Logistics",
                 "prompts": [
                     "What is the status of NH-13 and Sela Tunnel?",

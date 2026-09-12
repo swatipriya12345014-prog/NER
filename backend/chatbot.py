@@ -88,15 +88,245 @@ MEDICAL_ADVISORIES = {
     )
 }
 
-# NER Logistics & Highways Knowledge
-NER_HIGHWAYS = {
-    "nh-13": "🛣️ **NH-13 (Trans-Arunachal Highway):** Connects Tawang to Pasighat across rugged Eastern Himalayan terrain. Passes via Sela Pass (4,170m) and Sela Tunnel. High risk of snowdrifts and monsoon mudslides near Bhalukpong.",
-    "nh-27": "🛣️ **NH-27 (East-West Corridor):** Connects Porbandar to Silchar (Assam). Prime multimodal trunk artery for North East relief shipments. Prone to Brahmaputra river plain flooding during June–September monsoons.",
-    "nh-10": "🛣️ **NH-10 (Sikkim Lifeline):** Connects Siliguri to Gangtok along the Teesta River gorge. Severely prone to active landslides and flash floods (Sevoke-Rangpo corridor). Often monitored by BRO Project Swastik.",
-    "nh-29": "🛣️ **NH-29 (Nagaland Arterial):** Connects Dabaka (Assam) through Dimapur to Kohima. Heavy freight corridor; vulnerable to Pagla Pahar rockfalls and monsoon subsidence.",
-    "nh-102": "🛣️ **NH-102 (Manipur - Indo-Myanmar Route):** Connects Imphal to Moreh border post. Vital trade & pharmaceutical supply corridor.",
-    "sela tunnel": "🏔️ **Sela Tunnel:** All-weather twin-tube tunnel at 13,000 ft in West Kameng, Arunachal Pradesh. Bypasses hazardous snowbound winter roads of Sela Pass, ensuring year-round access to Tawang."
+# ═════════════════════════════════════════════════════════════════════════════
+# AUTHORITATIVE NORTH EASTERN REGION (NER) ENCYCLOPEDIC KNOWLEDGE REPOSITORY
+# Comprehensive coverage of 8 States, Mountain Passes, Bridges, Highways,
+# Disaster Vulnerabilities, BRO Task Forces, Culture, Ecology & Sovereign Tech
+# ═════════════════════════════════════════════════════════════════════════════
+
+NER_STATES_DATA = {
+    "assam": (
+        "🌿 **State of Assam (অসম):**\n\n"
+        "• **Capital**: Dispur (Guwahati)\n"
+        "• **Major Logistics Hubs**: Guwahati (Gateway of North East), Tezpur, Silchar (Barak Valley), Dibrugarh, Jorhat.\n"
+        "• **Geographic Profile**: Dominated by the fertile Brahmaputra River plain (North & South banks) and the southern Barak Valley, flanked by the Karbi Anglong and Dima Hasao hills.\n"
+        "• **Key Rivers**: Brahmaputra (1,000+ km in India), Barak, Subansiri, Kopili, Manas, Jia Bharali, Dhansiri.\n"
+        "• **Lifeline Highways**: NH-27 (East-West Corridor), NH-15 (North Bank), NH-29 (to Nagaland), NH-06 (to Meghalaya & Barak), NH-715 (Kaziranga corridor).\n"
+        "• **Critical Terrain Risks**: Massive monsoon flooding & river embankment erosion (May–September), annual inundation of Kaziranga, landslides in Dima Hasao railway/road sectors.\n"
+        "• **Emergency Authorities**: ASDMA (Assam State Disaster Management Authority - Helpline: 1070 / 1079), NDRF 1st Battalion (Patgaon, Guwahati), SDRF Assam."
+    ),
+    "arunachal pradesh": (
+        "🏔️ **State of Arunachal Pradesh (Land of the Dawn-Lit Mountains):**\n\n"
+        "• **Capital**: Itanagar | **Key Forward Centers**: Tawang, Bomdila, Ziro, Pasighat, Aalo, Tezu, Walong, Kibithu.\n"
+        "• **Geographic Profile**: Eastern Himalayan alpine peaks rising from 50m in foothills to over 7,000m on the international Tibetan/Chinese border.\n"
+        "• **Key Mountain Passes**: Sela Pass (4,170m / 13,700 ft), Bum La Pass (15,200 ft), Nechiphu Pass, Yonggyap Pass, Pangsau Pass.\n"
+        "• **Lifeline Highways**: NH-13 (Trans-Arunachal Highway - 1,559 km), Balipara-Charduar-Tawang (BCT) Corridor, Frontier Highway (NH-913).\n"
+        "• **Strategic Tunnels**: Sela Tunnel (World's longest twin-tube tunnel >13,000 ft), Nechiphu Tunnel (500m D-shaped fog bypass).\n"
+        "• **Critical Terrain Risks**: Heavy snowdrifts, glacier melts, mudslides along Kameng/Subansiri valleys, seismic vulnerability (Zone V).\n"
+        "• **BRO Engineering**: Project Vartak (West Kameng/Tawang), Project Arunank (Upper Subansiri/Itanagar), Project Brahmank (Pasighat/Lohit)."
+    ),
+    "meghalaya": (
+        "☁️ **State of Meghalaya (The Abode of Clouds):**\n\n"
+        "• **Capital**: Shillong (Scotland of the East) | **District Hubs**: Jowai, Tura, Nongpoh, Cherrapunji (Sohra), Williamnagar.\n"
+        "• **Geographic Profile**: Elevated Shillong Plateau (1,400–1,960m) characterized by deep gorges, karst limestone cave systems, and pine-clad hills.\n"
+        "• **Global Rainfall Record**: Mawsynram and Cherrapunji record the world's highest annual rainfall (11,872 mm), causing rapid soil erosion.\n"
+        "• **Lifeline Highway**: NH-06 (Guwahati–Shillong–Jowai–Khliehriat–Silchar) — the indispensable lifeline for Tripura, Mizoram, and southern Assam.\n"
+        "• **Critical Vulnerabilities**: Devastating slope washouts at Lumshnong & Sonapur, sinkhole collapses in coal-belt strata.\n"
+        "• **Engineering Landmark**: Sonapur Tunnel (NH-06) providing essential rockfall protection in East Jaintia Hills.\n"
+        "• **Ecological Wonder**: Living Root Bridges (Jingkieng Jri) handcrafted by the indigenous Khasi and Jaintia tribes from *Ficus elastica* roots."
+    ),
+    "manipur": (
+        "💎 **State of Manipur (Jewel of India):**\n\n"
+        "• **Capital**: Imphal | **Key Hubs**: Churachandpur, Senapati, Ukhrul, Tamenglong, Kakching, Moreh (Border Trade Gateway).\n"
+        "• **Geographic Profile**: Oval central Imphal Valley surrounded by 9 mountain ranges with peaks up to 3,000m (Mount Iso).\n"
+        "• **Lifeline Highways**: NH-02 (Dimapur–Kohima–Imphal), NH-37 (New NH-37 Imphal–Jiribam via Makru/Barak Bridges), NH-102 (Imphal–Moreh Indo-Myanmar corridor).\n"
+        "• **Ecological Centerpiece**: Loktak Lake — the largest freshwater lake in NER, famous for circular floating islands of decomposed biomass called **Phumdis**, and the Keibul Lamjao National Park (only floating park in the world, habitat of the endangered Sangai brow-antlered deer).\n"
+        "• **Terrain Risks**: Landslide blocks on Imphal–Jiribam highway during southwest monsoons, hill road subsidence, flash flooding."
+    ),
+    "mizoram": (
+        "🎋 **State of Mizoram (Land of the Hill People):**\n\n"
+        "• **Capital**: Aizawl | **District Hubs**: Lunglei, Champhai, Kolasib, Serchhip, Lawngtlai, Saiha.\n"
+        "• **Geographic Profile**: Parallel North–South trending razor-back ridges separated by deep v-shaped valleys; extensive bamboo forest canopy.\n"
+        "• **Key Lifeline Highway**: NH-306 / NH-06 connecting Silchar (Assam) to Aizawl; NH-102B (Guite road to Manipur).\n"
+        "• **International Trade Corridor**: Champhai / Zokhawthar border post connecting India to Myanmar under Kaladan Multi-Modal Transit Transport Project.\n"
+        "• **Ecological Phenomenon**: Bamboo flowering (**Mautam**), occurring every 48 years, historically triggering rodent booms and famines.\n"
+        "• **Terrain Hazards**: Unstable sedimentary slopes, chronic road slumps cutting off district fuel tankers, heavy monsoon downpours."
+    ),
+    "nagaland": (
+        "🦅 **State of Nagaland (Land of Festivals):**\n\n"
+        "• **Capital**: Kohima | **Commercial / Logistics Capital**: Dimapur | **Key Hubs**: Mokokchung, Tuensang, Mon, Wokha, Phek.\n"
+        "• **Geographic Profile**: Steep rugged hills forming the Indo-Myanmar watershed boundary; Mount Saramati (3,841m) is the highest summit.\n"
+        "• **Lifeline Highways**: NH-29 (Dabaka–Dimapur–Kohima–Mao), NH-02 (Mokokchung–Wokha–Kohima), NH-202 (Mokokchung–Tuensang).\n"
+        "• **Famous Geographic Landmark**: Dzukou Valley (2,452m), situated on the Nagaland–Manipur border, famous for its seasonal Dzukou Lily (*Lilium chitrangadae*) and dramatic rolling turf.\n"
+        "• **Severe Hazard Sector**: NH-29 Chumukedima Gorge & Pagla Pahar corridor, notoriously prone to catastrophic shale rockslides and mudflows.\n"
+        "• **BRO Engineering**: Project Sewak maintaining NH-29 and strategic border arterial roads."
+    ),
+    "tripura": (
+        "🏰 **State of Tripura:**\n\n"
+        "• **Capital**: Agartala | **District Hubs**: Dharmanagar, Udaipur, Kailashahar, Ambassa, Belonia, Sabroom.\n"
+        "• **Geographic Profile**: Five parallel anticlinal hill ranges (Jampui, Sakhan, Longthorai, Atharamura, Deotamura) with intervening flat river valleys.\n"
+        "• **Strategic Border Enclave**: Bordered on 3 sides (856 km) by Bangladesh; key International Check Post (ICP) at Akhaura (Agartala).\n"
+        "• **Lifeline Highway**: NH-08 (The Assam–Tripura Highway via Churaibari Pass) — the single road artery connecting Tripura to mainland India.\n"
+        "• **Maritime Gateway Project**: Maitri Setu (Feni Bridge) at Sabroom connecting Tripura directly to Chittagong Port (Bangladesh), located only 72 km away.\n"
+        "• **Cultural Heritage**: Ujjayanta Palace (Agartala), Neermahal (Water Palace in Rudrasagar Lake), Unakoti rock-cut heritage sculptures."
+    ),
+    "sikkim": (
+        "❄️ **State of Sikkim (Himalayan Crown of the East):**\n\n"
+        "• **Capital**: Gangtok | **District Hubs**: Namchi, Geyzing, Mangan (North Sikkim Logistics), Soreng, Pakyong.\n"
+        "• **Geographic Profile**: High-altitude Himalayan terrain dominated by Mount Kanchenjunga (8,586m — 3rd highest peak in the world and guardian deity of Sikkim).\n"
+        "• **Strategic High Passes**: Nathu La (4,310m / 14,140 ft — historic Silk Route branch), Jelep La (14,300 ft), Cho La, Donkia Pass.\n"
+        "• **Sole Lifeline Highway**: NH-10 (Siliguri–Sevoke–Kalimpong–Rangpo–Singtam–Gangtok) along the steep, turbulent Teesta River canyon.\n"
+        "• **Extreme Disaster Risks**:\n"
+        "  1. Active landslides at 29th Mile, Bhalu Khola, and Selfi Dara.\n"
+        "  2. Glacial Lake Outburst Floods (GLOF) — illustrated by the catastrophic South Lhonak Lake burst (October 2023) that washed away Chungthang Dam.\n"
+        "• **Engineering Task Force**: BRO Project Swastik continuously clearing rockfalls and rebuilding washed-out Bailey bridges."
+    )
 }
+
+NER_PASSES_AND_BRIDGES = {
+    "sela tunnel": (
+        "🏔️ **Sela Tunnel (West Kameng, Arunachal Pradesh):**\n\n"
+        "• **Location**: Balipara-Charduar-Tawang (BCT) Road across Sela Pass (NH-13).\n"
+        "• **World Record**: The world's longest bi-lane tunnel constructed above **13,000 ft (3,962 m)** elevation.\n"
+        "• **Structure**: Twin tubes (Tunnel 1: 1,003m single tube; Tunnel 2: 1,595m twin-tube with escape passage) plus 8.6 km of approach highways.\n"
+        "• **Strategic Impact**: Bypasses the hazardous, snowbound winter hairpin bends of Sela Pass (4,170m), slashing travel time by over 1 hour and ensuring 365-day all-weather military and civilian logistics to Tawang.\n"
+        "• **Constructed by**: Border Roads Organisation (BRO) under Project Vartak."
+    ),
+    "sela pass": (
+        "❄️ **Sela Pass (4,170m / 13,700 ft):**\n\n"
+        "• High mountain pass connecting West Kameng district to Tawang district, Arunachal Pradesh.\n"
+        "• Home to the sacred Paradise Lake (Sela Lake).\n"
+        "• Temperatures plunge to -20°C in winter; historically shut down for weeks by heavy blizzards and ice sheets before the opening of the Sela Tunnel."
+    ),
+    "nechiphu tunnel": (
+        "🌫️ **Nechiphu Tunnel (West Kameng, Arunachal Pradesh):**\n\n"
+        "• A 500-meter D-shaped, modern bi-lane tunnel on the BCT road at Km 82.00.\n"
+        "• Specifically engineered to bypass the notoriously fog-bound 'Nechiphu Pass', notorious for zero-visibility accidents and frequent rockfalls."
+    ),
+    "sonapur tunnel": (
+        "🛡️ **Sonapur Tunnel (East Jaintia Hills, Meghalaya):**\n\n"
+        "• A specialized 123-meter reinforced concrete shelter tunnel along NH-06.\n"
+        "• Built across a perennial mudslide chute to allow continuous transit between Meghalaya and the Barak Valley/Tripura/Mizoram during torrential monsoon cloudbursts."
+    ),
+    "nathu la": (
+        "🏔️ **Nathu La Pass (4,310m / 14,140 ft, East Sikkim):**\n\n"
+        "• Strategic mountain pass on the Indo-China border connecting Sikkim to the Tibet Autonomous Region (Chumbi Valley).\n"
+        "• An ancient offshoot of the historic Old Silk Route; reopened in 2006 for bilateral border trade.\n"
+        "• Extreme alpine climate; requires special Inner Line Permit (ILP) and 4x4 snow-chain equipped vehicles."
+    ),
+    "bum la": (
+        "🏔️ **Bum La Pass (15,200 ft / 4,630 m, Tawang, Arunachal Pradesh):**\n\n"
+        "• High-altitude pass on the McMahon Line between India and China, 37 km from Tawang.\n"
+        "• Historic route taken by the 14th Dalai Lama entering India in 1959. Extreme high-altitude zone requiring supplemental oxygen."
+    ),
+    "bogibeel bridge": (
+        "🌉 **Bogibeel Bridge (Dibrugarh, Assam):**\n\n"
+        "• **Type**: Combined rail and 3-lane road girder bridge over the Brahmaputra River.\n"
+        "• **Length**: **4.94 km (3.07 miles)** — India's longest rail-cum-road bridge and the 2nd longest in Asia.\n"
+        "• **Strategic Link**: Directly connects Dibrugarh (South Bank) to Dhemaji and eastern Arunachal Pradesh (North Bank), cutting transit from 14+ hours by ferry to 20 minutes."
+    ),
+    "dhola-sadiya": (
+        "🌉 **Bhupen Hazarika Setu / Dhola-Sadiya Bridge (Assam–Arunachal):**\n\n"
+        "• **Length**: **9.15 km (5.69 miles)** — India's longest bridge over water.\n"
+        "• **Location**: Spans the Lohit River (major tributary of the Brahmaputra), connecting Dhola in Tinsukia (Assam) to Sadiya.\n"
+        "• **Strategic Value**: Reduces travel time between northern Assam and eastern Arunachal Pradesh (Roing, Tezu, Walong) from 6 hours by boat to 30 minutes. Engineered to support 60-tonne battle tanks."
+    ),
+    "saraighat bridge": (
+        "🌉 **Saraighat & New Saraighat Bridges (Guwahati, Assam):**\n\n"
+        "• The historic first bridge built across the Brahmaputra River (completed in 1962, named after the famous 1671 Battle of Saraighat led by Lachit Borphukan).\n"
+        "• The vital gateway connecting Northeast India to the rest of the country for both railways and National Highway traffic."
+    ),
+    "pangsau pass": (
+        "🌿 **Pangsau Pass (3,727 ft / 1,136 m, Changlang, Arunachal Pradesh):**\n\n"
+        "• Passes through the Patkai hills on the Indo-Myanmar border.\n"
+        "• Crest of the historic World War II **Stillwell Road (Ledo Road)** built by General Joseph Stilwell to supply Allied forces in China."
+    )
+}
+
+NER_HIGHWAYS = {
+    "nh-13": "🛣️ **NH-13 (Trans-Arunachal Highway - 1,559 km):**\nConnects Tawang to Pasighat and Wakro across all major river valleys of Arunachal Pradesh. Bypasses hazardous snow zones via Sela Tunnel. High risk of torrential mudslides near Bhalukpong and Potin.",
+    "nh-27": "🛣️ **NH-27 (East-West Corridor):**\nPrime multimodal 4-lane trunk artery linking Gujarat to Silchar (Assam). Traverses the entire length of the Brahmaputra valley. Extremely vulnerable to overflow flooding during peak monsoons.",
+    "nh-10": "🛣️ **NH-10 (The Sikkim Lifeline - 174 km):**\nRuns from Siliguri through the Sevoke railway bridge, along the turbulent Teesta canyon, through Rangpo and Singtam to Gangtok. Severely exposed to monsoon slides (29th Mile, Melli) and river scouring. Monitored by BRO Project Swastik.",
+    "nh-06": "🛣️ **NH-06 (Meghalaya - Barak - Mizoram Artery):**\nConnects Jorabat (Guwahati) to Shillong, Jowai, Khliehriat, Silchar (Assam), and terminates near Aizawl. Indispensable for Tripura and Mizoram. Protected by Sonapur Tunnel against mountain slides.",
+    "nh-29": "🛣️ **NH-29 (Dimapur–Kohima–Mao Highway):**\nVital commercial and freight corridor connecting Assam railhead at Dimapur to Kohima and Manipur border. Extreme hazard zone at Chumukedima Gorge and Pagla Pahar due to crumbling shale geology.",
+    "nh-08": "🛣️ **NH-08 (Tripura Lifeline):**\nOriginates near Karimganj (Assam) and runs south through Churaibari Pass, Agartala, and Udaipur to Sabroom (Maitri Setu border with Bangladesh). Sole overland supply lifeline for Tripura.",
+    "nh-37": "🛣️ **NH-37 (New NH-37 Imphal–Jiribam Lifeline / Old South Bank Trunk):**\nCrosses rugged western hills of Manipur via newly constructed Makru and Barak RCC bridges. Crucial alternate to NH-02 during highway blockades.",
+    "nh-15": "🛣️ **NH-15 (Assam North Bank Highway):**\nConnects Baihata Chariali near Guwahati to Tezpur, North Lakhimpur, Dhemaji, and Jonai. Parallels the Eastern Himalayan foothills.",
+    "nh-306": "🛣️ **NH-306 (Silchar to Aizawl Lifeline):**\n44-km vital link between Silchar (Assam) and Vairengte (Mizoram), carrying petroleum, food grain, and medical supplies into the Mizoram highlands."
+}
+
+NER_DISASTER_AND_BRO = {
+    "seismic": (
+        "⚡ **Seismic Zone V (Highest Earthquake Hazard in India):**\n\n"
+        "• The entire North Eastern Region lies in **Seismic Zone V**, the world's most seismically active intraplate zone.\n"
+        "• **Major Historic Quakes**: 1897 Great Assam Earthquake (M8.1) and 1950 Assam–Tibet Earthquake (M8.6), which altered riverbeds of the Brahmaputra and caused massive mountain collapses.\n"
+        "• **Building Protocols**: Requires ductile detailing, base isolation for hospital hubs, and earthquake-resilient bridge piers."
+    ),
+    "glof": (
+        "🌊 **Glacial Lake Outburst Floods (GLOF) in NER:**\n\n"
+        "• Arise when high-altitude moraine-dammed glacial lakes breach due to avalanches, earthquakes, or rapid warming.\n"
+        "• **South Lhonak Lake Disaster (Oct 2023, Sikkim)**: Triggered a flash wave that destroyed the 1,200 MW Teesta III dam at Chungthang and severed NH-10 in multiple sectors.\n"
+        "• **Mitigation**: Automated water-level sensor telemetry, satellite SAR early warning, and LoRa mesh relay."
+    ),
+    "bro": (
+        "🚜 **Border Roads Organisation (BRO) Task Forces in NER:**\n\n"
+        "• **Project Vartak**: Headquarters at Tezpur (Assam). Responsible for Sela Tunnel, Nechiphu Tunnel, and Western Arunachal corridors.\n"
+        "• **Project Swastik**: Headquarters at Gangtok. Maintains Sikkim's NH-10 lifeline and high-altitude border tracks to Nathu La.\n"
+        "• **Project Pushpak**: Headquarters at Aizawl. Maintains Mizoram road networks and Kaladan transit arteries.\n"
+        "• **Project Sewak**: Headquarters at Dimapur. Maintains NH-29 and Nagaland strategic corridors.\n"
+        "• **Project Brahmank**: Headquarters at Pasighat. Maintains Siang and Dibang valley highways.\n"
+        "• **Project Arunank**: Headquarters at Naharlagun (Itanagar). Maintains Upper Subansiri and central Arunachal border highways."
+    ),
+    "ndrf_sdrf": (
+        "🚨 **Disaster Response Battalions in NER:**\n\n"
+        "• **1st Battalion NDRF**: Patgaon, Guwahati, Assam (coverage for Assam, Meghalaya, Tripura, Mizoram, Nagaland).\n"
+        "• **12th Battalion NDRF**: Doimukh, Itanagar, Arunachal Pradesh (coverage for Arunachal and upper Assam).\n"
+        "• **State SDRF Teams**: Stationed at all district headquarters with inflatable motorized boats, deep-diving gear, and hydraulic cutting tools.\n"
+        f"• **Direct Lifeline Dispatch**: Relay incident reports to regional command at **{SOS_RECEIVER}**."
+    )
+}
+
+NER_CULTURE_AND_ECOLOGY = {
+    "majuli": (
+        "🏝️ **Majuli Island (Brahmaputra River, Assam):**\n\n"
+        "• The world's largest inhabited river island (district headquarter: Garamur).\n"
+        "• World center of Neo-Vaishnavite culture founded by Srimanta Sankardeva in the 15th century, home to 22 historic **Satras** (monasteries).\n"
+        "• Vulnerable to severe seasonal riverbank erosion from the Brahmaputra."
+    ),
+    "kaziranga": (
+        "🦏 **Kaziranga National Park (Assam):**\n\n"
+        "• UNESCO World Heritage Site hosting two-thirds of the world's great **One-Horned Rhinoceros** population.\n"
+        "• Straddles NH-715 between Golaghat and Nagaon. During monsoon floods, wildlife migrates south across the highway to the Karbi Anglong hills via animal corridors equipped with speed-sensor radar."
+    ),
+    "loktak": (
+        "🌺 **Loktak Lake & Phumdis (Bishnupur, Manipur):**\n\n"
+        "• The largest natural freshwater wetland in Northeast India.\n"
+        "• Features heterogeneous masses of vegetation, soil, and organic matter called **Phumdis**.\n"
+        "• Hosts **Keibul Lamjao National Park**, the only floating national park on Earth and last refuge of the endangered Eld's deer (**Sangai**)."
+    ),
+    "dzukou": (
+        "🌸 **Dzukou Valley (Nagaland–Manipur Border):**\n\n"
+        "• Located at an altitude of 2,452m behind the Japfu Peak.\n"
+        "• Renowned for its unique dwarf bamboo turf, crystal streams, and the rare endemic **Dzukou Lily** (*Lilium chitrangadae*)."
+    ),
+    "festivals": (
+        "🎉 **Major Cultural Festivals of the North Eastern States:**\n\n"
+        "• **Assam**: Bihu (Rongali in April, Kongali in Oct, Bhogali in Jan).\n"
+        "• **Nagaland**: Hornbill Festival (Dec 1–10 at Kisama Heritage Village, 'Festival of Festivals').\n"
+        "• **Arunachal Pradesh**: Losar (Monpa Tibetan New Year), Torgya (Tawang), Siang River Festival.\n"
+        "• **Meghalaya**: Shad Suk Mynsiem & Nongkrem Dance (Khasi), Wangala 100-Drum Festival (Garo).\n"
+        "• **Manipur**: Sangai Festival (Nov), Yaoshang (Spring celebration), Lai Haraoba.\n"
+        "• **Mizoram**: Chapchar Kut (Spring agricultural festival), Mim Kut, Pawl Kut.\n"
+        "• **Tripura**: Kharchi Puja (Worship of Fourteen Gods), Garia Puja, Neermahal Water Festival.\n"
+        "• **Sikkim**: Pang Lhabsol (veneration of Mt Kanchenjunga), Losoong (Sikkimese New Year), Saga Dawa."
+    )
+}
+
+NER_SOVEREIGN_TECH = {
+    "bharat_maps": (
+        "🇮🇳 **Sovereign Indian GIS (Bharat Maps / NIC Map Service):**\n\n"
+        "• In strict compliance with **NER-LIFELINE System Directives (AGENTS.md)**, external map SDKs (Leaflet, Mapbox, Google Maps API) are **strictly prohibited**.\n"
+        "• **Why?** Remote disaster logistics in the 8 NE states face frequent cellular blackouts, low-bandwidth 2G speeds, and commercial API rate limits.\n"
+        "• **Approved Standard**: **Bharat Maps / NIC Map Service** (`mapservice.gov.in`) — the official sovereign geospatial portal of the National Informatics Centre / MeitY, complemented by self-contained, offline-resilient SVG/Canvas vector maps."
+    ),
+    "lora_mesh": (
+        "📡 **LIFELINE LoRa Mesh Telemetry (865–867 MHz India Band):**\n\n"
+        "• **Off-Grid Communications**: When monsoon landslides topple cellular base stations, vehicle telematics and emergency SOS packets route over peer-to-peer LoRa nodes on the de-licensed 865–867 MHz frequency band.\n"
+        "• **Store-and-Forward / DTN**: Packets are saved in local ESP32 flash memory until a moving convoy or hilltop gateway comes within range.\n"
+        "• **Encryption & Security**: AES-128 payload encryption prevents packet tampering during transit."
+    )
+}
+
 
 
 def evaluate_math_expression(query: str) -> Optional[str]:
@@ -510,31 +740,107 @@ def handle_domain_queries(query: str) -> Optional[str]:
             "💡 *Tip: On the Live Operations Map, you can toggle any road blockage to view and apply the real-time AI alternate polyline with 1-click!*"
         )
 
-    # Road Histories
+    # 1. Mountain Passes & Engineering Tunnels
+    for pass_key, pass_info in NER_PASSES_AND_BRIDGES.items():
+        if pass_key in lower:
+            return pass_info
+    if "sela" in lower and any(w in lower for w in ["tunnel", "pass", "bypass", "elevation", "altitude", "height", "weather"]):
+        return NER_PASSES_AND_BRIDGES["sela tunnel"]
+    if "nechiphu" in lower:
+        return NER_PASSES_AND_BRIDGES["nechiphu tunnel"]
+    if "sonapur" in lower:
+        return NER_PASSES_AND_BRIDGES["sonapur tunnel"]
+    if "nathu" in lower:
+        return NER_PASSES_AND_BRIDGES["nathu la"]
+    if "bum la" in lower or "bumla" in lower:
+        return NER_PASSES_AND_BRIDGES["bum la"]
+    if "bogibeel" in lower:
+        return NER_PASSES_AND_BRIDGES["bogibeel bridge"]
+    if "dhola" in lower or "sadiya" in lower or "bhupen hazarika" in lower:
+        return NER_PASSES_AND_BRIDGES["dhola-sadiya"]
+    if "saraighat" in lower:
+        return NER_PASSES_AND_BRIDGES["saraighat bridge"]
+    if "pangsau" in lower or "stillwell" in lower or "ledo road" in lower:
+        return NER_PASSES_AND_BRIDGES["pangsau pass"]
+
+    # 2. Individual North Eastern States (Specific Profiles)
+    if "arunachal" in lower or "itanagar" in lower or "tawang" in lower or "bomdila" in lower:
+        return NER_STATES_DATA["arunachal pradesh"]
+    if "meghalaya" in lower or "shillong" in lower or "cherrapunji" in lower or "mawsynram" in lower or "sohra" in lower or "jowai" in lower:
+        return NER_STATES_DATA["meghalaya"]
+    if "manipur" in lower or "imphal" in lower or "moreh" in lower or "churachandpur" in lower:
+        return NER_STATES_DATA["manipur"]
+    if "mizoram" in lower or "aizawl" in lower or "champhai" in lower or "lunglei" in lower or "mautam" in lower:
+        return NER_STATES_DATA["mizoram"]
+    if "nagaland" in lower or "kohima" in lower or "dimapur" in lower or "mokokchung" in lower:
+        return NER_STATES_DATA["nagaland"]
+    if "tripura" in lower or "agartala" in lower or "dharmanagar" in lower or "churaibari" in lower or "maitri setu" in lower:
+        return NER_STATES_DATA["tripura"]
+    if "sikkim" in lower or "gangtok" in lower or "kanchenjunga" in lower or "mangan" in lower:
+        return NER_STATES_DATA["sikkim"]
+    if "assam" in lower or "guwahati" in lower or "dispur" in lower or "tezpur" in lower or "silchar" in lower or "dibrugarh" in lower or "barak" in lower:
+        return NER_STATES_DATA["assam"]
+
+    # 3. National Highways
     for hw_key, hw_info in NER_HIGHWAYS.items():
-        if hw_key in lower:
+        if hw_key in lower or hw_key.replace('-', ' ') in lower or hw_key.replace('-', '') in lower:
             return hw_info
 
-    # Medical advisories
+    # 4. Disaster Management, BRO Projects & Geology
+    if any(k in lower for k in ["seismic", "earthquake", "zone 5", "zone v", "richter"]):
+        return NER_DISASTER_AND_BRO["seismic"]
+    if any(k in lower for k in ["glof", "glacial lake", "south lhonak"]):
+        return NER_DISASTER_AND_BRO["glof"]
+    if any(k in lower for k in ["bro", "border roads", "vartak", "swastik", "pushpak", "sewak", "arunank", "brahmank"]):
+        return NER_DISASTER_AND_BRO["bro"]
+    if any(k in lower for k in ["ndrf", "sdrf", "asdma", "disaster battalion"]):
+        return NER_DISASTER_AND_BRO["ndrf_sdrf"]
+
+    # 5. Culture, Ecology & Landmarks
+    if "majuli" in lower:
+        return NER_CULTURE_AND_ECOLOGY["majuli"]
+    if "kaziranga" in lower or "rhino" in lower:
+        return NER_CULTURE_AND_ECOLOGY["kaziranga"]
+    if "loktak" in lower or "phumdi" in lower or "sangai" in lower or "keibul" in lower:
+        return NER_CULTURE_AND_ECOLOGY["loktak"]
+    if "dzukou" in lower:
+        return NER_CULTURE_AND_ECOLOGY["dzukou"]
+    if any(k in lower for k in ["festival", "festivals", "hornbill", "bihu", "losar", "wangala", "chapchar", "kharchi"]):
+        return NER_CULTURE_AND_ECOLOGY["festivals"]
+    if any(k in lower for k in ["living root", "root bridge", "jingkieng"]):
+        return NER_STATES_DATA["meghalaya"]
+
+    # 6. Sovereign Technology (Bharat Maps & LoRa Mesh)
+    if any(k in lower for k in ["bharat map", "nic map", "leaflet", "mapbox", "why no leaflet", "sovereign map", "gis service"]):
+        return NER_SOVEREIGN_TECH["bharat_maps"]
+    if any(k in lower for k in ["lora", "mesh", "865", "867", "frequency", "off grid", "store and forward", "dtn"]):
+        return NER_SOVEREIGN_TECH["lora_mesh"]
+
+    # 7. Medical & Mountain First-Aid Advisories
     for med_key, med_info in MEDICAL_ADVISORIES.items():
         if med_key in lower:
             return med_info
+    if any(k in lower for k in ["altitude sickness", "mountain sickness", "oxygen shortage"]):
+        return MEDICAL_ADVISORIES["ams"]
+    if any(k in lower for k in ["cold chain", "vaccine temperature", "blood storage", "insulin storage"]):
+        return MEDICAL_ADVISORIES["cold_chain"]
 
-    # 8 North Eastern States
-    if any(s in lower for s in ["8 states", "seven sisters", "north east states", "which states in ner"]):
+    # 8. All 8 North Eastern States Overview
+    if any(s in lower for s in ["8 states", "seven sisters", "north east states", "which states in ner", "states of ner"]):
         return (
-            "🗺️ **The 8 North Eastern States of India (NER):**\n"
-            "1. **Assam** (Capital: Dispur) - The logistics and river plain hub.\n"
-            "2. **Arunachal Pradesh** (Capital: Itanagar) - Mountainous frontier with Himalayan passes.\n"
-            "3. **Meghalaya** (Capital: Shillong) - The abode of clouds; high monsoon rainfall.\n"
-            "4. **Manipur** (Capital: Imphal) - Valley & hill terrain; vital trade corridors.\n"
-            "5. **Mizoram** (Capital: Aizawl) - Ridge-top settlements and winding bamboo routes.\n"
-            "6. **Nagaland** (Capital: Kohima) - Mountain highlands and heavy transit arteries.\n"
-            "7. **Tripura** (Capital: Agartala) - Border plain connectivity with Bangladesh.\n"
-            "8. **Sikkim** (Capital: Gangtok) - High-altitude Himalayan gateway bordering Tibet, Nepal & Bhutan."
+            "🗺️ **The 8 North Eastern States of India (NER):**\n\n"
+            "1. **Assam** (Capital: Dispur / Guwahati) — Gateway of the NE & Brahmaputra river plain.\n"
+            "2. **Arunachal Pradesh** (Capital: Itanagar) — Eastern Himalayan frontier, Sela Tunnel (13,000 ft) & Trans-Arunachal Highway (NH-13).\n"
+            "3. **Meghalaya** (Capital: Shillong) — Scotland of the East, world's highest rainfall (Cherrapunji/Mawsynram) & NH-06 arterial.\n"
+            "4. **Manipur** (Capital: Imphal) — Jewel of India, Loktak Lake (floating phumdis) & NH-37/NH-102 trade lifelines.\n"
+            "5. **Mizoram** (Capital: Aizawl) — Razorback ridges, bamboo ecosystems & NH-306 lifeline via Silchar.\n"
+            "6. **Nagaland** (Capital: Kohima / Dimapur) — Dzukou Valley, Mount Saramati & NH-29 logistics corridor.\n"
+            "7. **Tripura** (Capital: Agartala) — Border enclave, Akhaura ICP & NH-08 overland artery via Churaibari Pass.\n"
+            "8. **Sikkim** (Capital: Gangtok) — Himalayan crown, Mount Kanchenjunga (8,586m) & NH-10 Teesta canyon lifeline.\n\n"
+            "💡 *Tip: Ask me specifically about any state, e.g. 'Tell me about Mizoram' or 'What are the hazards in Meghalaya?'*"
         )
 
-    # Fleet information
+    # 9. Fleet information
     if any(k in lower for k in ["fleet", "vehicles", "ambulance", "truck"]):
         return (
             "🚐 **NER-LIFELINE Emergency Fleet Overview:**\n"
