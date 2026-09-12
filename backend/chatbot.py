@@ -246,9 +246,123 @@ def fetch_live_knowledge(query: str) -> Optional[str]:
 
 
 def handle_coding_queries(query: str) -> Optional[str]:
-    """Detects and provides programming & computer science answers."""
+    """Detects and provides programming & computer science answers across Java, Python, Go, C++, Rust, Kotlin, SQL, and React."""
     lower = query.lower()
 
+    # --- JAVA PROGRAMMING & ENTERPRISE ARCHITECTURE ---
+    if "java" in lower and ("binary search" in lower or "search" in lower and "arr" in lower):
+        return (
+            "⚡ **Binary Search in Java 21 (O(log n)):**\n```java\npublic class BinarySearch {\n"
+            "    public static int search(int[] arr, int target) {\n"
+            "        int left = 0, right = arr.length - 1;\n"
+            "        while (left <= right) {\n"
+            "            int mid = left + (right - left) / 2;\n"
+            "            if (arr[mid] == target) return mid;\n"
+            "            if (arr[mid] < target) left = mid + 1;\n"
+            "            else right = mid - 1;\n"
+            "        }\n"
+            "        return -1; // Target not found\n"
+            "    }\n\n"
+            "    public static void main(String[] args) {\n"
+            "        int[] sortedWaypoints = {10, 24, 38, 55, 72, 89};\n"
+            "        int index = search(sortedWaypoints, 55);\n"
+            "        System.out.println(\"Target found at index: \" + index); // 3\n"
+            "    }\n}\n```\n"
+            "Compile & Run: `javac BinarySearch.java && java BinarySearch`"
+        )
+
+    if "java" in lower and any(k in lower for k in ["spring", "spring boot", "controller", "rest", "api"]):
+        return (
+            "☕ **Java Spring Boot 3 REST Controller (Emergency Fleet Telemetry):**\n```java\npackage com.nerlifeline.controller;\n\n"
+            "import org.springframework.web.bind.annotation.*;\nimport org.springframework.http.ResponseEntity;\n"
+            "import java.time.Instant;\nimport java.util.*;\nimport java.util.concurrent.ConcurrentHashMap;\n\n"
+            "@RestController\n@RequestMapping(\"/api/v1/vehicles\")\n@CrossOrigin(origins = \"*\")\n"
+            "public class FleetController {\n"
+            "    public record VehicleStatus(String plate, double lat, double lng, double fuel, String status) {}\n"
+            "    private final Map<String, VehicleStatus> fleet = new ConcurrentHashMap<>();\n\n"
+            "    public FleetController() {\n"
+            "        fleet.put(\"AS-01-EV-4421\", new VehicleStatus(\"AS-01-EV-4421\", 26.2374, 91.9586, 54.2, \"Active\"));\n"
+            "    }\n\n"
+            "    @GetMapping\n"
+            "    public ResponseEntity<Collection<VehicleStatus>> getFleet() {\n"
+            "        return ResponseEntity.ok(fleet.values());\n"
+            "    }\n\n"
+            "    @GetMapping(\"/{plate}\")\n"
+            "    public ResponseEntity<VehicleStatus> getVehicle(@PathVariable String plate) {\n"
+            "        VehicleStatus v = fleet.get(plate.toUpperCase());\n"
+            "        return v != null ? ResponseEntity.ok(v) : ResponseEntity.notFound().build();\n"
+            "    }\n}\n```\n"
+            "Compatible with Spring Boot 3.2+ and Java 17/21 Virtual Threads."
+        )
+
+    if "java" in lower and any(k in lower for k in ["thread", "concurrency", "completablefuture", "async", "executor"]):
+        return (
+            "☕ **Java 21 Asynchronous Telemetry Ingestion (Virtual Threads & CompletableFuture):**\n```java\nimport java.util.concurrent.*;\nimport java.time.Instant;\n\n"
+            "public class TelemetryWorker {\n"
+            "    public static CompletableFuture<String> processVehiclePing(String vehiclePlate) {\n"
+            "        // Using Java 21 Project Loom Virtual Threads\n"
+            "        return CompletableFuture.supplyAsync(() -> {\n"
+            "            try { Thread.sleep(100); } catch (InterruptedException e) {}\n"
+            "            return \"Validated AIS-140 GPS ping for \" + vehiclePlate + \" at \" + Instant.now();\n"
+            "        }, Executors.newVirtualThreadPerTaskExecutor());\n"
+            "    }\n\n"
+            "    public static void main(String[] args) {\n"
+            "        processVehiclePing(\"AS-01-EV-4421\")\n"
+            "            .thenAccept(System.out::println)\n"
+            "            .join();\n"
+            "    }\n}\n```"
+        )
+
+    if "java" in lower and any(k in lower for k in ["ais140", "ais-140", "parser", "nmea"]):
+        return (
+            "☕ **Java 21 AIS-140 VLTD Packet Parser:**\n```java\npublic record Ais140Data(\n"
+            "    String plate, String imei, double lat, double lng, double speedKmh, boolean panicArmed\n"
+            ") {\n"
+            "    public static Ais140Data parse(String csvLine) {\n"
+            "        // Format: $AIS140,PLATE,IMEI,LAT,LNG,SPEED,IGNITION,PANIC*CHECKSUM\n"
+            "        String[] p = csvLine.split(\"[,*]\");\n"
+            "        return new Ais140Data(p[1], p[2], Double.parseDouble(p[3]), Double.parseDouble(p[4]),\n"
+            "                             Double.parseDouble(p[5]), \"1\".equals(p[7]));\n"
+            "    }\n}\n```"
+        )
+
+    if "java" in lower and ("hello world" in lower or "start" in lower or "quickstart" in lower or "class" in lower):
+        return (
+            "☕ **Java 21 Quickstart & Object-Oriented Blueprint:**\n```java\npublic class LifelineApp {\n"
+            "    // Modern Java Record\n"
+            "    public record DisasterReliefMission(String missionId, String corridor, int priorityLevel) {}\n\n"
+            "    public static void main(String[] args) {\n"
+            "        var mission = new DisasterReliefMission(\"MSN-102\", \"NH-13 Sela Pass Corridor\", 1);\n"
+            "        System.out.println(\"NER-LIFELINE Java Dispatch Active: \" + mission);\n"
+            "    }\n}\n```\n"
+            "Run directly in Java 21 without separate compilation: `java LifelineApp.java`"
+        )
+
+    # --- GO (GOLANG) ---
+    if any(k in lower for k in ["go", "golang"]) and any(k in lower for k in ["hello", "start", "goroutine", "telemetry", "channel"]):
+        return (
+            "🦫 **Go (Golang) High-Throughput Telemetry Ingestion:**\n```go\npackage main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\ntype TelemetryPing struct {\n\tVehiclePlate string\n\tLat, Lng     float64\n}\n\nfunc worker(id int, ch <-chan TelemetryPing) {\n\tfor ping := range ch {\n\t\tfmt.Printf(\"Worker %d processed GPS for %s at (%.4f, %.4f)\\n\", id, ping.VehiclePlate, ping.Lat, ping.Lng)\n\t}\n}\n\nfunc main() {\n\tpings := make(chan TelemetryPing, 100)\n\tfor w := 1; w <= 3; w++ { go worker(w, pings) }\n\n\tpings <- TelemetryPing{VehiclePlate: \"AS-01-EV-4421\", Lat: 26.2374, Lng: 91.9586}\n\ttime.Sleep(100 * time.Millisecond)\n}\n```"
+        )
+
+    # --- C++ EMBEDDED & SYSTEMS ---
+    if ("c++" in lower or "cpp" in lower) and any(k in lower for k in ["hello", "start", "lora", "esp32", "packet", "struct"]):
+        return (
+            "⚡ **C++20 LoRa SX1262 Packed Packet for ESP32 Mesh Nodes:**\n```cpp\n#include <iostream>\n#include <cstdint>\n\nstruct __attribute__((packed)) LoRaPacket {\n    uint8_t header{0xAA};\n    char vehiclePlate[14]{\"AS-01-EV-4421\"};\n    int32_t latFixed{26237451}; // 26.237451 * 1e6\n    int32_t lngFixed{91958621}; // 91.958621 * 1e6\n    uint8_t alertMask{0x01};     // Bit 0 = SOS Triggered\n};\n\nint main() {\n    LoRaPacket p;\n    std::cout << \"LoRa Binary Frame Size: \" << sizeof(p) << \" bytes\\n\";\n    return 0;\n}\n```\nCompile with: `g++ -std=c++20 main.cpp -o main`"
+        )
+
+    # --- RUST ---
+    if "rust" in lower:
+        return (
+            "🦀 **Rust Memory-Safe Telemetry Validator:**\n```rust\n#[derive(Debug)]\npub struct VehicleLocation {\n    pub plate: String,\n    pub latitude: f64,\n    pub longitude: f64,\n}\n\nimpl VehicleLocation {\n    pub fn is_ner_corridor(&self) -> bool {\n        (21.5..=29.5).contains(&self.latitude) && (89.5..=97.5).contains(&self.longitude)\n    }\n}\n\nfn main() {\n    let veh = VehicleLocation { plate: \"AS-01-EV-4421\".into(), latitude: 26.237451, longitude: 91.958621 };\n    println!(\"In NE India sector: {}\", veh.is_ner_corridor());\n}\n```"
+        )
+
+    # --- KOTLIN ---
+    if "kotlin" in lower:
+        return (
+            "📱 **Kotlin Modern Android Flow Telemetry:**\n```kotlin\nimport kotlinx.coroutines.flow.*\n\ndata class GpsFix(val plate: String, val lat: Double, val lng: Double)\n\nfun streamVehicleLocation(plate: String): Flow<GpsFix> = flow {\n    emit(GpsFix(plate, 26.237451, 91.958621))\n}\n```"
+        )
+
+    # --- PYTHON ---
     if "python" in lower and ("hello world" in lower or "start" in lower):
         return (
             "🐍 **Python Quickstart:**\n```python\n# Basic Python script\ndef main():\n"
@@ -257,6 +371,7 @@ def handle_coding_queries(query: str) -> Optional[str]:
             "Run with: `python3 main.py`"
         )
 
+    # --- REACT ---
     if "react" in lower and ("component" in lower or "hook" in lower or "state" in lower):
         return (
             "⚛️ **Modern React 19 Component Example:**\n```jsx\nimport { useState } from 'react';\n\n"
@@ -275,6 +390,7 @@ def handle_coding_queries(query: str) -> Optional[str]:
             "  );\n}\n```"
         )
 
+    # --- BINARY SEARCH (PYTHON FALLBACK) ---
     if "binary search" in lower:
         return (
             "⚡ **Binary Search (O(log n)):**\n```python\ndef binary_search(arr, target):\n"
@@ -288,9 +404,11 @@ def handle_coding_queries(query: str) -> Optional[str]:
             "        else:\n"
             "            right = mid - 1\n"
             "    return -1  # Target not found\n\n"
-            "# Usage (array must be sorted):\nprint(binary_search([10, 23, 45, 70, 99], 45))  # Returns 2\n```"
+            "# Usage (array must be sorted):\nprint(binary_search([10, 23, 45, 70, 99], 45))  # Returns 2\n```\n"
+            "*(💡 Tip: Ask 'binary search in Java' for Java 21 implementation!)*"
         )
 
+    # --- GIT ---
     if "git" in lower and ("commit" in lower or "push" in lower or "merge" in lower or "branch" in lower):
         return (
             "🛠️ **Essential Git Workflow Commands:**\n"
@@ -302,6 +420,7 @@ def handle_coding_queries(query: str) -> Optional[str]:
             "# 5. Create and switch to new branch\ngit checkout -b feature/emergency-mesh\n```"
         )
 
+    # --- SQL ---
     if "sql" in lower and ("select" in lower or "join" in lower or "table" in lower):
         return (
             "🗄️ **PostgreSQL / Supabase Query Example:**\n```sql\n-- Retrieve high-priority emergency shipments en-route in Arunachal Pradesh\n"
@@ -311,6 +430,7 @@ def handle_coding_queries(query: str) -> Optional[str]:
             "ORDER BY eta_hours ASC;\n```"
         )
 
+    # --- FASTAPI ---
     if "fastapi" in lower:
         return (
             "🚀 **FastAPI Endpoint Template:**\n```python\nfrom fastapi import FastAPI, HTTPException\nfrom pydantic import BaseModel\n\n"

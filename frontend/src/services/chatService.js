@@ -89,11 +89,13 @@ export async function fetchChatSuggestions() {
         ],
       },
       {
-        title: 'Coding & Tech',
+        title: 'Java & Polyglot Coding',
         prompts: [
-          'Show binary search implementation in Python',
-          'What are essential Git commands for relief teams?',
-          'React component example for status display',
+          'Show binary search implementation in Java 21',
+          'Show Java Spring Boot REST Controller for fleet',
+          'Show Java AIS-140 VLTD packet parser',
+          'Show Go goroutine telemetry worker',
+          'Show C++ LoRa ESP32 packet struct',
         ],
       },
     ],

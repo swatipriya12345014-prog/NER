@@ -26,6 +26,9 @@ from transport_ministry_service import (
     verify_vehicle_with_morth, normalize_registration_number,
     query_vahan_national_register, get_all_transport_ministry_vehicles
 )
+from polyglot_service import (
+    SUPPORTED_BACKEND_LANGUAGES, generate_polyglot_code, validate_code_snippet
+)
 from schemas import (
     Shipment, ShipmentCreate, RouteRiskReport, IncidentAlert, MeshTelemetryPacket,
     Vehicle, RouteWaypoint, FuelStop, RouteLocality, NavigationStep, RouteAlternative, RouteOptimizationRequest,
@@ -2481,6 +2484,58 @@ def register_vahan_vehicle_endpoint(payload: Dict = Body(...)):
     }
 
 
+# ==============================================================================
+# 6. POLYGLOT MULTI-LANGUAGE INTELLIGENCE API (Java, Go, C++, Rust, Kotlin, etc.)
+# ==============================================================================
+
+@app.get("/api/languages")
+def get_supported_languages_endpoint():
+    """
+    Returns all programming languages supported by the backend polyglot engine,
+    including Java 21, Python 3.11, Go, C++20, Rust, Kotlin, and TypeScript.
+    """
+    return {
+        "status": "success",
+        "total_languages": len(SUPPORTED_BACKEND_LANGUAGES),
+        "primary_enterprise_language": "Java (Java 21 LTS)",
+        "languages": list(SUPPORTED_BACKEND_LANGUAGES.values())
+    }
+
+@app.get("/api/languages/{lang_id}")
+def get_language_detail_endpoint(lang_id: str):
+    """Returns detailed specification and ecosystem details for a specific language."""
+    key = lang_id.lower().strip()
+    if key not in SUPPORTED_BACKEND_LANGUAGES:
+        raise HTTPException(status_code=404, detail=f"Language '{lang_id}' not found. Supported: {list(SUPPORTED_BACKEND_LANGUAGES.keys())}")
+    return {"status": "success", "language": SUPPORTED_BACKEND_LANGUAGES[key]}
+
+@app.post("/api/languages/generate")
+def generate_language_code_endpoint(payload: Dict = Body(...)):
+    """
+    Generates authentic production code in Java, Go, C++, Rust, Python, etc.
+    Scenarios include: 'ais140_parser', 'spring_boot', 'route_optimizer', 'quickstart'.
+    """
+    language = payload.get("language", "java")
+    scenario = payload.get("scenario", "quickstart")
+    options = payload.get("options", {})
+
+    result = generate_polyglot_code(language, scenario, options)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+@app.post("/api/languages/validate")
+def validate_code_endpoint(payload: Dict = Body(...)):
+    """
+    Validates syntax, matching delimiters, and language-specific structure.
+    """
+    language = payload.get("language", "java")
+    code = payload.get("code", "")
+    if not code.strip():
+        raise HTTPException(status_code=400, detail="Empty code payload")
+    return validate_code_snippet(language, code)
+
+
 # ==========================================
 # UNIVERSAL AI CHATBOT SYSTEM
 # ==========================================
@@ -2550,11 +2605,13 @@ def get_chat_suggestions():
                 ]
             },
             {
-                "title": "Coding & Tech",
+                "title": "Java & Polyglot Coding",
                 "prompts": [
-                    "Show binary search implementation in Python",
-                    "What are essential Git commands for relief teams?",
-                    "React component example for status display"
+                    "Show binary search implementation in Java 21",
+                    "Show Java Spring Boot REST Controller for fleet",
+                    "Show Java AIS-140 VLTD packet parser",
+                    "Show Go goroutine telemetry worker",
+                    "Show C++ LoRa ESP32 packet struct"
                 ]
             }
         ]
