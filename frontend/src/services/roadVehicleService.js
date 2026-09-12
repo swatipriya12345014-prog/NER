@@ -3,6 +3,8 @@
  * Provides access to historical road risk records and realtime vehicle numbers registry.
  */
 
+import { searchFleetVehicles, FALLBACK_FLEET_VEHICLES } from './fuelRouteService';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function getRoadHistories(state = '') {
@@ -200,6 +202,20 @@ export async function getRealtimeVehicleByPlate(vehicleNumber) {
   const all = await getRealtimeVehicles();
   const normalized = vehicleNumber.replace(/[\s-]/g, '').toUpperCase();
   return all.find(v => v.vehicle_number.replace(/[\s-]/g, '').toUpperCase() === normalized) || null;
+}
+
+export async function searchRealtimeVehicles(query = '', inTransitOnly = false) {
+  try {
+    const url = `${API_BASE}/api/vehicles/search?q=${encodeURIComponent(query)}&in_transit_only=${inTransitOnly}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (err) {
+    console.warn('Vehicle search API notice, fallback to local database:', err);
+  }
+  return searchFleetVehicles(query, inTransitOnly);
 }
 
 export async function updateRealtimeVehicle(update) {

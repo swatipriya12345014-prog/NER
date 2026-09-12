@@ -75,7 +75,15 @@ class Vehicle(BaseModel):
     current_location: str
     lat: float
     lng: float
-    status: str = Field(default="Active", description="Active, En Route, Refueling, Maintenance")
+    status: str = Field(default="Active", description="Active, En Route, In Transit, Refueling, Maintenance")
+    speed_kmh: Optional[float] = Field(default=45.0, description="Realtime road speed in km/h")
+    altitude_m: Optional[float] = Field(default=None, description="GPS altitude elevation in meters")
+    current_road: Optional[str] = Field(default=None, description="Active highway or mountain defile")
+    destination: Optional[str] = Field(default=None, description="Target relief destination or depot")
+    cargo_manifest: Optional[str] = Field(default=None, description="Payload description")
+    driver_phone: Optional[str] = Field(default=None, description="Direct pilot telephone")
+    state: Optional[str] = Field(default=None, description="Registered North Eastern state")
+    is_in_transit: Optional[bool] = Field(default=True, description="Whether currently in road transit")
 
 class RouteWaypoint(BaseModel):
     name: str
@@ -298,7 +306,10 @@ class VehicleRegistryItem(BaseModel):
     current_road: Optional[str] = None
     destination: Optional[str] = None
     cargo_manifest: Optional[str] = None
-    status: str = "Active"  # Active, Distress, En Route, Diverted, Maintenance
+    status: str = "Active"  # Active, Distress, En Route, In Transit, Diverted, Maintenance
+    state: Optional[str] = None
+    rto_city: Optional[str] = None
+    is_in_transit: Optional[bool] = True
     is_online: bool = True
     mesh_node_id: Optional[str] = None
     last_ping: str

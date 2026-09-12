@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 from collections import defaultdict
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
@@ -186,128 +186,10 @@ MOCK_MESH_NODES = [
     {"node_id": "MESH-NODE-05", "state": "Assam", "battery_pct": 98, "signal_rssi_dbm": -55, "is_online": True, "last_ping": "Just now"},
 ]
 
-MOCK_VEHICLES = [
-    {
-        "id": "AS-01-EV-4421",
-        "name": "Highland Rapid Ambulance 01",
-        "license_plate": "AS 01 EV 4421",
-        "vehicle_type": "4x4 Highland Ambulance",
-        "fuel_type": "Diesel",
-        "fuel_capacity_litres": 70.0,
-        "current_fuel_litres": 48.0,
-        "fuel_percentage": 68.6,
-        "fuel_consumption_km_per_l": 8.5,
-        "terrain_multiplier": 1.30,
-        "effective_km_per_l": 6.54,
-        "remaining_range_km": 313.9,
-        "fuel_status": "Optimal",
-        "assigned_driver": "Tenzing Norbu",
-        "current_location": "Guwahati Central Depot",
-        "lat": 26.1445,
-        "lng": 91.7362,
-        "status": "Active"
-    },
-    {
-        "id": "ML-05-TR-9011",
-        "name": "Heavy Convoy Transporter 05",
-        "license_plate": "ML 05 TR 9011",
-        "vehicle_type": "Heavy Relief Truck (6x6)",
-        "fuel_type": "Diesel",
-        "fuel_capacity_litres": 150.0,
-        "current_fuel_litres": 42.0,
-        "fuel_percentage": 28.0,
-        "fuel_consumption_km_per_l": 4.2,
-        "terrain_multiplier": 1.45,
-        "effective_km_per_l": 2.90,
-        "remaining_range_km": 121.8,
-        "fuel_status": "Low Reserve",
-        "assigned_driver": "Dhiraj Roy",
-        "current_location": "Shillong Civil Depot",
-        "lat": 25.5788,
-        "lng": 91.8933,
-        "status": "En Route"
-    },
-    {
-        "id": "AR-03-AM-2022",
-        "name": "Sela Mountain Medical Patrol",
-        "license_plate": "AR 03 AM 2022",
-        "vehicle_type": "Mountain Rapid Response SUV",
-        "fuel_type": "Diesel",
-        "fuel_capacity_litres": 65.0,
-        "current_fuel_litres": 16.5,
-        "fuel_percentage": 25.4,
-        "fuel_consumption_km_per_l": 9.5,
-        "terrain_multiplier": 1.40,
-        "effective_km_per_l": 6.79,
-        "remaining_range_km": 112.0,
-        "fuel_status": "Critical Refuel Required",
-        "assigned_driver": "Lobsang Wangchuk",
-        "current_location": "Bomdila Mountain Pass",
-        "lat": 27.2645,
-        "lng": 92.4182,
-        "status": "Active"
-    },
-    {
-        "id": "MN-02-HV-3108",
-        "name": "Eastern Sector Supply Carrier",
-        "license_plate": "MN 02 HV 3108",
-        "vehicle_type": "Tactical Cargo Carrier (4x4)",
-        "fuel_type": "Diesel",
-        "fuel_capacity_litres": 120.0,
-        "current_fuel_litres": 86.0,
-        "fuel_percentage": 71.7,
-        "fuel_consumption_km_per_l": 5.5,
-        "terrain_multiplier": 1.35,
-        "effective_km_per_l": 4.07,
-        "remaining_range_km": 350.0,
-        "fuel_status": "Optimal",
-        "assigned_driver": "Bikram Singh",
-        "current_location": "Silchar Staging Hub",
-        "lat": 24.8333,
-        "lng": 92.7789,
-        "status": "Active"
-    },
-    {
-        "id": "SK-01-RL-5504",
-        "name": "Himalayan Vaccine Cruiser EV",
-        "license_plate": "SK 01 RL 5504",
-        "vehicle_type": "High Altitude Cold-Chain EV",
-        "fuel_type": "Electric EV",
-        "fuel_capacity_litres": 90.0,
-        "current_fuel_litres": 72.0,
-        "fuel_percentage": 80.0,
-        "fuel_consumption_km_per_l": 7.8,
-        "terrain_multiplier": 1.25,
-        "effective_km_per_l": 6.24,
-        "remaining_range_km": 449.3,
-        "fuel_status": "Optimal",
-        "assigned_driver": "Karma Bhutia",
-        "current_location": "Gangtok Command Base",
-        "lat": 27.3389,
-        "lng": 88.6065,
-        "status": "Active"
-    },
-    {
-        "id": "TR-01-EM-8840",
-        "name": "Tripura Fuel Logistics Mobile Depot",
-        "license_plate": "TR 01 EM 8840",
-        "vehicle_type": "Emergency Fuel & Water Tanker",
-        "fuel_type": "Diesel",
-        "fuel_capacity_litres": 220.0,
-        "current_fuel_litres": 195.0,
-        "fuel_percentage": 88.6,
-        "fuel_consumption_km_per_l": 3.8,
-        "terrain_multiplier": 1.35,
-        "effective_km_per_l": 2.81,
-        "remaining_range_km": 548.0,
-        "fuel_status": "Optimal",
-        "assigned_driver": "Subhash Debnath",
-        "current_location": "Agartala Depot",
-        "lat": 23.8315,
-        "lng": 91.2868,
-        "status": "Active"
-    }
-]
+from vehicle_database import REAL_VEHICLE_NUMBERS_DATABASE, get_all_vehicles_list, search_real_vehicles
+
+MOCK_VEHICLES = get_all_vehicles_list()
+
 
 REGIONAL_HUBS = {
     "guwahati": {"id": "guwahati", "name": "Guwahati Central Depot", "state": "Assam", "lat": 26.1445, "lng": 91.7362, "elevation_m": 55},
@@ -555,10 +437,38 @@ def get_vehicles():
     set_cached_data("vehicles", data)
     return data
 
+@app.get("/api/vehicles/search")
+def search_vehicles_endpoint(
+    q: Optional[str] = Query(None, description="Search vehicle registration number, driver, road, cargo or destination"),
+    in_transit_only: bool = Query(False, description="Filter only vehicles currently running in transit"),
+    state: Optional[str] = Query(None, description="Filter by state")
+):
+    """
+    Search real vehicle numbers currently running in transit across the North East region.
+    Supports plate numbers (e.g. AS-01-EV-4421, ML-05, AR-03, SK-01), driver names, roads, or destinations.
+    """
+    results = search_real_vehicles(query=q, in_transit_only=in_transit_only, state=state)
+    return {
+        "query": q,
+        "total_matches": len(results),
+        "in_transit_count": sum(1 for v in results if v.get("is_in_transit", False) or "transit" in (v.get("status") or "").lower()),
+        "vehicles": results
+    }
+
+@app.get("/api/vehicles/realtime/search")
+def search_realtime_vehicles_endpoint(
+    q: Optional[str] = Query(None, description="Search vehicle registration number, driver, road, cargo or destination"),
+    in_transit_only: bool = Query(False, description="Filter only vehicles currently running in transit"),
+    state: Optional[str] = Query(None, description="Filter by state")
+):
+    return search_vehicles_endpoint(q=q, in_transit_only=in_transit_only, state=state)
+
 @app.get("/api/vehicles/{vehicle_id}")
 def get_vehicle_by_id(vehicle_id: str):
     if vehicle_id == "realtime":
         return get_all_realtime_vehicles()
+    if vehicle_id == "search":
+        return search_vehicles_endpoint()
 
     cached = get_cached_data(f"veh_{vehicle_id}")
     if cached is not None:
@@ -1844,160 +1754,8 @@ def add_road_blockage_event(road_id: str, event: PastBlockageEvent):
 # 2. REALTIME VEHICLE DATABASE (Vehicle Number Plates Registry)
 # ─────────────────────────────────────────────────────────────
 
-REALTIME_VEHICLE_DATABASE: Dict[str, Dict] = {
-    "AS-01-EV-4421": {
-        "vehicle_number": "AS-01-EV-4421",
-        "vehicle_name": "Highland Rapid Ambulance 01",
-        "vehicle_type": "4x4 Highland Ambulance",
-        "driver_name": "Tenzing Norbu",
-        "driver_phone": "+91 94351 99201",
-        "fuel_percentage": 68.6,
-        "speed_kmh": 42.5,
-        "lat": 27.0142,
-        "lng": 92.5645,
-        "altitude_m": 1240.0,
-        "current_road": "NH-13 Km 42 (Bhalukpong Pass)",
-        "destination": "Tawang District Hospital",
-        "cargo_manifest": "Emergency Blood Plasma & IV Fluids (-4°C Vaccine Vault)",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-01",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "ML-05-TR-9011": {
-        "vehicle_number": "ML-05-TR-9011",
-        "vehicle_name": "Heavy Convoy Transporter 05",
-        "vehicle_type": "Heavy Relief Truck (6x6)",
-        "driver_name": "Dhiraj Roy",
-        "driver_phone": "+91 94361 88412",
-        "fuel_percentage": 28.0,
-        "speed_kmh": 28.0,
-        "lat": 25.5788,
-        "lng": 91.8933,
-        "altitude_m": 1490.0,
-        "current_road": "NH-06 Lumshnong Stretch",
-        "destination": "Jowai Primary Health Center",
-        "cargo_manifest": "Water Purification Systems & Dry Rations",
-        "status": "En Route",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-02",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "AR-03-AM-2022": {
-        "vehicle_number": "AR-03-AM-2022",
-        "vehicle_name": "Sela Mountain Medical Patrol",
-        "vehicle_type": "Mountain Rapid Response SUV",
-        "driver_name": "Lobsang Wangchuk",
-        "driver_phone": "+91 94355 12044",
-        "fuel_percentage": 25.4,
-        "speed_kmh": 34.0,
-        "lat": 27.2645,
-        "lng": 92.4182,
-        "altitude_m": 2240.0,
-        "current_road": "NH-13 Bomdila Ascent",
-        "destination": "Dirang Military Transit Depot",
-        "cargo_manifest": "High Altitude Oxygen Cylinders",
-        "status": "En Route",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-01",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "MN-02-HV-3108": {
-        "vehicle_number": "MN-02-HV-3108",
-        "vehicle_name": "Eastern Sector Supply Carrier",
-        "vehicle_type": "Tactical Cargo Carrier (4x4)",
-        "driver_name": "Bikram Singh",
-        "driver_phone": "+91 94360 44519",
-        "fuel_percentage": 71.7,
-        "speed_kmh": 50.0,
-        "lat": 24.8333,
-        "lng": 92.7789,
-        "altitude_m": 180.0,
-        "current_road": "NH-27 Silchar Staging Hub",
-        "destination": "Imphal Relief Staging Yard",
-        "cargo_manifest": "Emergency Blanket Bundles & Baby Formula",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-03",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "SK-01-RL-5504": {
-        "vehicle_number": "SK-01-RL-5504",
-        "vehicle_name": "Himalayan Vaccine Cruiser EV",
-        "vehicle_type": "High Altitude Cold-Chain EV",
-        "driver_name": "Karma Bhutia",
-        "driver_phone": "+91 94340 77123",
-        "fuel_percentage": 80.0,
-        "speed_kmh": 36.0,
-        "lat": 27.3389,
-        "lng": 88.6065,
-        "altitude_m": 1650.0,
-        "current_road": "NH-10 Gangtok Approach",
-        "destination": "Mangan Remote Clinic",
-        "cargo_manifest": "Insulin & Pediatric Vaccine Batches",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-04",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "TR-01-EM-8840": {
-        "vehicle_number": "TR-01-EM-8840",
-        "vehicle_name": "Tripura Fuel Logistics Mobile Depot",
-        "vehicle_type": "Emergency Fuel & Water Tanker",
-        "driver_name": "Subhash Das",
-        "driver_phone": "+91 94364 88301",
-        "fuel_percentage": 92.0,
-        "speed_kmh": 44.0,
-        "lat": 23.8315,
-        "lng": 91.2868,
-        "altitude_m": 45.0,
-        "current_road": "NH-208 Agartala Perimeter",
-        "destination": "Kailashahar Fuel Cache",
-        "cargo_manifest": "12,000 Litres Military Grade High-Altitude Diesel",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-05",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "NL-07-CD-3310": {
-        "vehicle_number": "NL-07-CD-3310",
-        "vehicle_name": "Nagaland Emergency Rescue Unit",
-        "vehicle_type": "All-Terrain Rescue 4x4",
-        "driver_name": "Arenla Jamir",
-        "driver_phone": "+91 94362 11988",
-        "fuel_percentage": 55.0,
-        "speed_kmh": 38.0,
-        "lat": 25.6751,
-        "lng": 94.1086,
-        "altitude_m": 1440.0,
-        "current_road": "NH-29 Kohima Bypass",
-        "destination": "Wokha Disaster Cell",
-        "cargo_manifest": "Hydraulic Rescue Cutters & Emergency Satellite Kits",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-04",
-        "last_ping": datetime.utcnow().isoformat()
-    },
-    "MZ-01-GH-6622": {
-        "vehicle_number": "MZ-01-GH-6622",
-        "vehicle_name": "Mizoram Mountain Logistics Van",
-        "vehicle_type": "High Clearance 4WD Van",
-        "driver_name": "Lalrintluanga",
-        "driver_phone": "+91 94361 55902",
-        "fuel_percentage": 64.0,
-        "speed_kmh": 32.0,
-        "lat": 23.7271,
-        "lng": 92.7176,
-        "altitude_m": 1130.0,
-        "current_road": "NH-54 Aizawl Outer Ring",
-        "destination": "Lunglei District Hospital",
-        "cargo_manifest": "Dialysis Fluids & Antivenom Doses",
-        "status": "Active",
-        "is_online": True,
-        "mesh_node_id": "MESH-NODE-03",
-        "last_ping": datetime.utcnow().isoformat()
-    }
-}
+REALTIME_VEHICLE_DATABASE: Dict[str, Dict] = REAL_VEHICLE_NUMBERS_DATABASE
+
 
 # Realtime Vehicle WebSocket Connection Manager
 class VehicleRealtimeManager:

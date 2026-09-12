@@ -54,6 +54,7 @@ import {
   REGIONAL_HUBS,
   FALLBACK_FLEET_VEHICLES
 } from '../services/fuelRouteService';
+import { searchRealtimeVehicles } from '../services/roadVehicleService';
 import { calculateRealHighwayRoute } from '../services/googleDirectionsService';
 import {
   startGPSTracking,
@@ -162,6 +163,12 @@ const LiveMap = () => {
   const [basemap, setBasemap] = useState('streets');
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDP02pC9K1QL7p69lae940OyX1iKcbhAoA';
   const [mapEngine, setMapEngine] = useState('google'); // 'google' | 'offline'
+
+  // Viewport jump utility
+  const jumpToLocation = useCallback((lat, lng, targetZoom = 10) => {
+    setCenter({ lat, lng });
+    setZoom(targetZoom);
+  }, []);
   
   // Real-time vehicle fleet state
   const [fleet, setFleet] = useState(FALLBACK_FLEET_VEHICLES);
@@ -169,6 +176,35 @@ const LiveMap = () => {
   const [filterLayer, setFilterLayer] = useState({ vehicles: true, hazards: true, hubs: true, routes: true, gps: true, localities: true });
   const [selectedLocality, setSelectedLocality] = useState(null);
   const [mouseCoord, setMouseCoord] = useState({ lat: 26.2, lng: 92.8 });
+
+  // ─────────────────────────────────────────────────────────────
+  // REAL VEHICLE TRACKING & SEARCH ENGINE STATES
+  // ─────────────────────────────────────────────────────────────
+  const [vehicleSearchQuery, setVehicleSearchQuery] = useState('');
+  const [isVehicleSearchOpen, setIsVehicleSearchOpen] = useState(false);
+  const [trackedVehicle, setTrackedVehicle] = useState(null);
+  const [isTrackingActive, setIsTrackingActive] = useState(false);
+  const [trackOnlyInTransit, setTrackOnlyInTransit] = useState(true);
+
+  // Start tracking a real vehicle: zooms in, activates moving HUD, centers camera
+  const startTrackingVehicle = useCallback((veh) => {
+    if (!veh) return;
+    setTrackedVehicle(veh);
+    setIsTrackingActive(true);
+    setSelectedVehicleId(veh.id);
+    setSelectedEntity(veh);
+    const lat = veh.location?.lat || veh.lat;
+    const lng = veh.location?.lng || veh.lng;
+    if (lat && lng) {
+      jumpToLocation(lat, lng, 12);
+    }
+    setIsVehicleSearchOpen(false);
+  }, [jumpToLocation]);
+
+  const stopTrackingVehicle = useCallback(() => {
+    setIsTrackingActive(false);
+    setTrackedVehicle(null);
+  }, []);
 
   // ─────────────────────────────────────────────────────────────
   // REAL-TIME GPS NAVIGATOR STATES
@@ -207,6 +243,81 @@ const LiveMap = () => {
   const [selectedBlockageId, setSelectedBlockageId] = useState('blk-1');
   const [activeDetourApplied, setActiveDetourApplied] = useState(false);
 
+  // Expose global helper for seamless map engine switching and vehicle tracking
+  useEffect(() => {
+    window.__nerSwitchOffline = () => setMapEngine('offline');
+    window.__nerSwitchGoogle = () => setMapEngine('google');
+    window.__nerTrackVehicle = (vehicleIdentifier) => {
+      if (!vehicleIdentifier) return;
+      const cleanTarget = vehicleIdentifier.replace(/[\s-]/g, '').toUpperCase();
+      const match = fleet.find(
+        (v) =>
+          v.id === vehicleIdentifier ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanTarget)
+      );
+      if (match) {
+        startTrackingVehicle(match);
+      }
+    };
+    return () => {
+      delete window.__nerSwitchOffline;
+      delete window.__nerSwitchGoogle;
+      delete window.__nerTrackVehicle;
+    };
+  }, [fleet, startTrackingVehicle]);
+
+  // Keep trackedVehicle updated with latest live telemetry position & speed
+  useEffect(() => {
+    if (isTrackingActive && trackedVehicle) {
+      const liveVeh = fleet.find((v) => v.id === trackedVehicle.id);
+      if (liveVeh) {
+        setTrackedVehicle(liveVeh);
+      }
+    }
+  }, [fleet, isTrackingActive, trackedVehicle?.id]);
+
+  // Search results for real vehicle tracker
+  const searchResults = useMemo(() => {
+    const q = vehicleSearchQuery.trim().toLowerCase();
+    const cleanQ = q.replace(/[\s-]/g, '');
+
+    return fleet.filter((v) => {
+      const isInTransit = v.is_in_transit || v.status === 'En Route' || v.status === 'In Transit';
+      if (trackOnlyInTransit && !isInTransit) return false;
+      if (!q) return true;
+
+      const cleanPlate = (v.license_plate || '').toLowerCase().replace(/[\s-]/g, '');
+      return (
+        v.name?.toLowerCase().includes(q) ||
+        v.license_plate?.toLowerCase().includes(q) ||
+        cleanPlate.includes(cleanQ) ||
+        v.vehicle_type?.toLowerCase().includes(q) ||
+        v.assigned_driver?.toLowerCase().includes(q) ||
+        v.current_road?.toLowerCase().includes(q) ||
+        v.destination?.toLowerCase().includes(q) ||
+        v.state?.toLowerCase().includes(q) ||
+        v.cargo_manifest?.toLowerCase().includes(q)
+      );
+    });
+  }, [fleet, vehicleSearchQuery, trackOnlyInTransit]);
+
+  const handleExecuteVehicleSearch = (e) => {
+    if (e) e.preventDefault();
+    if (searchResults.length > 0) {
+      startTrackingVehicle(searchResults[0]);
+    } else {
+      const cleanQ = vehicleSearchQuery.replace(/[\s-]/g, '').toUpperCase();
+      const match = fleet.find(
+        (v) =>
+          v.id.toUpperCase().includes(cleanQ) ||
+          (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase().includes(cleanQ))
+      );
+      if (match) {
+        startTrackingVehicle(match);
+      }
+    }
+  };
+
   // Sync URL search params whenever they change
   useEffect(() => {
     if (urlOrigin) {
@@ -222,33 +333,31 @@ const LiveMap = () => {
     }
   }, [urlOrigin, urlDest, urlVehicle]);
 
-  // Expose global helper for seamless map engine switching
-  useEffect(() => {
-    window.__nerSwitchOffline = () => setMapEngine('offline');
-    window.__nerSwitchGoogle = () => setMapEngine('google');
-    return () => {
-      delete window.__nerSwitchOffline;
-      delete window.__nerSwitchGoogle;
-    };
-  }, []);
-
-  // Load fleet vehicles on mount
+  // Load fleet vehicles on mount and handle ?track=true URL param
   useEffect(() => {
     async function initFleet() {
       const data = await fetchVehicles();
       if (data && data.length > 0) {
         setFleet(data);
         if (urlVehicle) {
-          const matched = data.find((v) => v.id === urlVehicle);
+          const cleanUrl = urlVehicle.replace(/[\s-]/g, '').toUpperCase();
+          const matched = data.find(
+            (v) =>
+              v.id === urlVehicle ||
+              (v.license_plate && v.license_plate.replace(/[\s-]/g, '').toUpperCase() === cleanUrl)
+          );
           if (matched) {
             setSelectedVehicleId(matched.id);
             setSimulatedFuel(matched.current_fuel_litres);
+            if (searchParams.get('track') === 'true') {
+              startTrackingVehicle(matched);
+            }
           }
         }
       }
     }
     initFleet();
-  }, [urlVehicle]);
+  }, [urlVehicle, searchParams, startTrackingVehicle]);
 
   // When selected vehicle changes, sync fuel level
   useEffect(() => {
@@ -542,11 +651,6 @@ const LiveMap = () => {
     setZoom((prev) => Math.max(4, Math.min(14, prev + delta)));
   };
 
-  const jumpToLocation = (lat, lng, targetZoom = 10) => {
-    setCenter({ lat, lng });
-    setZoom(targetZoom);
-  };
-
   // Compute active tiles visible in the viewport
   const centerPixelX = lonToPixelX(center.lng, zoom);
   const centerPixelY = latToPixelY(center.lat, zoom);
@@ -715,6 +819,271 @@ const LiveMap = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* REAL VEHICLE NUMBERS IN-TRANSIT SEARCH & TRACKING COMMAND BAR */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      <div className="bg-slate-900/95 border border-slate-700/90 rounded-2xl p-3 sm:p-4 shadow-2xl relative z-40 backdrop-blur-md space-y-3">
+        {/* Top Header Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex-shrink-0">
+              <Truck size={18} className={isTrackingActive ? 'animate-bounce' : ''} />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-black text-white tracking-wide">
+                  REAL VEHICLE DATABASE & IN-TRANSIT TRACKER
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>{fleet.filter((v) => v.is_in_transit || v.status === 'En Route').length} IN TRANSIT</span>
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">
+                  • 8 NER States Registered
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Search authentic RTO registration plates (AS, ML, AR, TR, MN, NL, MZ, SK), driver contacts, cargo or corridors to track live moving vehicles.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Filter Toggle: In-Transit Only */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setTrackOnlyInTransit(!trackOnlyInTransit)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center space-x-1.5 ${
+                trackOnlyInTransit
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-900/40'
+                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+              }`}
+            >
+              <Activity size={13} className={trackOnlyInTransit ? 'animate-pulse' : ''} />
+              <span>In-Transit Only</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search Input + Action Button Bar */}
+        <form onSubmit={handleExecuteVehicleSearch} className="flex flex-col md:flex-row items-stretch md:items-center gap-2 relative">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search real vehicle number (e.g. AS-01-EV-4421, ML-05, AR-03, SK-01, Tenzing Norbu, NH-13)..."
+              value={vehicleSearchQuery}
+              onChange={(e) => {
+                setVehicleSearchQuery(e.target.value);
+                setIsVehicleSearchOpen(true);
+              }}
+              onFocus={() => setIsVehicleSearchOpen(true)}
+              className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+            />
+            {vehicleSearchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setVehicleSearchQuery('');
+                  setIsVehicleSearchOpen(false);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+
+            {/* Live Autocomplete Dropdown */}
+            {isVehicleSearchOpen && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-950 border border-slate-700 rounded-2xl shadow-2xl max-h-80 overflow-y-auto z-50 divide-y divide-slate-800/80 p-1 backdrop-blur-xl">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                  <span>Matching Registered Vehicles ({searchResults.length})</span>
+                  <span className="text-emerald-400">Click card to Track on Map</span>
+                </div>
+                {searchResults.map((veh) => {
+                  const isInTransit = veh.is_in_transit || veh.status === 'En Route' || veh.status === 'In Transit';
+                  return (
+                    <div
+                      key={veh.id}
+                      onClick={() => startTrackingVehicle(veh)}
+                      className="p-2.5 hover:bg-slate-900/90 rounded-xl transition-all cursor-pointer flex items-center justify-between gap-3 group"
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center space-x-2 flex-wrap">
+                          <span className="text-xs font-mono font-black text-blue-300 px-2 py-0.5 bg-blue-500/15 rounded border border-blue-500/30 group-hover:border-emerald-500/60 group-hover:text-emerald-300 transition-colors">
+                            {veh.license_plate || veh.id}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+                            {veh.state || 'North East'}
+                          </span>
+                          {isInTransit && (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                              <span>IN TRANSIT • {veh.speed_kmh || 38} km/h</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold text-white truncate">
+                          {veh.name || veh.vehicle_type}
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex items-center space-x-2 flex-wrap">
+                          {veh.current_road && (
+                            <span className="text-amber-300 flex items-center space-x-1">
+                              <Compass size={11} />
+                              <span>{veh.current_road}</span>
+                            </span>
+                          )}
+                          {veh.destination && (
+                            <span className="text-blue-300 flex items-center space-x-1">
+                              <Navigation size={11} />
+                              <span>➔ {veh.destination}</span>
+                            </span>
+                          )}
+                          <span className="text-slate-400">Driver: {veh.assigned_driver || veh.driver_name}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startTrackingVehicle(veh);
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow flex items-center space-x-1 flex-shrink-0 transition-all cursor-pointer"
+                      >
+                        <Crosshair size={12} className="animate-spin-slow" />
+                        <span>Track</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Primary Track Vehicle Button */}
+          <button
+            type="submit"
+            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center justify-center space-x-2 transition-all active:scale-98 cursor-pointer flex-shrink-0 border border-emerald-400/30"
+          >
+            <Crosshair size={15} className="animate-spin-slow text-white" />
+            <span>Track Vehicle</span>
+          </button>
+        </form>
+
+        {/* Fast-Select Authentic Real Vehicle Plates (1-Click Quick Tracking Pills) */}
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-thin pt-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1 flex-shrink-0">
+            <Radio size={12} className="text-emerald-400 animate-pulse" />
+            <span>Live Plates:</span>
+          </span>
+          {[
+            { plate: 'AS-01-EV-4421', name: 'Highland Ambulance', state: 'Assam / Arunachal' },
+            { plate: 'ML-05-TR-9011', name: 'Heavy Convoy 6x6', state: 'Meghalaya' },
+            { plate: 'AR-03-AM-2022', name: 'Sela Patrol SUV', state: 'Arunachal' },
+            { plate: 'SK-01-RL-5504', name: 'Vaccine Cruiser EV', state: 'Sikkim' },
+            { plate: 'TR-01-EM-8840', name: 'Oxygen Express', state: 'Tripura' },
+            { plate: 'MN-02-HV-3108', name: 'Naga Hill Cargo', state: 'Manipur' },
+            { plate: 'NL-07-CD-3310', name: 'Highland Logistics', state: 'Nagaland' },
+            { plate: 'MZ-01-GH-6622', name: 'Phawngpui 4x4', state: 'Mizoram' }
+          ].map((item) => (
+            <button
+              key={item.plate}
+              onClick={() => {
+                const found = fleet.find(
+                  (v) =>
+                    v.license_plate === item.plate ||
+                    v.id === item.plate ||
+                    (v.license_plate && v.license_plate.replace(/[\s-]/g, '') === item.plate.replace(/[\s-]/g, ''))
+                );
+                if (found) {
+                  startTrackingVehicle(found);
+                } else {
+                  setVehicleSearchQuery(item.plate);
+                  setIsVehicleSearchOpen(true);
+                }
+              }}
+              className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer border flex items-center space-x-1.5 shadow-sm ${
+                trackedVehicle?.license_plate === item.plate
+                  ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/40'
+                  : 'bg-slate-950/80 hover:bg-slate-800 text-emerald-300 hover:text-white border-slate-700'
+              }`}
+            >
+              <span>{item.plate}</span>
+              <span className="text-[9px] font-sans text-slate-400">({item.name})</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 🎯 ACTIVE VEHICLE TRACKING HUD BANNER */}
+        {isTrackingActive && trackedVehicle && (
+          <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border border-emerald-500/70 rounded-xl p-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex-shrink-0">
+                <Crosshair size={18} className="animate-spin-slow text-emerald-400" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center space-x-2 flex-wrap">
+                  <span className="font-mono font-black text-emerald-300 text-sm">
+                    {trackedVehicle.license_plate || trackedVehicle.id}
+                  </span>
+                  <span className="font-bold text-white">
+                    {trackedVehicle.name}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-500 text-slate-950 uppercase">
+                    LIVE TRACKING ACTIVE
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-300 flex items-center space-x-2 flex-wrap">
+                  {trackedVehicle.current_road && (
+                    <span className="text-amber-300 font-semibold">
+                      Corridor: {trackedVehicle.current_road}
+                    </span>
+                  )}
+                  {trackedVehicle.destination && (
+                    <span className="text-blue-300 font-semibold">
+                      • Destination: {trackedVehicle.destination}
+                    </span>
+                  )}
+                  <span className="text-emerald-400 font-mono font-bold">
+                    • Speed: {trackedVehicle.speed_kmh || 42} km/h
+                  </span>
+                  <span className="text-slate-400 font-mono">
+                    • GPS: {(trackedVehicle.location?.lat || trackedVehicle.lat)?.toFixed(4)}°N, {(trackedVehicle.location?.lng || trackedVehicle.lng)?.toFixed(4)}°E
+                  </span>
+                </div>
+                {trackedVehicle.cargo_manifest && (
+                  <div className="text-[10px] text-emerald-200 font-medium">
+                    📦 Manifest: {trackedVehicle.cargo_manifest} • Driver: {trackedVehicle.assigned_driver || trackedVehicle.driver_name} ({trackedVehicle.driver_phone || '+91 94351 99201'})
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  const lat = trackedVehicle.location?.lat || trackedVehicle.lat;
+                  const lng = trackedVehicle.location?.lng || trackedVehicle.lng;
+                  if (lat && lng) jumpToLocation(lat, lng, 12);
+                }}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow flex items-center space-x-1 cursor-pointer transition-all"
+              >
+                <Crosshair size={12} />
+                <span>Center Vehicle</span>
+              </button>
+              <button
+                type="button"
+                onClick={stopTrackingVehicle}
+                className="px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs rounded-lg shadow flex items-center space-x-1 cursor-pointer transition-all"
+              >
+                <X size={12} />
+                <span>Stop Tracking</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 1-Click Interactive Strategic Corridors Bar */}

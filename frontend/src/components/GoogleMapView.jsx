@@ -469,6 +469,16 @@ export default function GoogleMapView({
     }
   }, [isApiLoaded, currentMapStyle]);
 
+  // Sync map viewport when center or zoom props update
+  useEffect(() => {
+    if (mapInstanceRef.current && center && center.lat && center.lng) {
+      mapInstanceRef.current.panTo({ lat: center.lat, lng: center.lng });
+      if (typeof zoom === 'number' && zoom > 0) {
+        mapInstanceRef.current.setZoom(zoom);
+      }
+    }
+  }, [center?.lat, center?.lng, zoom]);
+
   // ─────────────────────────────────────────────────────────────
   // 3. Current Location Feature (GPS Watcher & Navigation Marker)
   // ─────────────────────────────────────────────────────────────
@@ -641,30 +651,46 @@ export default function GoogleMapView({
         marker.setPosition({ lat, lng });
         marker.setTitle(`${veh.name || veh.id} (${veh.status || 'ACTIVE'})`);
 
+        const isInTransit = veh.is_in_transit || veh.status === 'En Route' || veh.status === 'In Transit';
+        const iconUrl = isInTransit
+          ? createTransitTruckSvg(veh.license_plate || veh.id, Math.round(veh.speed_kmh || 38))
+          : createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH);
+        const iconSize = isInTransit ? new window.google.maps.Size(46, 46) : new window.google.maps.Size(36, 36);
+        const iconAnchor = isInTransit ? new window.google.maps.Point(23, 23) : new window.google.maps.Point(18, 18);
+
         // Only update icon if heading or status changed
-        if (marker.__lastStatus !== veh.status || marker.__lastHeading !== roundedH) {
+        if (marker.__lastStatus !== veh.status || marker.__lastHeading !== roundedH || marker.__lastTransit !== isInTransit) {
           marker.setIcon({
-            url: createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH),
-            scaledSize: new window.google.maps.Size(36, 36),
-            anchor: new window.google.maps.Point(18, 18)
+            url: iconUrl,
+            scaledSize: iconSize,
+            anchor: iconAnchor
           });
           marker.__lastStatus = veh.status;
           marker.__lastHeading = roundedH;
+          marker.__lastTransit = isInTransit;
         }
       } else {
+        const isInTransit = veh.is_in_transit || veh.status === 'En Route' || veh.status === 'In Transit';
+        const iconUrl = isInTransit
+          ? createTransitTruckSvg(veh.license_plate || veh.id, Math.round(veh.speed_kmh || 38))
+          : createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH);
+        const iconSize = isInTransit ? new window.google.maps.Size(46, 46) : new window.google.maps.Size(36, 36);
+        const iconAnchor = isInTransit ? new window.google.maps.Point(23, 23) : new window.google.maps.Point(18, 18);
+
         const marker = new window.google.maps.Marker({
           position: { lat, lng },
           map: map,
-          title: `${veh.name || veh.id} (${veh.status || 'ACTIVE'})`,
+          title: `${veh.license_plate || veh.name || veh.id} (${isInTransit ? 'IN TRANSIT' : (veh.status || 'ACTIVE')})`,
           icon: {
-            url: createVehicleSvg(veh.type || 'truck', veh.status || 'ACTIVE', roundedH),
-            scaledSize: new window.google.maps.Size(36, 36),
-            anchor: new window.google.maps.Point(18, 18)
+            url: iconUrl,
+            scaledSize: iconSize,
+            anchor: iconAnchor
           },
-          zIndex: 50
+          zIndex: isInTransit ? 75 : 50
         });
         marker.__lastStatus = veh.status;
         marker.__lastHeading = roundedH;
+        marker.__lastTransit = isInTransit;
 
         marker.addListener('click', () => {
           if (onSelectEntity) onSelectEntity(veh);
@@ -672,19 +698,29 @@ export default function GoogleMapView({
           if (infoWindowRef.current) {
             infoWindowRef.current.setPosition({ lat, lng });
             infoWindowRef.current.setContent(`
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 210px;">
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 6px 4px; color: #0f172a; min-width: 230px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <strong style="font-size: 13px; color: #0f172a;">${veh.name || veh.callsign || veh.id}</strong>
-                  <span style="background: #10b981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">${veh.status || 'ACTIVE'}</span>
+                  <strong style="font-size: 13px; color: #0f172a;">${veh.license_plate || veh.name || veh.id}</strong>
+                  <span style="background: ${isInTransit ? '#059669' : '#10b981'}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">
+                    ${isInTransit ? 'IN TRANSIT 🚚' : (veh.status || 'ACTIVE')}
+                  </span>
                 </div>
-                <div style="margin-top: 4px; font-size: 11px; color: #475569;">
-                  <div>Type: <strong>${veh.type || 'Fleet Transport'}</strong></div>
-                  <div>Speed: <strong>${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : 'Stationary'}</strong></div>
-                  <div>Driver: <strong>${veh.driver_name || 'Assigned Officer'}</strong></div>
-                  <div>Fuel: <strong>${veh.fuel_percent ?? 88}%</strong></div>
+                <div style="margin-top: 4px; font-size: 11px; color: #475569; line-height: 1.4;">
+                  <div>Type: <strong>${veh.name || veh.vehicle_type || 'Fleet Transport'}</strong></div>
+                  <div>Speed: <strong style="color: #059669;">${veh.speed_kmh != null ? `${veh.speed_kmh} km/h` : '38 km/h'}</strong></div>
+                  ${veh.current_road ? `<div>Corridor: <strong style="color: #d97706;">${veh.current_road}</strong></div>` : ''}
+                  ${veh.destination ? `<div>Destination: <strong style="color: #2563eb;">${veh.destination}</strong></div>` : ''}
+                  <div>Driver: <strong>${veh.assigned_driver || veh.driver_name || 'Assigned Driver'}</strong> ${veh.driver_phone ? `(${veh.driver_phone})` : ''}</div>
+                  <div>Fuel: <strong>${veh.fuel_percentage ?? veh.fuel_percent ?? 88}%</strong> (${veh.current_fuel_litres || 50} L)</div>
+                  ${veh.cargo_manifest ? `<div style="margin-top: 3px; font-size: 10px; color: #047857; background: #ecfdf5; padding: 3px 5px; border-radius: 4px; border: 1px solid #a7f3d0;">📦 ${veh.cargo_manifest}</div>` : ''}
                 </div>
-                <div style="margin-top: 6px; padding: 4px 6px; background: #f1f5f9; border-radius: 4px; font-size: 9px; color: #64748b; font-weight: bold;">
-                  📡 SIMULATED GPS • NER-LIFELINE TELEMETRY
+                <div style="margin-top: 8px; display: flex; gap: 4px;">
+                  <button onclick="window.__nerTrackVehicle && window.__nerTrackVehicle('${veh.license_plate || veh.id}')" style="flex: 1; padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                    🎯 Track Live Vehicle
+                  </button>
+                  <button onclick="window.__nerSetDest && window.__nerSetDest({ id: '${veh.id}', name: '${veh.license_plate || veh.name}', lat: ${lat}, lng: ${lng} })" style="flex: 1; padding: 6px 8px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: bold; cursor: pointer;">
+                    📍 Route Here
+                  </button>
                 </div>
               </div>
             `);

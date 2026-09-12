@@ -163,3 +163,19 @@ def ensure_extended_tables_exist():
     except Exception as e:
         print(f"Database: Extended tables notice: {e}")
         return False
+
+def seed_realtime_vehicles():
+    """Seeds the 21 real vehicles into Supabase vehicle_registry if configured."""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        from vehicle_database import REAL_VEHICLE_NUMBERS_DATABASE
+        for v in REAL_VEHICLE_NUMBERS_DATABASE.values():
+            client.table("vehicle_registry").upsert(v, on_conflict="vehicle_number").execute()
+        print(f"Database: Successfully seeded {len(REAL_VEHICLE_NUMBERS_DATABASE)} real vehicles into Supabase.")
+        return True
+    except Exception as e:
+        print(f"Database seed notice: {e}")
+        return False
+
