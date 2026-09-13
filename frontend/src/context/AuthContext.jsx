@@ -3,13 +3,13 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
+  setPersistence,
+  inMemoryPersistence,
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured, saveFirebaseConfig } from '../services/firebase';
 import { AuthContext } from './AuthContextInstance';
 
 const ROLE_STORAGE_KEY = 'ner_lifeline_user_role';
-const SESSION_USER_STORAGE_KEY = 'ner_lifeline_session_user';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -20,59 +20,29 @@ export const AuthProvider = ({ children }) => {
       return 'admin';
     }
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
 
-  // Sync Firebase Auth state & enforce session isolation
+  // High-Security Directive: Enforce Zero-Trust In-Memory Authentication.
+  // Any manual URL selection, address-bar entry, or browser reload starts unauthenticated,
+  // guaranteeing that typing `/alert` or any protected route directly displays the login page.
   useEffect(() => {
-    // Purge legacy persistent mock user from localStorage to prevent unauthenticated URL bypass
     try {
       localStorage.removeItem('ner_lifeline_mock_user');
+      localStorage.removeItem('ner_lifeline_session_user');
+      sessionStorage.removeItem('ner_lifeline_session_user');
+      sessionStorage.removeItem('ner_lifeline_mock_user');
     } catch {}
 
     if (isFirebaseConfigured && auth) {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (firebaseUser) {
-          const u = {
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName || 'Authorized User',
-            email: firebaseUser.email,
-            photoURL: firebaseUser.photoURL,
-          };
-          setUser(u);
-          try {
-            sessionStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(u));
-          } catch {}
-        } else {
-          // If Firebase has no user, only check active tab sessionStorage
-          const savedSession = sessionStorage.getItem(SESSION_USER_STORAGE_KEY);
-          if (savedSession) {
-            try {
-              setUser(JSON.parse(savedSession));
-            } catch {
-              setUser(null);
-            }
-          } else {
-            setUser(null);
-          }
-        }
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-    } else {
-      const savedSession = sessionStorage.getItem(SESSION_USER_STORAGE_KEY);
-      if (savedSession) {
-        try {
-          setUser(JSON.parse(savedSession));
-        } catch {
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
+      try {
+        setPersistence(auth, inMemoryPersistence).catch(() => {});
+        signOut(auth).catch(() => {});
+      } catch {}
     }
+
+    setUser(null);
+    setLoading(false);
   }, []);
 
   const changeRole = (newRole) => {
@@ -90,6 +60,7 @@ export const AuthProvider = ({ children }) => {
     if (isFirebaseConfigured && auth && googleProvider) {
       try {
         console.log('Starting Firebase Google signInWithPopup...');
+        await setPersistence(auth, inMemoryPersistence);
         const result = await signInWithPopup(auth, googleProvider);
         const signedUser = {
           uid: result.user.uid,
@@ -98,10 +69,6 @@ export const AuthProvider = ({ children }) => {
           photoURL: result.user.photoURL,
         };
         setUser(signedUser);
-        try {
-          sessionStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(signedUser));
-          localStorage.removeItem('ner_lifeline_mock_user');
-        } catch {}
         return { success: true, user: signedUser, live: true };
       } catch (err) {
         console.error('Firebase Auth Error details:', err.code, err.message);
@@ -137,10 +104,6 @@ export const AuthProvider = ({ children }) => {
       provider: 'google.com',
     };
     setUser(chosenUser);
-    try {
-      sessionStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(chosenUser));
-      localStorage.removeItem('ner_lifeline_mock_user');
-    } catch {}
     return chosenUser;
   };
 
@@ -150,6 +113,7 @@ export const AuthProvider = ({ children }) => {
 
     if (isFirebaseConfigured && auth) {
       try {
+        await setPersistence(auth, inMemoryPersistence);
         const result = await signInWithEmailAndPassword(auth, email, password);
         const signedUser = {
           uid: result.user.uid,
@@ -158,10 +122,6 @@ export const AuthProvider = ({ children }) => {
           photoURL: result.user.photoURL,
         };
         setUser(signedUser);
-        try {
-          sessionStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(signedUser));
-          localStorage.removeItem('ner_lifeline_mock_user');
-        } catch {}
         return signedUser;
       } catch (err) {
         setAuthError(err.message || 'Invalid credentials');
@@ -175,10 +135,6 @@ export const AuthProvider = ({ children }) => {
         photoURL: null,
       };
       setUser(demoUser);
-      try {
-        sessionStorage.setItem(SESSION_USER_STORAGE_KEY, JSON.stringify(demoUser));
-        localStorage.removeItem('ner_lifeline_mock_user');
-      } catch {}
       return demoUser;
     }
   };
@@ -192,8 +148,9 @@ export const AuthProvider = ({ children }) => {
       }
     }
     try {
-      sessionStorage.removeItem(SESSION_USER_STORAGE_KEY);
+      sessionStorage.clear();
       localStorage.removeItem('ner_lifeline_mock_user');
+      localStorage.removeItem('ner_lifeline_session_user');
     } catch {}
     setUser(null);
   };
