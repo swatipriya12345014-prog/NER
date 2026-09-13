@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 import { sendChatMessage, fetchChatSuggestions } from '../services/chatService';
 import { useLanguage } from '../context/LanguageContext';
+import { createSpeechRecognizer } from '../services/aiVoiceService';
 
 export default function AIAssistant() {
-  const { speakText, stopSpeech, isSpeaking } = useLanguage();
+  const { speakText, stopSpeech, isSpeaking, language } = useLanguage();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -19,8 +20,10 @@ export default function AIAssistant() {
   ]);
 
   const [inputMessage, setInputMessage] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [autoVoiceResponse, setAutoVoiceResponse] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -42,37 +45,52 @@ export default function AIAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // High-fidelity Speech-to-Text with live streaming interim transcription
   const toggleSpeechRecognition = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
       setIsListening(false);
+      setInterimTranscript('');
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-IN';
-
-      recognition.onstart = () => setIsListening(true);
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputMessage((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    const recognition = createSpeechRecognizer({
+      language,
+      onStart: () => {
+        setIsListening(true);
+        setInterimTranscript('');
+      },
+      onInterimResult: (interim) => {
+        setInterimTranscript(interim);
+      },
+      onFinalResult: (final) => {
+        setInputMessage((prev) => (prev ? `${prev} ${final}` : final));
+        setInterimTranscript('');
+      },
+      onEnd: () => {
         setIsListening(false);
-      };
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
+        setInterimTranscript('');
+      },
+      onError: () => {
+        setIsListening(false);
+        setInterimTranscript('');
+      },
+    });
 
-      recognitionRef.current = recognition;
+    if (!recognition) {
+      alert('Speech recognition is not supported in this browser. Please try Google Chrome or Microsoft Edge.');
+      return;
+    }
+
+    recognitionRef.current = recognition;
+    try {
       recognition.start();
     } catch (err) {
+      console.warn('Speech recognition startup exception:', err);
       setIsListening(false);
     }
   };
@@ -89,6 +107,7 @@ export default function AIAssistant() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
+    setInterimTranscript('');
     setIsLoading(true);
 
     try {
@@ -103,6 +122,11 @@ export default function AIAssistant() {
       };
 
       setMessages((prev) => [...prev, botMsg]);
+
+      // If auto-voice response is enabled, speak the answer naturally
+      if (autoVoiceResponse) {
+        speakText(response.answer);
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -123,12 +147,8 @@ export default function AIAssistant() {
       stopSpeech();
       setActiveSpeechIndex(null);
     } else {
-      const cleanText = text
-        .replace(/\*\*|__|\*|_/g, '')
-        .replace(/`{1,3}[\s\S]*?`{1,3}/g, 'code snippet')
-        .replace(/#+\s/g, '');
       setActiveSpeechIndex(index);
-      speakText(cleanText);
+      speakText(text);
     }
   };
 
@@ -223,10 +243,28 @@ export default function AIAssistant() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !autoVoiceResponse;
+              setAutoVoiceResponse(next);
+              if (!next) stopSpeech();
+            }}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              autoVoiceResponse
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-500/20'
+                : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200'
+            }`}
+            title="Toggle automatic spoken voice replies from the assistant"
+          >
+            {autoVoiceResponse ? <Volume2 size={14} className="text-cyan-400 animate-pulse" /> : <VolumeX size={14} />}
+            <span>Auto Voice: {autoVoiceResponse ? 'ON' : 'OFF'}</span>
+          </button>
+
           <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
             <PhoneCall size={14} className="text-red-400" />
-            <span>SOS Helpline: <b className="text-white">+91 95705 25463</b></span>
+            <span>SOS: <b className="text-white">+91 95705 25463</b></span>
           </div>
         </div>
       </div>
@@ -408,6 +446,31 @@ export default function AIAssistant() {
 
           {/* Chat Input Console */}
           <div className="p-4 bg-slate-900 border-t border-slate-800">
+            {/* Live Audio Acoustic Waveform & Streaming Speech Banner */}
+            {isListening && (
+              <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-between gap-3 text-xs text-cyan-200 shadow-lg shadow-cyan-950/50 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-end gap-0.5 h-4 flex-shrink-0">
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-2" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.4s_ease-in-out_infinite] h-4" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.7s_ease-in-out_infinite] h-3" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.5s_ease-in-out_infinite] h-3.5" />
+                  </div>
+                  <span className="font-bold text-cyan-300 uppercase tracking-wider text-[10px]">Listening:</span>
+                  <span className="truncate italic text-white text-xs">
+                    {interimTranscript || "Speak your query naturally..."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white border border-red-500/30 text-[11px] font-semibold flex-shrink-0 transition-colors cursor-pointer"
+                >
+                  Done Speaking
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 bg-slate-950 rounded-2xl px-4 py-3 border border-slate-700/80 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/20 transition-all">
               <button
                 type="button"

@@ -5,14 +5,17 @@ import {
 } from 'lucide-react';
 import { sendChatMessage, fetchChatSuggestions } from '../services/chatService';
 import { useLanguage } from '../context/LanguageContext';
+import { createSpeechRecognizer } from '../services/aiVoiceService';
 
 export default function AIChatWidget() {
-  const { speakText, stopSpeech, isSpeaking } = useLanguage();
+  const { speakText, stopSpeech, isSpeaking, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [autoVoiceResponse, setAutoVoiceResponse] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
@@ -54,46 +57,49 @@ export default function AIChatWidget() {
     }
   }, [isOpen]);
 
-  // Handle Speech-to-Text via Web Speech Recognition
+  // Handle Speech-to-Text via Web Speech Recognition with live streaming interim transcription
   const toggleSpeechRecognition = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
       setIsListening(false);
+      setInterimTranscript('');
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-IN'; // Indian English / general
-
-      recognition.onstart = () => {
+    const recognition = createSpeechRecognizer({
+      language,
+      onStart: () => {
         setIsListening(true);
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputMessage((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        setInterimTranscript('');
+      },
+      onInterimResult: (interim) => {
+        setInterimTranscript(interim);
+      },
+      onFinalResult: (final) => {
+        setInputMessage((prev) => (prev ? `${prev} ${final}` : final));
+        setInterimTranscript('');
+      },
+      onEnd: () => {
         setIsListening(false);
-      };
-
-      recognition.onerror = (err) => {
-        console.warn('Speech recognition error:', err);
+        setInterimTranscript('');
+      },
+      onError: () => {
         setIsListening(false);
-      };
+        setInterimTranscript('');
+      },
+    });
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+    if (!recognition) {
+      alert('Speech recognition is not supported in this browser. Please try Google Chrome or Microsoft Edge.');
+      return;
+    }
 
-      recognitionRef.current = recognition;
+    recognitionRef.current = recognition;
+    try {
       recognition.start();
     } catch (err) {
       console.warn('Failed to start speech recognition:', err);
@@ -129,6 +135,11 @@ export default function AIChatWidget() {
 
       setMessages((prev) => [...prev, botMsg]);
 
+      // If auto-voice response is enabled, speak the answer naturally
+      if (autoVoiceResponse) {
+        speakText(response.answer);
+      }
+
       // Update quick suggestions if returned
       if (response.suggestions && response.suggestions.length > 0) {
         setSuggestions(response.suggestions);
@@ -155,19 +166,14 @@ export default function AIChatWidget() {
     }
   };
 
-  // Voice playback toggling with direct stop
+  // Voice playback toggling with natural speech engine
   const handleToggleSpeak = (text, index) => {
     if (isSpeaking && activeSpeechIndex === index) {
       stopSpeech();
       setActiveSpeechIndex(null);
     } else {
-      // Clean markdown tags for cleaner speech
-      const cleanText = text
-        .replace(/\*\*|__|\*|_/g, '')
-        .replace(/`{1,3}[\s\S]*?`{1,3}/g, 'code snippet')
-        .replace(/#+\s/g, '');
       setActiveSpeechIndex(index);
-      speakText(cleanText);
+      speakText(text);
     }
   };
 
@@ -290,6 +296,22 @@ export default function AIChatWidget() {
 
             {/* Controls */}
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !autoVoiceResponse;
+                  setAutoVoiceResponse(next);
+                  if (!next) stopSpeech();
+                }}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  autoVoiceResponse
+                    ? 'text-cyan-400 bg-cyan-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+                }`}
+                title={autoVoiceResponse ? "Auto Voice Replies: ON (Click to mute)" : "Auto Voice Replies: OFF (Click to enable)"}
+              >
+                {autoVoiceResponse ? <Volume2 size={16} className="animate-pulse" /> : <VolumeX size={16} />}
+              </button>
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition-colors"
@@ -423,6 +445,30 @@ export default function AIChatWidget() {
 
           {/* Input Bar */}
           <div className="p-3 bg-slate-900 border-t border-slate-800">
+            {/* Live Audio Acoustic Waveform & Streaming Speech Banner */}
+            {isListening && (
+              <div className="mb-2.5 px-3 py-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-between gap-2 text-xs text-cyan-200 shadow-md shadow-cyan-950/50 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-end gap-0.5 h-3.5 flex-shrink-0">
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.6s_ease-in-out_infinite] h-2" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.4s_ease-in-out_infinite] h-3.5" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-[pulse_0.7s_ease-in-out_infinite] h-2.5" />
+                  </div>
+                  <span className="font-bold text-cyan-300 uppercase tracking-wider text-[10px]">Listening:</span>
+                  <span className="truncate italic text-white text-[11px]">
+                    {interimTranscript || "Speak naturally..."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleSpeechRecognition}
+                  className="px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white border border-red-500/30 text-[10px] font-semibold flex-shrink-0 transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 bg-slate-950 rounded-xl px-3 py-2 border border-slate-700/80 focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 transition-all">
               <button
                 type="button"

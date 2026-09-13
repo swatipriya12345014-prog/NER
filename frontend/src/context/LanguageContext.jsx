@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { speakNaturalSpeech, stopNaturalSpeech } from '../services/aiVoiceService';
 
 // Supported North Eastern & National Operating Languages
 export const SUPPORTED_LANGUAGES = [
@@ -563,6 +564,20 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
+  // Preload natural speech voices into browser memory
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      const onVoicesChanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+      window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+      return () => {
+        window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+      };
+    }
+  }, []);
+
   // Translation lookup helper
   const t = useCallback((key, fallback) => {
     const langDict = TRANSLATIONS[language] || TRANSLATIONS.en;
@@ -578,38 +593,26 @@ export function LanguageProvider({ children }) {
 
   // Audio Accessibility: Stop/Cancel speech synthesis immediately
   const stopSpeech = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (err) {
-        console.warn('Speech cancellation error:', err);
-      }
-    }
+    stopNaturalSpeech();
     setIsSpeaking(false);
   }, []);
 
-  // Audio Accessibility: Web Speech API for Turn-by-Turn & Emergency Announcements
-  const speakText = useCallback((text) => {
+  // Audio Accessibility: Enhanced Natural AI Voice Synthesis (TTS)
+  const speakText = useCallback((text, options = {}) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
     try {
-      window.speechSynthesis.cancel(); // Stop any pending utterances
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-
-      // Select matching voice if available
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length > 0) {
-        const langVoice = voices.find(v => v.lang.startsWith(language) || (language === 'hi' && v.lang.includes('hi')) || (language === 'bn' && v.lang.includes('bn')));
-        if (langVoice) utterance.voice = langVoice;
-      }
-
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-
-      window.speechSynthesis.speak(utterance);
+      speakNaturalSpeech({
+        text,
+        language: options.language || language,
+        rate: options.rate || 1.02,
+        pitch: options.pitch || 1.0,
+        preferredGender: options.gender || 'female',
+        playChime: options.playChime !== undefined ? options.playChime : true,
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
     } catch (err) {
       console.warn('Speech synthesis error:', err);
       setIsSpeaking(false);
