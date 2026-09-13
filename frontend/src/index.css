@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #10b981; /* Emerald 500 */
   --color-primary-dark: #059669; /* Emerald 600 */
@@ -284,25 +286,46 @@ html, body {
    ═══════════════════════════════════════════════════════════════ */
 
 .glass-card {
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.7);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.55);
   transition: all 0.3s var(--ease-spring);
 }
 
+html.light .glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  color: #0f172a;
+}
+
 .glass-card-interactive {
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.7);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(51, 65, 85, 0.55);
   transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), border-color 0.3s var(--ease-spring);
+}
+
+html.light .glass-card-interactive {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  color: #0f172a;
 }
 
 .glass-card-interactive:hover {
   transform: translateY(-3px);
   border-color: rgba(96, 165, 250, 0.6);
   box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.18);
+}
+
+html.light .glass-card-interactive:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.08), 0 0 20px rgba(59, 130, 246, 0.15);
 }
 
 .btn-press {

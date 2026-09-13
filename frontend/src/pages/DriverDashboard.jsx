@@ -43,6 +43,7 @@ import {
   Snowflake
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { initiateSosCall, sendCallHeartbeat, endSosCall, EMERGENCY_CONTROLLER_PHONE, EMERGENCY_CONTROLLER_RAW } from '../services/sosService';
 import { getRoadHistories, getRealtimeVehicles, syncDatabase } from '../services/roadVehicleService';
 import AIBlockageRerouteModal from '../components/AIBlockageRerouteModal';
@@ -50,6 +51,7 @@ import AIBlockageRerouteModal from '../components/AIBlockageRerouteModal';
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const { t, speakText, stopSpeech, playAlertChime, isSpeaking } = useLanguage();
+  const { isDark } = useTheme();
 
   // Cancel any running speech when component unmounts
   useEffect(() => {
@@ -991,34 +993,40 @@ SDRF Dispatch Status: Connected`;
       )}
 
       {/* Driver Tactical Cockpit Header Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className={`relative overflow-hidden border rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 backdrop-blur-xl transition-all duration-300 ${
+        isDark
+          ? 'bg-gradient-to-r from-emerald-950/80 via-slate-900/80 to-slate-900/80 border-emerald-500/30'
+          : 'bg-gradient-to-r from-emerald-50/90 via-white/85 to-white/85 border-emerald-400/50 shadow-emerald-950/5'
+      }`}>
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10">
           <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center space-x-1">
-              <Truck size={12} className="text-emerald-400" />
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center space-x-1">
+              <Truck size={12} className="text-emerald-500" />
               <span>Emergency Fleet Driver • Tactical Cockpit</span>
             </span>
-            <span className="text-[10px] font-mono text-cyan-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+              isDark ? 'text-cyan-300 bg-slate-950/80 border-slate-800' : 'text-cyan-800 bg-cyan-50 border-cyan-200'
+            }`}>
               VEHICLE: AS-01-EV-4421 (Highland Rapid Ambulance)
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight flex items-center gap-2">
+          <h1 className={`text-2xl sm:text-3xl font-black mt-1 tracking-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             Emergency Driver Navigation & Hazard Cockpit
           </h1>
-          <p className="text-xs text-slate-400">
-            Assigned Pilot: <strong className="text-white">Tashi Namgyal</strong> • Corridor: <strong className="text-slate-200">Guwahati Central ➔ Tawang Border Center (NH-13)</strong>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            Assigned Pilot: <strong className={isDark ? 'text-white' : 'text-slate-900'}>Tashi Namgyal</strong> • Corridor: <strong className={isDark ? 'text-slate-200' : 'text-slate-800'}>Guwahati Central ➔ Tawang Border Center (NH-13)</strong>
           </p>
-          <div className="mt-2 flex items-center space-x-3 text-[11px] font-mono text-slate-300 flex-wrap gap-y-1">
-            <span className="flex items-center gap-1 text-emerald-400">
+          <div className={`mt-2 flex items-center space-x-3 text-[11px] font-mono flex-wrap gap-y-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            <span className="flex items-center gap-1 text-emerald-500 font-bold">
               <Fuel size={12} /> Fuel: 68.6% (48L)
             </span>
             <span>•</span>
-            <span className="flex items-center gap-1 text-cyan-300">
+            <span className="flex items-center gap-1 text-cyan-500 font-bold">
               <Snowflake size={12} /> Cold-Chain: -4.2°C (Optimal)
             </span>
             <span>•</span>
-            <span className="text-slate-400">GPS: 27.0142°N, 92.5645°E (Bhalukpong)</span>
+            <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>GPS: 27.0142°N, 92.5645°E (Bhalukpong)</span>
           </div>
         </div>
 
@@ -1054,7 +1062,9 @@ SDRF Dispatch Status: Connected`;
               className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-all min-h-[40px] ${
                 isSpeaking
                   ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-400 shadow-lg shadow-rose-950/60 animate-pulse'
-                  : 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
+                  : isDark
+                    ? 'bg-slate-800 hover:bg-slate-750 text-cyan-300 border-slate-700'
+                    : 'bg-white/90 hover:bg-slate-100 text-cyan-700 border-slate-300'
               }`}
               title={isSpeaking ? "Click to directly turn off and silence voice advisory" : "Listen to emergency road advisory aloud"}
             >
@@ -1076,17 +1086,25 @@ SDRF Dispatch Status: Connected`;
             <button
               onClick={handleSyncAllDatabases}
               disabled={isSyncing}
-              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-cyan-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors disabled:opacity-50 min-h-[40px]"
+              className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors disabled:opacity-50 min-h-[40px] ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-cyan-300 hover:text-white' 
+                  : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-900'
+              }`}
               title={`Force full database and telemetry sync (Last: ${lastSyncTime})`}
             >
-              <RefreshCw size={14} className={isSyncing ? "animate-spin text-cyan-400" : "text-cyan-400"} />
+              <RefreshCw size={14} className={isSyncing ? "animate-spin text-cyan-400" : "text-cyan-500"} />
               <span className="truncate">{isSyncing ? 'Syncing...' : 'Sync DB'}</span>
             </button>
 
             {/* Road Histories DB Button */}
             <button
               onClick={() => setRoadHistoryModalOpen(true)}
-              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-amber-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px] ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-amber-300 hover:text-white' 
+                  : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-amber-700 hover:text-amber-900'
+              }`}
               title="Browse historical risk records for 8 NER highways"
             >
               <BookOpen size={14} />
@@ -1096,7 +1114,11 @@ SDRF Dispatch Status: Connected`;
             {/* Realtime Vehicle Numbers Registry Button */}
             <button
               onClick={() => setVehicleRegistryModalOpen(true)}
-              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-emerald-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px] ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-emerald-300 hover:text-white' 
+                  : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-emerald-700 hover:text-emerald-900'
+              }`}
               title="Realtime database of vehicle number plates and telemetry"
             >
               <Database size={14} />
@@ -1115,7 +1137,11 @@ SDRF Dispatch Status: Connected`;
             {/* Copy Manifest */}
             <button
               onClick={handleCopyManifest}
-              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px]"
+              className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors min-h-[40px] ${
+                isDark 
+                  ? 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-slate-300 hover:text-white' 
+                  : 'bg-white/90 hover:bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-900'
+              }`}
               title="Copy driver problem report manifest"
             >
               <Copy size={14} />
@@ -1138,7 +1164,11 @@ SDRF Dispatch Status: Connected`;
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 1. URGENT PROBLEM ENCOUNTER ON ROUTE (Hazard & AI Resolution) */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-rose-950/70 via-slate-900 to-slate-900 border-2 border-rose-500/80 rounded-2xl p-5 shadow-2xl space-y-4">
+      <div className={`border-2 rounded-2xl p-5 shadow-2xl space-y-4 backdrop-blur-xl transition-all duration-300 ${
+        isDark
+          ? 'bg-gradient-to-r from-rose-950/70 via-slate-900/80 to-slate-900/80 border-rose-500/80'
+          : 'bg-gradient-to-r from-rose-50/90 via-white/85 to-white/85 border-rose-500/80 shadow-rose-950/10'
+      }`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/30 pb-3">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/50 flex-shrink-0 animate-pulse">
@@ -1149,16 +1179,18 @@ SDRF Dispatch Status: Connected`;
                 <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider">
                   CRITICAL ROUTE PROBLEM
                 </span>
-                <span className="text-xs text-rose-300 font-mono font-bold">NH-13 Km 42 (Near Bhalukpong)</span>
+                <span className="text-xs text-rose-500 font-mono font-bold">NH-13 Km 42 (Near Bhalukpong)</span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-white mt-0.5">
+              <h2 className={`text-lg sm:text-xl font-black mt-0.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Active Landslide on Old Bhalukpong Pass — Impassable
               </h2>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 self-start sm:self-auto">
-            <span className="px-2.5 py-1 rounded-lg bg-rose-950 text-rose-200 border border-rose-600/60 text-xs font-mono font-bold">
+            <span className={`px-2.5 py-1 rounded-lg border text-xs font-mono font-bold ${
+              isDark ? 'bg-rose-950 text-rose-200 border-rose-600/60' : 'bg-rose-100 text-rose-800 border-rose-300'
+            }`}>
               Distance Ahead: 4.2 km
             </span>
           </div>
@@ -1166,42 +1198,54 @@ SDRF Dispatch Status: Connected`;
 
         {/* Problem Description & Immediate AI Resolution */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-          <div className="md:col-span-7 bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2">
-            <div className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center space-x-1.5">
+          <div className={`md:col-span-7 border rounded-xl p-4 space-y-2 backdrop-blur-md ${
+            isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-rose-200/80'
+          }`}>
+            <div className="text-xs font-bold uppercase tracking-wider text-rose-500 flex items-center space-x-1.5">
               <AlertTriangle size={14} />
               <span>Reported Road Problem Detail</span>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
               A 40-meter stretch of the hillside collapsed onto the pavement following monsoon downpours. 
               Multiple vehicles are turned back. The direct mountain pass has a <strong>Risk Score of 74/100</strong>. Do NOT proceed past Forest Checkpost Km 38.
             </p>
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-400">
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300">
+            <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+              <span className={`px-2 py-0.5 rounded border ${
+                isDark ? 'bg-slate-900 border-slate-800 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
                 🚧 Heavy Excavator Needed
               </span>
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+              <span className={`px-2 py-0.5 rounded border ${
+                isDark ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+              }`}>
                 Confidence: 95% (Multi-Sensor Mesh)
               </span>
             </div>
           </div>
 
-          <div className="md:col-span-5 bg-emerald-950/40 border border-emerald-500/50 rounded-xl p-4 space-y-2.5 flex flex-col justify-between">
+          <div className={`md:col-span-5 border rounded-xl p-4 space-y-2.5 flex flex-col justify-between backdrop-blur-md ${
+            isDark ? 'bg-emerald-950/40 border-emerald-500/50' : 'bg-emerald-50/80 border-emerald-400/60'
+          }`}>
             <div>
-              <div className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center space-x-1.5">
+              <div className="text-xs font-black uppercase tracking-wider text-emerald-600 flex items-center space-x-1.5">
                 <CheckCircle2 size={14} />
                 <span>AI Divert Solution: NH-13 Fortified Artery</span>
               </div>
-              <p className="text-xs text-emerald-200/90 mt-1 leading-relaxed">
+              <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-emerald-200/90' : 'text-emerald-900'}`}>
                 Divert immediately onto <strong>NH-13 BCT Fortified Highway (via Sela Tunnel Contour)</strong>. All-weather engineered roadway with zero active landslides reported.
               </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center text-[10px]">
-                <div className="p-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-lg">
-                  <div className="text-slate-400">Detour Added</div>
-                  <div className="font-mono text-emerald-300 font-extrabold text-xs">+14.2 km</div>
+                <div className={`p-1.5 border rounded-lg ${
+                  isDark ? 'bg-emerald-950/80 border-emerald-500/40' : 'bg-white/80 border-emerald-300'
+                }`}>
+                  <div className={isDark ? "text-slate-400" : "text-slate-600"}>Detour Added</div>
+                  <div className="font-mono text-emerald-600 font-extrabold text-xs">+14.2 km</div>
                 </div>
-                <div className="p-1.5 bg-emerald-950/80 border border-emerald-500/40 rounded-lg">
-                  <div className="text-slate-400">Risk Level</div>
-                  <div className="font-mono text-emerald-300 font-extrabold text-xs">18/100 (LOW)</div>
+                <div className={`p-1.5 border rounded-lg ${
+                  isDark ? 'bg-emerald-950/80 border-emerald-500/40' : 'bg-white/80 border-emerald-300'
+                }`}>
+                  <div className={isDark ? "text-slate-400" : "text-slate-600"}>Risk Level</div>
+                  <div className="font-mono text-emerald-600 font-extrabold text-xs">18/100 (LOW)</div>
                 </div>
               </div>
             </div>
@@ -1229,7 +1273,9 @@ SDRF Dispatch Status: Connected`;
                 className={`w-full sm:w-auto py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
                   divertConfirmed
                     ? 'bg-slate-800 text-emerald-300 border-emerald-500/60'
-                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700'
+                    : isDark
+                      ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
                 }`}
               >
                 {divertConfirmed ? '✓ Divert Logged' : 'Confirm Divert'}
@@ -1242,18 +1288,18 @@ SDRF Dispatch Status: Connected`;
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 2. 1-TAP DRIVER PROBLEM REPORTING DESK ("Facing a Problem?")  */}
       {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-800 pb-3">
+      <div className={`${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/85 border-slate-200/90 shadow-lg'} border rounded-2xl p-5 sm:p-6 shadow-xl space-y-4 backdrop-blur-xl transition-all duration-300`}>
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b ${isDark ? 'border-slate-800' : 'border-slate-200/80'} pb-3`}>
           <div>
-            <h2 className="text-lg font-black text-white flex items-center space-x-2">
+            <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'} flex items-center space-x-2`}>
               <Wrench size={18} className="text-amber-400" />
               <span>Report What Problem You Are Facing Right Now</span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               One-tap dispatch for vehicle pilots facing road hazards, mechanical failures, or terrain traps in NER.
             </p>
           </div>
-          <span className="text-[11px] font-mono text-cyan-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 self-start sm:self-auto">
+          <span className={`text-[11px] font-mono text-cyan-500 ${isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-white/90 border-slate-200'} px-2.5 py-1 rounded-lg border self-start sm:self-auto shadow-sm`}>
             📡 Auto-GPS Geo-Tagged
           </span>
         </div>
@@ -1266,23 +1312,23 @@ SDRF Dispatch Status: Connected`;
               <button
                 key={cat.id}
                 onClick={() => openProblemModal(cat)}
-                className={`p-4 rounded-xl bg-slate-950 border ${cat.borderColor} hover:bg-slate-850/80 transition-all text-left group shadow-lg cursor-pointer flex flex-col justify-between space-y-3`}
+                className={`p-4 rounded-xl border ${cat.borderColor} ${isDark ? 'bg-slate-950/70 hover:bg-slate-850/80' : 'bg-white/90 hover:bg-slate-50/90'} backdrop-blur-md transition-all text-left group shadow-lg cursor-pointer flex flex-col justify-between space-y-3`}
               >
                 <div className="flex items-start justify-between">
                   <div className={`p-2.5 rounded-xl bg-gradient-to-br ${cat.color} text-white shadow-md group-hover:scale-110 transition-transform`}>
                     <IconComponent size={20} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-cyan-400 flex items-center space-x-0.5">
+                  <span className={`text-[10px] font-bold ${isDark ? 'text-slate-500 group-hover:text-cyan-400' : 'text-slate-400 group-hover:text-cyan-600'} flex items-center space-x-0.5`}>
                     <span>REPORT</span>
                     <ArrowUpRight size={12} />
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="font-extrabold text-sm text-white group-hover:text-cyan-300 transition-colors">
+                  <h3 className={`font-extrabold text-sm ${isDark ? 'text-white group-hover:text-cyan-300' : 'text-slate-900 group-hover:text-cyan-600'} transition-colors`}>
                     {cat.label}
                   </h3>
-                  <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'} mt-1 leading-snug`}>
                     {cat.description}
                   </p>
                 </div>
@@ -1297,15 +1343,15 @@ SDRF Dispatch Status: Connected`;
       {/* ───────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Active Problem Resolution Tracker */}
-        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className={`lg:col-span-7 ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/85 border-slate-200/90 shadow-lg'} border rounded-2xl p-5 shadow-xl space-y-4 backdrop-blur-xl transition-all duration-300`}>
+          <div className={`flex items-center justify-between border-b ${isDark ? 'border-slate-800' : 'border-slate-200/80'} pb-3`}>
             <div className="flex items-center space-x-2">
               <Activity size={16} className="text-emerald-400" />
               <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'} uppercase tracking-wider`}>
                   Active Problems Log & Resolution
                 </h3>
-                <p className="text-[11px] text-slate-400">Real-time status of reported incidents from this vehicle</p>
+                <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>Real-time status of reported incidents from this vehicle</p>
               </div>
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -1317,30 +1363,30 @@ SDRF Dispatch Status: Connected`;
             {activeProblems.map((prob) => (
               <div
                 key={prob.id}
-                className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 hover:border-slate-700 transition-colors"
+                className={`p-3.5 rounded-xl ${isDark ? 'bg-slate-950/70 border-slate-800 hover:border-slate-700' : 'bg-white/90 border-slate-200 hover:border-slate-300'} border space-y-2 transition-colors backdrop-blur-md`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-xs font-extrabold text-white">{prob.id}</span>
+                    <span className={`font-mono text-xs font-extrabold ${isDark ? 'text-white' : 'text-slate-900'}`}>{prob.id}</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${prob.statusColor}`}>
                       {prob.status}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">{prob.reportedAt}</span>
+                  <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'} font-mono`}>{prob.reportedAt}</span>
                 </div>
 
-                <div className="text-xs font-bold text-slate-200">
+                <div className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                   {prob.title}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 pt-1 border-t border-slate-900">
-                  <div>Location: <strong className="text-slate-300">{prob.location}</strong></div>
-                  <div>GPS: <strong className="text-cyan-400 font-mono">{prob.gps}</strong></div>
+                <div className={`grid grid-cols-2 gap-2 text-[10px] ${isDark ? 'text-slate-400 border-slate-900' : 'text-slate-500 border-slate-100'} pt-1 border-t`}>
+                  <div>Location: <strong className={isDark ? 'text-slate-300' : 'text-slate-700'}>{prob.location}</strong></div>
+                  <div>GPS: <strong className="text-cyan-500 font-mono">{prob.gps}</strong></div>
                 </div>
 
-                <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-emerald-300 flex items-center justify-between">
+                <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-900/80 border-slate-800 text-emerald-300' : 'bg-slate-50 border-slate-200 text-emerald-700'} border text-[11px] flex items-center justify-between`}>
                   <span>Action: <strong>{prob.action}</strong></span>
-                  <span className="text-slate-400 font-mono text-[10px]">ETA: {prob.etaResolution}</span>
+                  <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} font-mono text-[10px]`}>ETA: {prob.etaResolution}</span>
                 </div>
               </div>
             ))}
@@ -1348,14 +1394,14 @@ SDRF Dispatch Status: Connected`;
         </div>
 
         {/* Emergency Refuges, BRO Camps & Mechanic Directory */}
-        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="flex items-center space-x-2 pb-3 border-b border-slate-800">
-            <Shield size={16} className="text-cyan-400" />
+        <div className={`lg:col-span-5 ${isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-white/85 border-slate-200/90 shadow-lg'} border rounded-2xl p-5 shadow-xl space-y-4 backdrop-blur-xl transition-all duration-300`}>
+          <div className={`flex items-center space-x-2 pb-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200/80'}`}>
+            <Shield size={16} className="text-cyan-500" />
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'} uppercase tracking-wider`}>
                 Emergency Refuge & BRO Hotlines
               </h3>
-              <p className="text-[11px] text-slate-400">BRO transit depots, diesel caches & mechanics</p>
+              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>BRO transit depots, diesel caches & mechanics</p>
             </div>
           </div>
 
@@ -1396,26 +1442,26 @@ SDRF Dispatch Status: Connected`;
             ].map((rf) => (
               <div
                 key={rf.name}
-                className="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors space-y-1.5 text-xs"
+                className={`p-3 rounded-xl ${isDark ? 'bg-slate-950/70 border-slate-800 hover:border-slate-700' : 'bg-white/90 border-slate-200 hover:border-slate-300'} border transition-colors space-y-1.5 text-xs backdrop-blur-md`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-white">{rf.name}</span>
-                  <span className="font-mono text-cyan-400 font-extrabold">{rf.dist}</span>
+                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{rf.name}</span>
+                  <span className="font-mono text-cyan-500 font-extrabold">{rf.dist}</span>
                 </div>
-                <div className="text-[11px] text-slate-400">
-                  Facilities: <strong className="text-slate-300">{rf.facilities}</strong>
+                <div className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Facilities: <strong className={isDark ? 'text-slate-300' : 'text-slate-800'}>{rf.facilities}</strong>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-900">
-                  <span>Comm: <strong className="text-emerald-400">{rf.contact}</strong> ({rf.channel})</span>
-                  <span className="text-cyan-300 font-mono">ETA: {rf.eta}</span>
+                <div className={`flex items-center justify-between text-[10px] ${isDark ? 'text-slate-500 border-slate-900' : 'text-slate-400 border-slate-100'} pt-1 border-t`}>
+                  <span>Comm: <strong className="text-emerald-500">{rf.contact}</strong> ({rf.channel})</span>
+                  <span className="text-cyan-500 font-mono">ETA: {rf.eta}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
-            <div className="font-bold text-slate-300 flex items-center space-x-1.5">
-              <Radio size={13} className="text-emerald-400" />
+          <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-950/70 border-slate-800 text-slate-400' : 'bg-white/90 border-slate-200 text-slate-600'} border text-[11px] space-y-1 backdrop-blur-md`}>
+            <div className={`font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'} flex items-center space-x-1.5`}>
+              <Radio size={13} className="text-emerald-500" />
               <span>Offline Resilience Directives:</span>
             </div>
             <p className="text-[10px] leading-relaxed">

@@ -4,9 +4,12 @@ import { ShieldAlert, X } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import AIChatWidget from '../AIChatWidget';
+import { useTheme } from '../../context/ThemeContext';
+import nerMountainBg from '../../assets/ner-mountain-bg.jpg';
 
 const MainLayout = () => {
   const location = useLocation();
+  const { isDark } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleNotice, setRoleNotice] = useState(null);
@@ -46,14 +49,33 @@ const MainLayout = () => {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-100 relative">
+    <div
+      className={`flex h-screen overflow-hidden text-slate-100 relative transition-colors duration-300 ${
+        isDark ? 'bg-slate-950' : 'bg-slate-100 text-slate-900'
+      }`}
+      style={{
+        backgroundImage: `url(${nerMountainBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
+      {/* Balanced atmospheric overlay for maximum scenery visibility & text contrast */}
+      <div
+        className={`absolute inset-0 pointer-events-none transition-all duration-500 ${
+          isDark
+            ? 'bg-slate-950/35 bg-gradient-to-br from-slate-950/40 via-transparent to-slate-950/40'
+            : 'bg-white/30 bg-gradient-to-br from-white/35 via-transparent to-white/35'
+        }`}
+      />
+
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
       />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
         <Topbar 
           onMenuToggle={handleMenuToggle} 
           sidebarCollapsed={sidebarCollapsed}
@@ -79,7 +101,7 @@ const MainLayout = () => {
           </div>
         )}
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-950 scroll-smooth">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth transition-colors duration-300 bg-transparent">
           <div className="animate-fade-in transition-all duration-300 min-h-full">
             <Outlet />
           </div>

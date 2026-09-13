@@ -29,6 +29,7 @@ export const ROLE_CONFIG = {
       '/risk-analysis',
       '/mesh',
       '/alerts',
+      '/alert',
       '/analytics',
       '/ai-assistant',
       '/settings',
@@ -54,6 +55,7 @@ export const ROLE_CONFIG = {
       '/live-map',
       '/analytics',
       '/alerts',
+      '/alert',
       '/ai-assistant',
     ],
     forbiddenRoutes: [
@@ -79,6 +81,7 @@ export const ROLE_CONFIG = {
       '/risk-analysis',
       '/live-map',
       '/alerts',
+      '/alert',
       '/ai-assistant',
     ],
     forbiddenRoutes: [
@@ -103,6 +106,7 @@ export const ROLE_CONFIG = {
       '/driver-dashboard',
       '/live-map',
       '/alerts',
+      '/alert',
       '/ai-assistant',
     ],
     forbiddenRoutes: [

@@ -53,11 +53,16 @@ function App() {
           <BrowserRouter>
             <Suspense fallback={<TacticalLoader />}>
               <Routes>
-                {/* Public route — Login */}
+                {/* Public routes — Login */}
                 <Route path="/" element={<Login />} />
+                <Route path="/login" element={<Login />} />
                 
                 {/* Protected dashboard routes — strictly isolated by operational role */}
-                <Route element={<MainLayout />}>
+                <Route element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }>
                   {/* 1. Admin Exclusive Routes */}
                   <Route path="/admin-dashboard" element={
                     <ProtectedRoute requiredRoles={['admin']}>
@@ -132,6 +137,11 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="/alerts" element={
+                    <ProtectedRoute requiredRoles={['admin', 'driver', 'field_officer', 'logistics_manager']}>
+                      <Alerts />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/alert" element={
                     <ProtectedRoute requiredRoles={['admin', 'driver', 'field_officer', 'logistics_manager']}>
                       <Alerts />
                     </ProtectedRoute>

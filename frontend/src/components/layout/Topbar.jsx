@@ -134,7 +134,7 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const getRoleLabel = (r) => {
@@ -157,13 +157,21 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
   };
 
   return (
-    <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-2.5 sm:px-6 z-40 sticky top-0 shadow-lg select-none">
+    <header className={`h-16 backdrop-blur-xl border-b flex items-center justify-between px-2.5 sm:px-6 z-40 sticky top-0 shadow-lg select-none transition-colors duration-300 ${
+      isDark 
+        ? 'bg-slate-900/80 border-slate-800/80 text-slate-100' 
+        : 'bg-white/80 border-slate-200/90 text-slate-800 shadow-sm'
+    }`}>
       {/* Left: Mobile menu toggle & Global Command Search */}
       <div className="flex items-center space-x-2 sm:space-x-3">
         <button
           id="topbar-sidebar-toggle"
           onClick={onMenuToggle}
-          className="p-1.5 sm:p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer flex items-center justify-center active:scale-95 border border-transparent hover:border-slate-700 shadow-sm"
+          className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center active:scale-95 border border-transparent shadow-sm ${
+            isDark 
+              ? 'text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-700' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-200'
+          }`}
           title={sidebarCollapsed ? "Expand Navigation Menu (Ctrl+B)" : "Collapse Navigation Menu (Ctrl+B)"}
           aria-label="Toggle Navigation Menu"
         >
@@ -181,7 +189,11 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
               placeholder={t('search_placeholder', 'Search vehicles, hubs... (Ctrl+K)')}
-              className="pl-8 sm:pl-10 pr-6 sm:pr-16 py-1.5 border border-slate-700 rounded-full bg-slate-950 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 xs:w-44 sm:w-72 lg:w-96 transition-all"
+              className={`pl-8 sm:pl-10 pr-6 sm:pr-16 py-1.5 border rounded-full text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32 xs:w-44 sm:w-72 lg:w-96 transition-all ${
+                isDark 
+                  ? 'bg-slate-950/80 border-slate-700 text-slate-200 placeholder-slate-500' 
+                  : 'bg-slate-50/90 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white'
+              }`}
             />
             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center space-x-1">
               {searchQuery && (
@@ -192,7 +204,9 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
                   <X size={13} />
                 </button>
               )}
-              <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono text-slate-400 bg-slate-800 border border-slate-700 rounded">
+              <kbd className={`hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono rounded border ${
+                isDark ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-slate-600 bg-slate-100 border-slate-300'
+              }`}>
                 ⌘K
               </kbd>
             </div>
@@ -200,8 +214,14 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
 
           {/* Search Results Dropdown */}
           {isSearchFocused && searchQuery && (
-            <div className="absolute left-0 mt-2 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50 text-xs divide-y divide-slate-800 backdrop-blur-xl">
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <div className={`absolute left-0 mt-2 w-[calc(100vw-32px)] max-w-sm sm:w-96 border rounded-xl shadow-2xl py-2 z-50 text-xs divide-y backdrop-blur-xl ${
+              isDark 
+                ? 'bg-slate-900/95 border-slate-700 divide-slate-800 text-slate-200' 
+                : 'bg-white/95 border-slate-200 divide-slate-100 text-slate-800 shadow-2xl'
+            }`}>
+              <div className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider flex items-center justify-between ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
                 <span>Quick Jump Results ({searchResults.length})</span>
                 <span>Press Esc to close</span>
               </div>
@@ -216,23 +236,27 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
                         setSearchQuery('');
                         navigate(item.path);
                       }}
-                      className="w-full px-3 py-2.5 text-left hover:bg-slate-800/80 transition-colors flex items-start justify-between gap-2 cursor-pointer group"
+                      className={`w-full px-3 py-2.5 text-left transition-colors flex items-start justify-between gap-2 cursor-pointer group ${
+                        isDark ? 'hover:bg-slate-800/80' : 'hover:bg-slate-50'
+                      }`}
                     >
                       <div className="space-y-0.5">
                         <div className="flex items-center space-x-1.5">
                           {getCategoryBadge(item.type)}
-                          <span className="font-bold text-white group-hover:text-cyan-300 transition-colors">
+                          <span className={`font-bold transition-colors ${
+                            isDark ? 'text-white group-hover:text-cyan-300' : 'text-slate-900 group-hover:text-blue-600'
+                          }`}>
                             {item.title}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400">{item.subtitle}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">{item.meta}</p>
+                        <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.subtitle}</p>
+                        <p className={`text-[10px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{item.meta}</p>
                       </div>
-                      <ArrowRight size={14} className="text-slate-500 group-hover:text-cyan-400 mt-1 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+                      <ArrowRight size={14} className="text-slate-400 group-hover:text-cyan-500 mt-1 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
                     </button>
                   ))
                 ) : (
-                  <div className="p-4 text-center text-slate-500">
+                  <div className={`p-4 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                     No matching records found for "{searchQuery}".
                   </div>
                 )}
@@ -248,22 +272,32 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
         <div className="relative" ref={langDropdownRef}>
           <button
             onClick={() => setLangDropdownOpen(!langDropdownOpen)}
-            className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-200 hover:text-white transition-colors cursor-pointer"
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
+              isDark 
+                ? 'bg-slate-800/90 hover:bg-slate-750 border-slate-700 text-slate-200 hover:text-white' 
+                : 'bg-slate-100/90 hover:bg-slate-200 border-slate-300 text-slate-700 hover:text-slate-900'
+            }`}
             title="Switch Regional Language (North East India)"
           >
-            <Globe size={14} className="text-blue-400" />
+            <Globe size={14} className={isDark ? "text-blue-400" : "text-blue-600"} />
             <span className="text-xs">{languagesList.find(l => l.id === language)?.flag || '🌐'}</span>
             <span className="hidden sm:inline font-medium">
               {languagesList.find(l => l.id === language)?.native || 'Language'}
             </span>
-            <ChevronDown size={12} className="text-slate-400" />
+            <ChevronDown size={12} className={isDark ? "text-slate-400" : "text-slate-500"} />
           </button>
 
           {langDropdownOpen && (
-            <div className="absolute right-[-30px] sm:right-0 mt-2 w-64 max-w-[90vw] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-50 text-xs divide-y divide-slate-800">
-              <div className="px-3 py-1.5 flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+            <div className={`absolute right-[-30px] sm:right-0 mt-2 w-64 max-w-[90vw] border rounded-xl shadow-2xl py-1.5 z-50 text-xs divide-y ${
+              isDark 
+                ? 'bg-slate-900 border-slate-700 divide-slate-800' 
+                : 'bg-white border-slate-200 divide-slate-100 shadow-2xl'
+            }`}>
+              <div className={`px-3 py-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
                 <span>Regional Language</span>
-                <span className="text-blue-400 font-mono">NE India</span>
+                <span className="text-blue-500 font-mono">NE India</span>
               </div>
               <div className="py-1 max-h-72 overflow-y-auto">
                 {languagesList.map((l) => (
@@ -274,18 +308,22 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
                       playAlertChime('success');
                       setLangDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-slate-800/80 transition-colors cursor-pointer ${
-                      language === l.id ? 'bg-blue-600/15 text-blue-400 font-bold' : 'text-slate-300'
+                    className={`w-full px-3 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                      isDark ? 'hover:bg-slate-800/80' : 'hover:bg-slate-50'
+                    } ${
+                      language === l.id 
+                        ? isDark ? 'bg-blue-600/15 text-blue-400 font-bold' : 'bg-blue-50 text-blue-600 font-bold'
+                        : isDark ? 'text-slate-300' : 'text-slate-700'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
                       <span className="text-base">{l.flag}</span>
                       <div>
                         <div className="leading-tight font-semibold">{l.native}</div>
-                        <div className="text-[10px] text-slate-400">{l.name} • {l.region}</div>
+                        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{l.name} • {l.region}</div>
                       </div>
                     </div>
-                    {language === l.id && <CheckCircle2 size={14} className="text-blue-400" />}
+                    {language === l.id && <CheckCircle2 size={14} className={isDark ? "text-blue-400" : "text-blue-600"} />}
                   </button>
                 ))}
               </div>
@@ -301,7 +339,9 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
             if (nextState) playAlertChime('alert');
           }}
           className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-            soundAlertsEnabled ? 'text-amber-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-800'
+            soundAlertsEnabled 
+              ? 'text-amber-400 hover:bg-slate-800/50' 
+              : isDark ? 'text-slate-500 hover:bg-slate-800' : 'text-slate-400 hover:bg-slate-100'
           }`}
           title={soundAlertsEnabled ? 'Tactical Audio Alerts: ON (Click to Mute)' : 'Tactical Audio Alerts: MUTED (Click to Enable)'}
         >
@@ -311,24 +351,34 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
         {/* Operator Quick Guide Button */}
         <button
           onClick={() => setShowOperatorGuide(true)}
-          className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-750 border border-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+          className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors cursor-pointer ${
+            isDark 
+              ? 'bg-slate-800/90 hover:bg-slate-750 border-slate-700 text-slate-300 hover:text-white' 
+              : 'bg-slate-100/90 hover:bg-slate-200 border-slate-300 text-slate-700 hover:text-slate-900'
+          }`}
           title="Open Operator Guide & Quick Tour"
         >
-          <BookOpen size={14} className="text-cyan-400" />
+          <BookOpen size={14} className={isDark ? "text-cyan-400" : "text-cyan-600"} />
           <span>{t('operator_guide', 'Field Manual')}</span>
         </button>
 
         {/* System Online Badge */}
-        <div className="hidden xl:flex items-center space-x-1.5 px-3 py-1 bg-emerald-950/80 border border-emerald-800/60 rounded-full">
-          <Wifi size={13} className="text-emerald-400 animate-pulse" />
-          <span className="text-xs font-semibold text-emerald-300">Systems Online</span>
+        <div className={`hidden xl:flex items-center space-x-1.5 px-3 py-1 rounded-full border ${
+          isDark 
+            ? 'bg-emerald-950/80 border-emerald-800/60 text-emerald-300' 
+            : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+        }`}>
+          <Wifi size={13} className={isDark ? "text-emerald-400 animate-pulse" : "text-emerald-600 animate-pulse"} />
+          <span className="text-xs font-semibold">Systems Online</span>
         </div>
 
         {/* Operational Alerts Bell Dropdown */}
         <div className="relative">
           <button
             onClick={() => setAlertsOpen(!alertsOpen)}
-            className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+              isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
             title="Operational Alerts"
           >
             <Bell size={19} />
@@ -336,10 +386,14 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
           </button>
 
           {alertsOpen && (
-            <div className="absolute right-[-40px] sm:right-0 mt-2 w-80 max-w-[90vw] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50 text-xs divide-y divide-slate-800">
+            <div className={`absolute right-[-40px] sm:right-0 mt-2 w-80 max-w-[90vw] border rounded-xl shadow-2xl py-2 z-50 text-xs divide-y ${
+              isDark 
+                ? 'bg-slate-900 border-slate-700 divide-slate-800' 
+                : 'bg-white border-slate-200 divide-slate-100 shadow-2xl'
+            }`}>
               <div className="px-3 py-1.5 flex items-center justify-between">
-                <span className="font-bold text-white flex items-center space-x-1.5">
-                  <AlertTriangle size={14} className="text-rose-400" />
+                <span className={`font-bold flex items-center space-x-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <AlertTriangle size={14} className="text-rose-500" />
                   <span>Highland Incident Alerts ({OPERATIONAL_ALERTS.length})</span>
                 </span>
                 <button
@@ -347,25 +401,25 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
                     setAlertsOpen(false);
                     navigate('/alerts');
                   }}
-                  className="text-[10px] text-cyan-400 hover:underline cursor-pointer"
+                  className="text-[10px] text-blue-500 hover:underline cursor-pointer font-bold"
                 >
                   View All ➔
                 </button>
               </div>
 
-              <div className="max-h-64 overflow-y-auto divide-y divide-slate-800/60">
+              <div className={`max-h-64 overflow-y-auto divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
                 {OPERATIONAL_ALERTS.slice(0, 3).map((alt) => (
-                  <div key={alt.id} className="p-2.5 hover:bg-slate-800/50 transition-colors space-y-1">
+                  <div key={alt.id} className={`p-2.5 transition-colors space-y-1 ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-200 truncate">{alt.title}</span>
+                      <span className={`font-bold truncate ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{alt.title}</span>
                       <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
                         alt.severity === 'Critical' ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
                       }`}>
                         {alt.severity}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{alt.message}</p>
-                    <div className="text-[9px] text-slate-500">{alt.time}</div>
+                    <p className={`text-[10px] line-clamp-2 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{alt.message}</p>
+                    <div className={`text-[9px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{alt.time}</div>
                   </div>
                 ))}
               </div>
@@ -388,37 +442,47 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="p-2 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+          className={`p-2 rounded-lg transition-colors cursor-pointer ${
+            isDark ? 'text-slate-400 hover:text-amber-300 hover:bg-slate-800' : 'text-slate-600 hover:text-amber-500 hover:bg-slate-100'
+          }`}
           title={isDark ? "Switch to Light Theme (Alpine Day)" : "Switch to Dark Theme (Tactical Night)"}
         >
-          {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-400" />}
+          {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-indigo-600" />}
         </button>
 
         {/* Quick User Guide / How It Works Button */}
         <button
           onClick={() => setShowOperatorGuide(true)}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border border-blue-500/40 text-xs font-bold transition-all cursor-pointer shadow-sm"
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer shadow-sm ${
+            isDark 
+              ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 hover:text-white border-blue-500/40' 
+              : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+          }`}
           title="Open Simple 3-Step Guide"
         >
-          <HelpCircle size={15} className="text-cyan-400" />
+          <HelpCircle size={15} className={isDark ? "text-cyan-400" : "text-blue-600"} />
           <span className="hidden sm:inline">How It Works</span>
         </button>
 
         {/* Security Badge */}
         <div 
-          className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition-colors hidden sm:block"
+          className={`p-2 rounded-lg transition-colors hidden sm:block ${
+            isDark ? 'text-slate-400 hover:text-cyan-400 hover:bg-slate-800' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100'
+          }`}
           title="Government Security Protocol Active • 256-Bit TLS End-to-End Encrypted"
         >
           <Shield size={18} />
         </div>
 
-        <div className="w-px h-6 bg-slate-800 hidden sm:block"></div>
+        <div className={`w-px h-6 hidden sm:block ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
 
         {/* User profile dropdown */}
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2.5 cursor-pointer hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+            className={`flex items-center space-x-2.5 cursor-pointer rounded-lg px-2 py-1.5 transition-colors ${
+              isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'
+            }`}
           >
             {user?.photoURL ? (
               <img
@@ -432,24 +496,28 @@ export default function Topbar({ onMenuToggle, sidebarCollapsed = false, mobileO
               </div>
             )}
             <div className="hidden sm:block text-left">
-              <p className="text-xs font-semibold text-slate-200 leading-tight">
+              <p className={`text-xs font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                 {user?.displayName || 'Dr. R. Sharma (Admin)'}
               </p>
-              <p className="text-[10px] text-blue-400 font-medium">
+              <p className={`text-[10px] font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                 {getRoleLabel(role)}
               </p>
             </div>
-            <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
+            <ChevronDown size={14} className={isDark ? "text-slate-400 hidden sm:block" : "text-slate-500 hidden sm:block"} />
           </button>
 
           {/* Dropdown Menu */}
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 text-xs divide-y divide-slate-800">
+            <div className={`absolute right-0 mt-2 w-56 border rounded-xl shadow-2xl py-1 z-50 text-xs divide-y ${
+              isDark 
+                ? 'bg-slate-900 border-slate-700 divide-slate-800' 
+                : 'bg-white border-slate-200 divide-slate-100 shadow-2xl'
+            }`}>
               <div className="px-4 py-2.5">
-                <p className="font-bold text-white truncate">
+                <p className={`font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {user?.displayName || 'Regional Dispatch Commander'}
                 </p>
-                <p className="text-[11px] text-slate-400 truncate">
+                <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {user?.email || 'admin@ner-lifeline.gov.in'}
                 </p>
                 <span className="inline-block mt-1 px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800 text-[10px] font-bold">
